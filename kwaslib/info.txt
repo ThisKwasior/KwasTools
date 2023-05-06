@@ -1,0 +1,5 @@
+Each folder contains code for different games/engines.
+
+List:
+ * he       -   Hedgehog Engine 1 and 2
+ * utils    -   Common helper utilities
