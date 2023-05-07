@@ -169,10 +169,6 @@ void pu_split_path(const char* file_path, uint32_t file_path_size, PU_PATH* desc
         memcpy(desc->name.p, path, desc->name.s);
     }
 
-    /*printf("%d %d %d\n", slash, period, file_path_size);
-    printf("%d %d %d\n", desc->dir.s, desc->name.s, desc->ext.s);
-    printf("%s %s %s\n", desc->dir.p, desc->name.p, desc->ext.p);*/
-
     free(path);
 }
 
@@ -201,12 +197,45 @@ int pu_create_dir(const PU_PATH* path)
         pu_insert_string(&path->name, -1, &str);
     }
 
-    return pu_create_dir_char(str.p);
+    const int ret = pu_create_dir_char(str.p);
+    
+    pu_free_string(&str);
+    
+    return ret;
+}
+
+int pu_remove_dir_char(const char* path)
+{
+    return rmdir(path);
+}
+
+int pu_remove_dir(const PU_PATH* path)
+{
+    PU_STRING str = {0};
+
+    if(path->dir.s != PU_PATH_NO_VALUE)
+        pu_create_string(path->dir.p, path->dir.s, &str);
+    else
+        pu_create_string("", 0, &str);
+    
+    if(path->type == PU_PATH_TYPE_DIR)
+    {
+        if(path->dir.s != PU_PATH_NO_VALUE)
+            pu_insert_char("/", 1, -1, &str);
+        pu_insert_string(&path->name, -1, &str);
+    }
+
+    const int ret = pu_remove_dir_char(str.p);
+    
+    pu_free_string(&str);
+    
+    return ret;
 }
 
 void pu_free_string(PU_STRING* str)
 {
 	free(str->p);
+    str->p = NULL;
 	str->s = PU_PATH_NO_VALUE;
 }
 

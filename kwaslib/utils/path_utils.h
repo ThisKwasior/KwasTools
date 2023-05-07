@@ -80,17 +80,19 @@ int pu_create_dir_char(const char* path);
 int pu_create_dir(const PU_PATH* path);
 
 /*
-    Creates a directory at specified path.
+    Removes a directory at specified path.
+    Only empty directories can be deleted.
     0 on success, -1 on failure.
 */
-int pu_create_dir_char(const char* path);
+int pu_remove_dir_char(const char* path);
 
 /*
-    Creates a directory at specified PU_PATH.
-    If PU_PATH.type == PU_PATH_TYPE_FILE it will create the parent directory of the file.
+    Removes a directory at specified PU_PATH.
+    If PU_PATH.type == PU_PATH_TYPE_FILE it will remove the parent directory of the file.
+    Only empty directories can be deleted.
     0 on success, -1 on failure.
 */
-int pu_create_dir(const PU_PATH* path);
+int pu_remove_dir(const PU_PATH* path);
 
 /*
 	Frees char array inside of the `str`
