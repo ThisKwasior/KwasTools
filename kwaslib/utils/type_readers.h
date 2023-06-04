@@ -11,18 +11,6 @@
 #define BIT(x) (1<<(x))
 
 /*
-    Check endianness
-*/
-uint8_t tr_is_BE();
-
-/*
-    Changes endianness of the number
-*/
-uint16_t tr_swap_endian_16(const uint16_t n);
-uint32_t tr_swap_endian_32(const uint32_t n);
-uint64_t tr_swap_endian_64(const uint64_t n);
-
-/*
     Readers for any endianness
 */
 uint8_t tr_read_u8(const uint8_t* data);

@@ -117,9 +117,8 @@ void pu_split_path(const char* file_path, uint32_t file_path_size, PU_PATH* desc
     else if(pu_is_dir(file_path)) desc->type = PU_PATH_TYPE_DIR;
     else
     {
-        printf("The path is not either a file or directory.\n");
-        desc->type = PU_PATH_TYPE_UNK;
-        return;
+		/* File/Dir doesn't exist - assume file path */
+		desc->type = PU_PATH_TYPE_FILE;
     }
     
     /* Find base directory, file name and extension */
