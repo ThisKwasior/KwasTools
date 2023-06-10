@@ -6,6 +6,12 @@
 #include "type_readers.h"
 #include "type_writers.h"
 
+static const char* FU_STATUS_STR[] = 
+{
+	"FU_SUCCESS", "FU_ERROR", "FU_EOF", "FU_ENDDATA",
+	"FU_FEXISTS", "FU_NOTMEMF", "FU_REQ0", "FU_REQBEL0"
+};
+
 uint8_t fu_open_file(const char* path, const uint8_t to_memory, FU_FILE* f)
 {
 	fu_close(f);
@@ -90,32 +96,6 @@ uint64_t fu_get_file_size_pu(PU_PATH* path)
 	return size;
 }
 
-void fu_close(FU_FILE* f)
-{
-	if(f->is_buf)
-	{
-		if(f->do_free)
-		{
-			free(f->buf);
-		}
-	}
-	else
-	{
-		fclose(f->f);
-	}
-
-	f->buf = NULL;
-	f->f = NULL;
-
-	f->is_buf = 0;
-	f->do_free = 0;
-	f->writeable = 0;
-
-	f->size = 0;
-	f->rem = 0;
-	f->pos = 0;
-}
-
 uint8_t fu_seek(FU_FILE* f, int64_t offset, uint8_t whence)
 {
 	if(f->is_buf == 0)
@@ -148,6 +128,37 @@ uint8_t fu_seek(FU_FILE* f, int64_t offset, uint8_t whence)
 	f->rem = f->size - f->pos;
 	
 	return FU_SUCCESS;
+}
+
+void fu_close(FU_FILE* f)
+{
+	if(f->is_buf)
+	{
+		if(f->do_free)
+		{
+			free(f->buf);
+		}
+	}
+	else
+	{
+		fclose(f->f);
+	}
+
+	f->buf = NULL;
+	f->f = NULL;
+
+	f->is_buf = 0;
+	f->do_free = 0;
+	f->writeable = 0;
+
+	f->size = 0;
+	f->rem = 0;
+	f->pos = 0;
+}
+
+const char* fu_status_str(const uint8_t status)
+{
+	return FU_STATUS_STR[status];
 }
 
 /* 

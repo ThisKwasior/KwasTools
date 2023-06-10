@@ -22,12 +22,6 @@
 #define FU_LITTLE_ENDIAN 1
 #define FU_BIG_ENDIAN 2
 
-static const char* FU_STATUS_STR[] = 
-{
-	"FU_SUCCESS", "FU_ERROR", "FU_EOF", "FU_ENDDATA",
-	"FU_FEXISTS", "FU_NOTMEMF", "FU_REQ0", "FU_REQBEL0"
-};
-
 typedef struct
 {
 	/* File buffer */
@@ -59,6 +53,8 @@ uint64_t fu_get_file_size_pu(PU_PATH* path);
 uint8_t fu_seek(FU_FILE* f, int64_t offset, uint8_t whence);
 
 void fu_close(FU_FILE* f);
+
+const char* fu_status_str(const uint8_t status);
 
 /* 
 	Memory file
