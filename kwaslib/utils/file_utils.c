@@ -141,7 +141,10 @@ void fu_close(FU_FILE* f)
 	}
 	else
 	{
-		fclose(f->f);
+		if(f->f)
+		{
+			fclose(f->f);
+		}
 	}
 
 	f->buf = NULL;

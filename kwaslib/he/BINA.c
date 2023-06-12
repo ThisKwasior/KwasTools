@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../utils/type_readers.h"
+#include <kwaslib/utils/endianness.h>
+#include <kwaslib/utils/type_readers.h>
 
 static uint8_t swap_endianness = 0;
 
@@ -19,8 +20,8 @@ uint8_t BINA_read_header(uint8_t* data, BINA_Header* header)
 }
 
 void BINA_header_fix_endian(BINA_Header* header)
-{
-    const uint8_t is_be = tr_is_BE();
+{	
+    const uint8_t is_be = ed_is_BE();
     
     /* Only need to check for ('B' && !is_be) and ('L' && is_be) */
     if(((header->endianness == 'L') && is_be)
@@ -31,9 +32,9 @@ void BINA_header_fix_endian(BINA_Header* header)
     
     if(swap_endianness)
     {
-        header->file_size = tr_swap_endian_32(header->file_size);
-        header->node_count = tr_swap_endian_16(header->node_count);
-        header->unk_01 = tr_swap_endian_16(header->unk_01);
+        header->file_size = ed_swap_endian_32(header->file_size);
+        header->node_count = ed_swap_endian_16(header->node_count);
+        header->unk_01 = ed_swap_endian_16(header->unk_01);
     }
 }
 
@@ -79,10 +80,10 @@ void BINA_DATA_fix_endian(BINA_DATA_Chunk* data_chunk)
 {
     if(swap_endianness)
     {
-        data_chunk->string_table_offset = tr_swap_endian_32(data_chunk->string_table_offset);
-        data_chunk->string_table_size = tr_swap_endian_32(data_chunk->string_table_size);
-        data_chunk->offset_table_size = tr_swap_endian_32(data_chunk->offset_table_size);
-        data_chunk->additional_data_size = tr_swap_endian_32(data_chunk->additional_data_size);
+        data_chunk->string_table_offset = ed_swap_endian_32(data_chunk->string_table_offset);
+        data_chunk->string_table_size = ed_swap_endian_32(data_chunk->string_table_size);
+        data_chunk->offset_table_size = ed_swap_endian_32(data_chunk->offset_table_size);
+        data_chunk->additional_data_size = ed_swap_endian_32(data_chunk->additional_data_size);
     }
 }
 
@@ -113,11 +114,11 @@ void BINA_CPIC_fix_endian(BINA_CPIC_Chunk* cpic_chunk)
 {
     if(swap_endianness)
     {
-        cpic_chunk->ver_number = tr_swap_endian_32(cpic_chunk->ver_number);
-        cpic_chunk->instances_offset = tr_swap_endian_32(cpic_chunk->instances_offset);
-        cpic_chunk->unk_01 = tr_swap_endian_32(cpic_chunk->unk_01);
-        cpic_chunk->instances_count = tr_swap_endian_32(cpic_chunk->instances_count);
-        cpic_chunk->unk_02 = tr_swap_endian_32(cpic_chunk->unk_02);
+        cpic_chunk->ver_number = ed_swap_endian_32(cpic_chunk->ver_number);
+        cpic_chunk->instances_offset = ed_swap_endian_32(cpic_chunk->instances_offset);
+        cpic_chunk->unk_01 = ed_swap_endian_32(cpic_chunk->unk_01);
+        cpic_chunk->instances_count = ed_swap_endian_32(cpic_chunk->instances_count);
+        cpic_chunk->unk_02 = ed_swap_endian_32(cpic_chunk->unk_02);
     }
 }
 
@@ -125,17 +126,17 @@ void BINA_CPIC_Instance_fix_endian(BINA_CPIC_Instance* cpic_instance)
 {
     if(swap_endianness)
     {
-        cpic_instance->name_offset = tr_swap_endian_32(cpic_instance->name_offset);
-        cpic_instance->name2_offset = tr_swap_endian_32(cpic_instance->name2_offset);
-        cpic_instance->pos_x = tr_swap_endian_32(cpic_instance->pos_x);
-        cpic_instance->pos_y = tr_swap_endian_32(cpic_instance->pos_y);
-        cpic_instance->pos_z = tr_swap_endian_32(cpic_instance->pos_z);
-        cpic_instance->rot_x = tr_swap_endian_32(cpic_instance->rot_x);
-        cpic_instance->rot_y = tr_swap_endian_32(cpic_instance->rot_y);
-        cpic_instance->rot_z = tr_swap_endian_32(cpic_instance->rot_z);
-        cpic_instance->scale_x = tr_swap_endian_32(cpic_instance->scale_x);
-        cpic_instance->scale_y = tr_swap_endian_32(cpic_instance->scale_y);
-        cpic_instance->scale_z = tr_swap_endian_32(cpic_instance->scale_z);
+        cpic_instance->name_offset = ed_swap_endian_32(cpic_instance->name_offset);
+        cpic_instance->name2_offset = ed_swap_endian_32(cpic_instance->name2_offset);
+        cpic_instance->pos_x = ed_swap_endian_32(cpic_instance->pos_x);
+        cpic_instance->pos_y = ed_swap_endian_32(cpic_instance->pos_y);
+        cpic_instance->pos_z = ed_swap_endian_32(cpic_instance->pos_z);
+        cpic_instance->rot_x = ed_swap_endian_32(cpic_instance->rot_x);
+        cpic_instance->rot_y = ed_swap_endian_32(cpic_instance->rot_y);
+        cpic_instance->rot_z = ed_swap_endian_32(cpic_instance->rot_z);
+        cpic_instance->scale_x = ed_swap_endian_32(cpic_instance->scale_x);
+        cpic_instance->scale_y = ed_swap_endian_32(cpic_instance->scale_y);
+        cpic_instance->scale_z = ed_swap_endian_32(cpic_instance->scale_z);
     }
 }
 
@@ -155,12 +156,12 @@ uint8_t BINA_parse_offset(uint8_t* data, BINA_Offset* offset)
             break;
         case BINA_OFFSET_FLAG_14:
             offset->off_value = (uint16_t)(tr_read_u16(data)<<2);
-            if(swap_endianness) offset->off_value = tr_swap_endian_16(offset->off_value);
+            if(swap_endianness) offset->off_value = ed_swap_endian_16(offset->off_value);
             return 2;
             break;
         case BINA_OFFSET_FLAG_30:
             offset->off_value = (uint32_t)(tr_read_u32(data)<<2);
-            if(swap_endianness) offset->off_value = tr_swap_endian_32(offset->off_value);
+            if(swap_endianness) offset->off_value = ed_swap_endian_32(offset->off_value);
             return 4;
             break;
     }

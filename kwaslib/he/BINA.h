@@ -6,8 +6,6 @@
 
 #include <stdint.h>
 
-#include "BINA.h"
-
 #define BINA_OFFSET_FLAG_STOP 0
 #define BINA_OFFSET_FLAG_6 1
 #define BINA_OFFSET_FLAG_14 2

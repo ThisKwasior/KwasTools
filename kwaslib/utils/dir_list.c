@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void dl_parse_directory(const char* path, DL_DIR_LIST* list)
 {

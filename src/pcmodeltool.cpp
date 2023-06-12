@@ -3,9 +3,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../utils/pugixml.hpp"
-#include "../kwaslib/he/BINA.h"
-#include "../kwaslib/utils/path_utils.h"
+#include <utils/pugixml.hpp>
+/*#include <kwaslib/he/BINA.h>
+#include <kwaslib/utils/path_utils.h>*/
+
+#include <kwaslib/kwas_all.h>
 
 void load_BINA_save_XML(const char* file);
 

@@ -1,0 +1,36 @@
+CC ?= gcc
+AR ?= ar
+
+CFLAGS= -O2 -s -fno-ident -Qn -I.
+
+KWASLIB_DIR= ./kwaslib
+KWASLIB_TARGET= ./libkwaslib.a
+
+KWASLIB_SOURCES = $(KWASLIB_DIR)/utils/arg_parser.c \
+				  $(KWASLIB_DIR)/utils/dir_list.c \
+				  $(KWASLIB_DIR)/utils/endianness.c \
+				  $(KWASLIB_DIR)/utils/file_utils.c \
+				  $(KWASLIB_DIR)/utils/path_utils.c \
+				  $(KWASLIB_DIR)/utils/type_readers.c \
+				  $(KWASLIB_DIR)/utils/type_writers.c \
+				  $(KWASLIB_DIR)/he/BINA.c
+
+KWASLIB_OBJECTS = $(KWASLIB_DIR)/utils/arg_parser.o \
+				  $(KWASLIB_DIR)/utils/dir_list.o \
+				  $(KWASLIB_DIR)/utils/endianness.o \
+				  $(KWASLIB_DIR)/utils/file_utils.o \
+				  $(KWASLIB_DIR)/utils/path_utils.o \
+				  $(KWASLIB_DIR)/utils/type_readers.o \
+				  $(KWASLIB_DIR)/utils/type_writers.o \
+				  $(KWASLIB_DIR)/he/BINA.o
+
+all: $(KWASLIB_TARGET)
+
+$(KWASLIB_TARGET): $(KWASLIB_OBJECTS)
+	$(AR) rcs $@ $^
+	
+$(KWASLIB_OBJECTS): $(KWASLIB_SOURCES)
+	$(CC) $(CFLAGS) -o $@ -c $*.c
+
+clean:
+	rm $(KWASLIB_OBJECTS) $(KWASLIB_TARGET)
