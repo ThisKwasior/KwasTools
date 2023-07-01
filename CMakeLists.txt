@@ -63,6 +63,9 @@ endforeach(program_src ${KWASTOOLS_PROGRAMS})
 
 ### Copying license files
 
+# Create bin directory
+file(MAKE_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
+
 # pugixml license
 file(COPY_FILE "${PROJECT_SOURCE_DIR}/utils/pugixml/LICENSE.md" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/LICENSE-pugixml.md")
 
