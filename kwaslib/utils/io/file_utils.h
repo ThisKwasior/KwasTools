@@ -52,6 +52,8 @@ uint64_t fu_get_file_size_pu(PU_PATH* path);
 
 uint8_t fu_seek(FU_FILE* f, int64_t offset, uint8_t whence);
 
+uint64_t fu_tell(FU_FILE* f);
+
 void fu_close(FU_FILE* f);
 
 const char* fu_status_str(const uint8_t status);

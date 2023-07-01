@@ -7,13 +7,20 @@ extern "C" {
 /* 
 	Utils
 */
-#include <kwaslib/utils/arg_parser.h>
-#include <kwaslib/utils/dir_list.h>
-#include <kwaslib/utils/endianness.h>
-#include <kwaslib/utils/file_utils.h>
-#include <kwaslib/utils/path_utils.h>
-#include <kwaslib/utils/type_readers.h>
-#include <kwaslib/utils/type_writers.h>
+#include <kwaslib/utils/cpu/endianness.h>
+
+#include <kwaslib/utils/crypto/crc32.h>
+
+#include <kwaslib/utils/io/arg_parser.h>
+#include <kwaslib/utils/io/dir_list.h>
+#include <kwaslib/utils/io/file_utils.h>
+#include <kwaslib/utils/io/path_utils.h>
+#include <kwaslib/utils/io/type_readers.h>
+#include <kwaslib/utils/io/type_writers.h>
+
+#include <kwaslib/utils/math/boundary.h>
+#include <kwaslib/utils/math/half.h>
+#include <kwaslib/utils/math/vec.h>
 
 /* 
 	Hedgehog Engine
@@ -24,6 +31,8 @@ extern "C" {
 	Platinum Games engine
 */
 #include <kwaslib/platinum/dat.h>
+#include <kwaslib/platinum/wmb4.h>
+#include <kwaslib/platinum/wtb.h>
 
 #ifdef __cplusplus
 }

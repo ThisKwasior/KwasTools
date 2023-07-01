@@ -17,8 +17,8 @@ static const char* AP_TYPES_STR[] =
 
 AP_VALUE_NODE* ap_parse_argv(char** argv, int argc, const AP_ARG_DESC* descs, const uint32_t descs_size)
 {
-	AP_VALUE_NODE* node = ap_create_empty_node();
-	AP_VALUE_NODE* cur_node = node;
+	AP_VALUE_NODE* node = NULL;
+	AP_VALUE_NODE* cur_node = NULL;
 
 	/* First argument is the executable run path */
 	for(uint32_t it = 1; it != argc; ++it)
@@ -34,19 +34,19 @@ AP_VALUE_NODE* ap_parse_argv(char** argv, int argc, const AP_ARG_DESC* descs, co
 			{
 				if(arg_len != desc_len)
 				{
-					/* Different sizes of the strings! Abort!!!*/
+					/* Different sizes of the strings! Abort!!! */
 					it_desc = descs_size;
+					continue;
 				}
 				else
 				{
-					memcpy(cur_node->data.desc.arg, descs[it_desc].arg, arg_len);
+					uint8_t selected_type = AP_TYPE_ILL;
 					
 					switch(descs[it_desc].type)
 					{
 						case AP_TYPE_NOV:
-							cur_node->data.desc.type = AP_TYPE_NOV;
 							arg_found = AP_SUCCESS;
-							it_desc = descs_size;
+							selected_type = AP_TYPE_NOV;
 							break;
 						case AP_TYPE_U8:
 						case AP_TYPE_U16:
@@ -61,16 +61,29 @@ AP_VALUE_NODE* ap_parse_argv(char** argv, int argc, const AP_ARG_DESC* descs, co
 						case AP_TYPE_STR:
 							if(it < (argc-1))
 							{
-								cur_node->data.desc.type = descs[it_desc].type;
 								arg_found = AP_SUCCESS;
+								selected_type = descs[it_desc].type;
 								it += 1;
-								it_desc = descs_size;
 							}
 							break;
 					}
 					
 					if(arg_found == AP_SUCCESS)
 					{
+						if(node == NULL)
+						{
+							node = ap_create_empty_node();
+							cur_node = node;
+						}
+						else
+						{
+							ap_append_new_elem(node);
+							cur_node = cur_node->next;
+						}
+						
+						cur_node->data.desc.type = selected_type;
+						memcpy(cur_node->data.desc.arg, descs[it_desc].arg, arg_len);
+						
 						switch(cur_node->data.desc.type)
 						{
 							case AP_TYPE_U8:
@@ -112,19 +125,6 @@ AP_VALUE_NODE* ap_parse_argv(char** argv, int argc, const AP_ARG_DESC* descs, co
 				}
 			}
 		}
-		
-		if(arg_found == AP_ERROR)
-		{
-			printf("Unknown/Malformed argument \"%s\"\n", argv[it]);
-			ap_free_node(node);
-			return NULL;
-		}
-		
-		if(it != (argc-1))
-		{
-			ap_append_new_elem(node);
-			cur_node = cur_node->next;
-		}
 	}
 	
 	return node;
@@ -135,11 +135,43 @@ AP_VALUE_NODE* ap_create_empty_node()
 	return (AP_VALUE_NODE*)calloc(1, sizeof(AP_VALUE_NODE));
 }
 
+AP_VALUE_NODE* ap_get_node_by_arg(AP_VALUE_NODE* node, const char* arg)
+{
+	if(node == NULL) return NULL;
+	
+	const uint32_t arg_size = strlen(arg);
+	AP_VALUE_NODE* cur_elem = node;
+	
+	while(1)
+	{
+		if(cur_elem != NULL)
+		{
+			const uint32_t cur_arg_size = strlen(cur_elem->data.desc.arg);
+			
+			if(cur_arg_size == arg_size)
+			{
+				if(strncmp(arg, cur_elem->data.desc.arg, arg_size) == 0)
+				{
+					return cur_elem;
+				}
+			}
+			
+			cur_elem = cur_elem->next;
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	
+	return NULL;
+}
+
 void ap_append_new_elem(AP_VALUE_NODE* node)
 {
 	AP_VALUE_NODE* new_elem = ap_create_empty_node();
 	AP_VALUE_NODE* cur_elem = node;
-	
+
 	while(1)
 	{
 		if(cur_elem->next == NULL)

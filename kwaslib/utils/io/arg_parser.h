@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#define AP_TYPE_ILL	-1 /* Illegal type */
 #define AP_TYPE_NOV	0 /* Argument isn't followed by a value. A switch perhaps */
 #define AP_TYPE_U8	1
 #define AP_TYPE_S8	2
@@ -63,6 +64,8 @@ struct AP_VALUE_NODE
 AP_VALUE_NODE* ap_parse_argv(char** argv, int argc, const AP_ARG_DESC* descs, const uint32_t descs_size);
 
 AP_VALUE_NODE* ap_create_empty_node();
+
+AP_VALUE_NODE* ap_get_node_by_arg(AP_VALUE_NODE* node, const char* arg);
 
 void ap_append_new_elem(AP_VALUE_NODE* node);
 

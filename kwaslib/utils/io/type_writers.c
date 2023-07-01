@@ -3,7 +3,7 @@
 
 #include "type_writers.h"
 
-#include "endianness.h"
+#include "../cpu/endianness.h"
 
 /*
     Writers for any endianness

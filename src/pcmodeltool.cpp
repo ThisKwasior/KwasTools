@@ -3,9 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <utils/pugixml.hpp>
-/*#include <kwaslib/he/BINA.h>
-#include <kwaslib/utils/path_utils.h>*/
+#include <pugixml/pugixml.hpp>
 
 #include <kwaslib/kwas_all.h>
 

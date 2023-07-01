@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <kwaslib/utils/endianness.h>
-#include <kwaslib/utils/type_readers.h>
+#include <kwaslib/utils/cpu/endianness.h>
+#include <kwaslib/utils/io/type_readers.h>
 
 static uint8_t swap_endianness = 0;
 

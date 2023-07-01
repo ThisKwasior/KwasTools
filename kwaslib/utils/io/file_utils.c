@@ -130,6 +130,11 @@ uint8_t fu_seek(FU_FILE* f, int64_t offset, uint8_t whence)
 	return FU_SUCCESS;
 }
 
+uint64_t fu_tell(FU_FILE* f)
+{
+	return f->pos;
+}
+
 void fu_close(FU_FILE* f)
 {
 	if(f->is_buf)

@@ -3,7 +3,7 @@
 
 #include "type_readers.h"
 
-#include "endianness.h"
+#include "../cpu/endianness.h"
 
 /*
     Readers for any endianness

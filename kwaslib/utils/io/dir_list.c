@@ -35,8 +35,16 @@ void dl_parse_directory(const char* path, DL_DIR_LIST* list)
 				pu_insert_char("/", 1, -1, &file_path);
 				pu_insert_char(pent->d_name, strlen(pent->d_name), -1, &file_path);
 				
-				if(pu_is_dir(file_path.p)) list->entries[it].type = DL_TYPE_DIR;
-				else list->entries[it].type = DL_TYPE_FILE;
+				if(pu_is_dir(file_path.p))
+				{
+					list->entries[it].type = DL_TYPE_DIR;
+					list->dir_count += 1;
+				}
+				else
+				{
+					list->entries[it].type = DL_TYPE_FILE;
+					list->file_count += 1;
+				}
 
 				it += 1;
 				
@@ -73,6 +81,23 @@ uint32_t dl_count_entries(const char* path)
 	closedir(pdir);
 	
 	return entries;
+}
+
+PU_STRING* dl_get_full_entry_path(DL_DIR_LIST* list, uint32_t entry_id)
+{
+	if(entry_id > list->size) return NULL;
+	
+	PU_STRING temp_file_path = {0};
+	pu_path_to_string(&list->entries[entry_id].path, &temp_file_path);
+	
+	PU_STRING* file_dir_path = (PU_STRING*)calloc(1, sizeof(PU_STRING));
+	pu_path_to_string(&list->path, file_dir_path);
+	pu_insert_char("/", 1, -1, file_dir_path);
+	pu_insert_char(temp_file_path.p, temp_file_path.s, -1, file_dir_path);
+	
+	pu_free_string(&temp_file_path);
+	
+	return file_dir_path;
 }
 
 void dl_free_list(DL_DIR_LIST* list)
