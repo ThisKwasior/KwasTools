@@ -18,7 +18,7 @@ set(KWASTOOLS_UTILS
 set(KWASTOOLS_UTILS_INCLUDES
 	"${PROJECT_SOURCE_DIR}"
 	"${PROJECT_SOURCE_DIR}/utils"
-	"${PROJECT_SOURCE_DIR}/utils/assimp/include"
+	#"${PROJECT_SOURCE_DIR}/utils/assimp/include"
 	)
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "C Compiler flags" FORCE)
@@ -48,9 +48,10 @@ set(ASSIMP_BUILD_COLLADA_IMPORTER ON)
 set(ASSIMP_BUILD_COLLADA_EXPORTER ON)
 set(ASSIMP_BUILD_GLTF_IMPORTER ON)
 set(ASSIMP_BUILD_GLTF_EXPORTER ON)
-add_subdirectory(${PROJECT_SOURCE_DIR}/utils/assimp)
+#add_subdirectory(${PROJECT_SOURCE_DIR}/utils/assimp)
 
-target_link_libraries(KwasToolsUtils assimp kwaslib)
+#target_link_libraries(KwasToolsUtils assimp kwaslib)
+target_link_libraries(KwasToolsUtils kwaslib)
 # end utils library
 
 foreach(program_src ${KWASTOOLS_PROGRAMS})
@@ -66,4 +67,4 @@ endforeach(program_src ${KWASTOOLS_PROGRAMS})
 file(COPY_FILE "${PROJECT_SOURCE_DIR}/utils/pugixml/LICENSE.md" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/LICENSE-pugixml.md")
 
 # assimp license
-file(COPY_FILE "${PROJECT_SOURCE_DIR}/utils/assimp/LICENSE" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/LICENSE-assimp.md")
+#file(COPY_FILE "${PROJECT_SOURCE_DIR}/utils/assimp/LICENSE" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/LICENSE-assimp.md")

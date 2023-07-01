@@ -1,3 +1,4 @@
-[submodule "utils/assimp"]
+[submodule "assimp"]
 	path = utils/assimp
 	url = https://github.com/assimp/assimp
+	branch = master
