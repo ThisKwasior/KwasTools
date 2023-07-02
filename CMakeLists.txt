@@ -3,6 +3,17 @@ project(KwasTools)
 
 set(KWASTOOLS_STATIC_UTILSLIB False CACHE STRING "Should KwasToolsUtils be a static library?")
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3" CACHE STRING "C Compiler flags" FORCE)
+	set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} " CACHE STRING "CXX Compiler flags" FORCE)
+else()
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os -fdata-sections -ffunction-sections" CACHE STRING "C Compiler flags" FORCE)
+	set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} " CACHE STRING "CXX Compiler flags" FORCE)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fPIC -fno-ident -s -Wl,-static -Wl,--gc-sections" CACHE STRING "EXE link flags" FORCE)
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} " CACHE STRING "Shared library linker flags" FORCE)
+	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} " CACHE STRING "Static library linker flags" FORCE)
+endif()
+
 set(KWASTOOLS_PROGRAMS
 	#${PROJECT_SOURCE_DIR}/src/pcmodeltool.cpp
 	${PROJECT_SOURCE_DIR}/src/platinum_dat_tool.c
@@ -20,10 +31,6 @@ set(KWASTOOLS_UTILS_INCLUDES
 	"${PROJECT_SOURCE_DIR}/utils"
 	#"${PROJECT_SOURCE_DIR}/utils/assimp/include"
 	)
-
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "C Compiler flags" FORCE)
-#set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} " CACHE STRING "CXX Compiler flags" FORCE)
-#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fPIC" CACHE STRING "EXE link flags" FORCE)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
