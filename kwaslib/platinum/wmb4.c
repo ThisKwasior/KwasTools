@@ -29,7 +29,7 @@ void platinum_wmb4_load_header(FU_FILE* f, WMB4_FILE* wmb)
 	
 	fu_read_data(f, &h->magic[0], 4, &bytes_read);
 	
-	if(strncmp("WMB4", &h->magic[0], 4) != 0)
+	if(strncmp("WMB4", (const char*)&h->magic[0], 4) != 0)
 	{
 		printf("File is not a WMB4.\n");
 		return;
@@ -194,6 +194,68 @@ void platinum_wmb4_load_vertices_indices(FU_FILE* f, WMB4_FILE* wmb)
 	}
 }
 
+void platinum_wmb4_load_sub_meshes(FU_FILE* f, WMB4_FILE* wmb)
+{
+	WMB4_HEADER* h = &wmb->header;
+	
+	wmb->sub_meshes = (WMB4_SUB_MESH*)calloc(h->sub_mesh_count, sizeof(WMB4_SUB_MESH));
+	if(wmb->sub_meshes == NULL)
+	{
+		printf("Could not allocate sub_meshes array.\n");
+		return;
+	}
+	
+	uint8_t status = 0;
+	
+	/* Loading sub_meshes */
+	fu_seek(f, h->sub_mesh_array_offset, FU_SEEK_SET);
+	
+	for(uint32_t i = 0; i != h->sub_mesh_count; ++i)
+	{
+		wmb->sub_meshes[i].buffer_group_index = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+		wmb->sub_meshes[i].vertex_buffer_start_index = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+		wmb->sub_meshes[i].index_buffer_start_index = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+		wmb->sub_meshes[i].vertex_count = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+		wmb->sub_meshes[i].face_count = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+	}
+}
+
+void platinum_wmb4_load_slots_meshes(FU_FILE* f, WMB4_FILE* wmb)
+{
+	WMB4_HEADER* h = &wmb->header;
+	uint8_t status = 0;
+	
+	fu_seek(f, h->mesh_array_offset, FU_SEEK_SET);
+	
+	for(uint32_t i = 0; i != WMB4_MESH_SLOT_COUNT; ++i)
+	{
+		wmb->mesh_slots[i].offset = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+		wmb->mesh_slots[i].count = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+	}
+	
+	/* First mesh slot usually contains all meshes */
+	if(wmb->mesh_slots[0].offset && wmb->mesh_slots[0].count)
+	{
+		wmb->meshes = (WMB4_MESH*)calloc(wmb->mesh_slots[0].count, sizeof(WMB4_MESH));
+		if(wmb->sub_meshes == NULL)
+		{
+			printf("Could not allocate sub_meshes array.\n");
+			return;
+		}
+		
+		fu_seek(f, wmb->mesh_slots[0].offset, FU_SEEK_SET);
+		
+		for(uint32_t i = 0; i != wmb->mesh_slots[0].count; ++i)
+		{
+			wmb->meshes[i].sub_mesh_index = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+			wmb->meshes[i].group_index = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+			wmb->meshes[i].material_index = fu_read_u16(f, &status, FU_HOST_ENDIAN);
+			wmb->meshes[i].bone_palette_index = fu_read_u16(f, &status, FU_HOST_ENDIAN);
+			wmb->meshes[i].version = fu_read_u32(f, &status, FU_HOST_ENDIAN);
+		}
+	}
+}
+
 void platinum_wmb4_free(WMB4_FILE* wmb)
 {
 	if(wmb)
@@ -202,12 +264,16 @@ void platinum_wmb4_free(WMB4_FILE* wmb)
 		if(wmb->vertices) free(wmb->vertices);
 		if(wmb->vertices_2) free(wmb->vertices_2);
 		if(wmb->indices) free(wmb->indices);
+		if(wmb->sub_meshes) free(wmb->sub_meshes);
+		if(wmb->meshes) free(wmb->meshes);
 		
 		free(wmb);
 	}
 }
 
-/* Normal unpack and pack */
+/*
+	Normal unpack and pack
+*/
 VEC3_FLOAT wmb4_unpack_normal(uint32_t normal)
 {
 	const uint16_t xy_mask = 0x7FF;

@@ -15,7 +15,10 @@ set(KWASLIB_SOURCES
 	${PROJECT_SOURCE_DIR}/utils/math/vec.c
 	
 	${PROJECT_SOURCE_DIR}/he/BINA.c
-	
+	${PROJECT_SOURCE_DIR}/he/mirage.c
+	${PROJECT_SOURCE_DIR}/he/uv_anim.c
+	${PROJECT_SOURCE_DIR}/he/cam_anim.c
+
 	${PROJECT_SOURCE_DIR}/platinum/dat.c
 	${PROJECT_SOURCE_DIR}/platinum/wmb4.c
 	${PROJECT_SOURCE_DIR}/platinum/wtb.c

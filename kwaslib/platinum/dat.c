@@ -23,7 +23,7 @@ DAT_FILE* platinum_dat_parse_dat(FU_FILE* file, const uint8_t fu_endian)
 	uint8_t status = 0;
 	fu_read_data(file, &dat->header.magic[0], 4, &bytes_read);
 	
-	if(strncmp("DAT\0", &dat->header.magic[0], 4) != 0)
+	if(strncmp("DAT\0", (const char*)&dat->header.magic[0], 4) != 0)
 	{
 		printf("File is not a valid DAT file\n");
 		free(dat);
@@ -128,7 +128,7 @@ DAT_FILE* platinum_dat_parse_directory(const char* dir)
 		return NULL;
 	}
 	
-	strncpy(dat->header.magic, "DAT\0", 4);
+	strncpy((char*)dat->header.magic, "DAT\0", 4);
 	
 	dat->header.files_amount = dirlist.file_count;
 	
@@ -362,7 +362,7 @@ void platinum_dat_gen_hash_data(DAT_FILE* dat)
 
 uint32_t platinum_dat_hash_filename(const uint8_t* name)
 {
-	return crc32_encode(name, strlen(name)) & 0x7FFFFFFF;
+	return crc32_encode(name, strlen((const char*)name)) & 0x7FFFFFFF;
 }
 
 uint32_t platinum_dat_bit_count(uint32_t value)

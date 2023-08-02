@@ -45,7 +45,7 @@ WTB_FILE* platinum_wtb_parse_directory(const char* dir)
 		return NULL;
 	}
 	
-	strncpy(wtb->header.magic, "WTB\0", 4);
+	strncpy((char*)wtb->header.magic, "WTB\0", 4);
 	wtb->header.unknown04 = 1;
 	wtb->header.tex_count = dirlist.file_count;
 	
@@ -227,8 +227,8 @@ uint8_t platinum_wtb_read_header(FU_FILE* file, WTB_FILE* wtb)
 	fu_read_data(file, (uint8_t*)&wtb->header.magic[0], 4, &bytes_read);
 	
 	/* 0 means it matches */
-	const uint8_t is_little = strncmp("WTB\0", &wtb->header.magic[0], 4);
-	const uint8_t is_big = strncmp("\0BTW", &wtb->header.magic[0], 4);
+	const uint8_t is_little = strncmp("WTB\0", (const char*)&wtb->header.magic[0], 4);
+	const uint8_t is_big = strncmp("\0BTW", (const char*)&wtb->header.magic[0], 4);
 
 	if(is_little != 0 && is_big == 0) wtb->platform = FU_BIG_ENDIAN;
 	else if(is_little == 0 && is_big != 0) wtb->platform = FU_LITTLE_ENDIAN;
@@ -256,7 +256,6 @@ void platinum_wtb_populate_entries(FU_FILE* file, WTB_FILE* wtb)
 	wtb->entries = (WTB_ENTRY*)calloc(wtb->header.tex_count, sizeof(WTB_ENTRY));
 	
 	uint8_t status = 0;
-	uint64_t bytes_read = 0;
 	
 	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
 	{
@@ -328,8 +327,6 @@ void platinum_wtb_populate_entries(FU_FILE* file, WTB_FILE* wtb)
 
 void platinum_wtb_load_entries_dds(FU_FILE* file, WTB_FILE* wtb)
 {
-	uint8_t status = 0;
-	
 	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
 	{
 		wtb->entries[i].data = (uint8_t*)calloc(1, wtb->entries[i].size);

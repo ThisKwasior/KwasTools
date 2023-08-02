@@ -23,15 +23,6 @@
 /*
 	Vertex format used.
 	Details are currently unknown.
-	
-	(flag1 == 0x37) || (flag2 == 0x03)
-		WMB4_VERTEX32
-		
-	(flag2 == flag3 == 0x01)
-		WMB4_VERTEX28
-		
-	(flag2 == 0x01) && (flag3 == 0x00)
-		WMB4_VERTEX24
 */
 typedef struct
 {
@@ -122,7 +113,7 @@ typedef struct
 	uint32_t vertex_count;
 	uint32_t index_buffer_offset; /* Faces */
 	uint32_t index_count;
-} WMB4_BUFFER_GROUP;
+} WMB4_BUFFER_GROUP;  /* Only one? */
 
 typedef struct
 {
@@ -178,8 +169,14 @@ typedef struct
 
 typedef struct
 {
+	uint32_t offset;
+	uint32_t count;
+} WMB4_MESH_SLOT;
+
+typedef struct
+{
 	uint32_t sub_mesh_index;
-	uint32_t group_index;
+	uint32_t group_index; /* Mesh group */
 	uint16_t material_index;
 	uint16_t bone_palette_index;
 	uint32_t version;
@@ -194,6 +191,13 @@ typedef struct
 	VEC3_FLOAT local;
 	VEC3_FLOAT world;
 } WMB4_BONE;
+
+typedef struct
+{
+	uint16_t first[16];
+	uint16_t* second;
+	uint16_t* third;
+} WMB4_BONE_INDEX_TRANS_TABLE; /* bone index translate table */
 
 typedef struct
 {
@@ -230,7 +234,7 @@ typedef struct
 {
 	uint32_t unk00;
 	uint32_t id;
-} WMB4_TEXTURE_ID;
+} WMB4_TEXTURE_REF;
 
 typedef struct
 {
@@ -250,12 +254,25 @@ typedef struct
 	uint8_t vertex_has_color : 1;
 	uint8_t vertex_has_uv : 1;
 	
+	/* Global arrays */
 	WMB4_BUFFER_GROUP* buffer_groups;
 	
-	/* Global arrays */
 	WMB4_VERTEX* vertices;
 	WMB4_VERTEX_2* vertices_2;
 	uint16_t* indices;
+	
+	WMB4_SUB_MESH* sub_meshes;
+	WMB4_MESH_SLOT mesh_slots[WMB4_MESH_SLOT_COUNT];
+	WMB4_MESH* meshes;
+	
+	WMB4_BONE* bones;
+	uint16_t* bone_hierarchy_map;
+	WMB4_BONE_INDEX_TRANS_TABLE bone_translate_table;
+	WMB4_BONE_PALETTE* bone_palettes;
+	
+	WMB4_MATERIAL* materials;
+	WMB4_TEXTURE_REF* texture_refs;
+	
 	
 } WMB4_FILE;
 
@@ -268,6 +285,8 @@ WMB4_FILE* platinum_wmb4_parse_wmb4(FU_FILE* f);
 void platinum_wmb4_load_header(FU_FILE* f, WMB4_FILE* wmb);
 void platinum_wmb4_load_buffer_groups(FU_FILE* f, WMB4_FILE* wmb);
 void platinum_wmb4_load_vertices_indices(FU_FILE* f, WMB4_FILE* wmb);
+void platinum_wmb4_load_sub_meshes(FU_FILE* f, WMB4_FILE* wmb);
+void platinum_wmb4_load_slots_meshes(FU_FILE* f, WMB4_FILE* wmb);
 
 void platinum_wmb4_free(WMB4_FILE* wmb);
 

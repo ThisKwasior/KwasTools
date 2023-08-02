@@ -49,7 +49,7 @@ int main(int argc, char** argv)
 		printf("\tTo pack:\t\t%s <directory> <options>\n", argv[0]);
 		printf("\n");
 		printf("Options:\n");
-		printf("\t--x360\t\t\tProcess the DAT with Xbox 360 in mind (big endian)\n", argv[0]);
+		printf("\t--x360\t\t\tProcess the DAT with Xbox 360 in mind (big endian)\n");
 		return 0;
 	}
 
@@ -201,7 +201,7 @@ void dat_tool_extract_to_folder(DAT_FILE* dat, PU_PATH* folder)
 		PU_STRING temp_file_str = {0};
 		pu_path_to_string(folder, &temp_file_str);
 		pu_insert_char("/", 1, -1, &temp_file_str);
-		pu_insert_char(dat->entries[i].name, dat->entry_name_size, -1, &temp_file_str);
+		pu_insert_char((const char*)dat->entries[i].name, dat->entry_name_size, -1, &temp_file_str);
 		
 		FU_FILE temp_file = {0};
 		fu_create_mem_file(&temp_file);
