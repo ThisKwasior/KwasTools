@@ -2,14 +2,32 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <kwaslib/utils/io/arg_parser.h>
 #include <kwaslib/utils/io/path_utils.h>
 #include <kwaslib/utils/io/file_utils.h>
 #include <kwaslib/utils/cpu/endianness.h>
 #include <kwaslib/platinum/wtb.h>
 
 /*
+	Arguments
+*/
+const AP_ARG_DESC arg_list[] =
+{
+	{"--skip_ext_check", AP_TYPE_NOV}
+};
+const uint32_t arg_list_size = 1;
+
+AP_VALUE_NODE* arg_node = NULL;
+
+/* Flags */
+uint8_t flag_skip_ext_check = 0;
+
+void wtb_tool_parse_arguments(int argc, char** argv);
+
+/*
 	Common
 */
+void wtb_tool_print_usage(char* program_name);
 void wtb_tool_print_wtb(WTB_FILE* wtb);
 
 /* 
@@ -28,9 +46,7 @@ int main(int argc, char** argv)
 {
 	if(argc == 1)
 	{
-		printf("Usage:\n");
-		printf("\tTo unpack: %s file.wtb\n", argv[0]);
-		printf("\tTo pack: %s [directory with DDS files]\n", argv[0]);
+		wtb_tool_print_usage(argv[0]);
 		return 0;
 	}
 	
@@ -40,7 +56,7 @@ int main(int argc, char** argv)
 		FU_FILE file_wtb = {0};
 		fu_open_file(argv[1], 1, &file_wtb);
 		
-		WTB_FILE* wtb = platinum_wtb_parse_wtb(&file_wtb);
+		WTB_FILE* wtb = wtb_parse_wtb(&file_wtb);
 		
 		fu_close(&file_wtb);
 		
@@ -69,7 +85,7 @@ int main(int argc, char** argv)
 			wtb_tool_extract_to_folder(wtb, &wtb_path);
 			
 			/* Free all of it */
-			platinum_wtb_free(wtb);
+			wtb_free(wtb);
 			
 			printf("\nUnpacking done without issues (I hope)\n");
 		}
@@ -77,7 +93,7 @@ int main(int argc, char** argv)
 	else if(pu_is_dir(argv[1])) /* It's a directory so let's create WTB files */
 	{
 		/* Create WTB from a directory of files */
-		WTB_FILE* wtb = platinum_wtb_parse_directory(argv[1]);
+		WTB_FILE* wtb = wtb_parse_directory(argv[1]);
 		
 		if(wtb == NULL)
 		{
@@ -86,18 +102,26 @@ int main(int argc, char** argv)
 		else
 		{
 			FU_FILE fwtb = {0};
-			platinum_wtb_save_wtb_to_fu_file(wtb, &fwtb);
+			wtb_save_wtb_to_fu_file(wtb, &fwtb);
+			
+			uint32_t arg1_len = strlen(argv[1]);
+			
+			/* Change the directory path length to skip the suffix */
+			if(flag_skip_ext_check == 0 && argv[1][arg1_len-4] == '_')
+			{
+				arg1_len -= 4;
+			}
 			
 			/* Save generated WTB to file on disk */
 			PU_STRING output_str_wtb = {0};
-			pu_create_string(argv[1], strlen(argv[1]), &output_str_wtb);
+			pu_create_string(argv[1], arg1_len, &output_str_wtb);
 			pu_insert_char(".wtb", 5, -1, &output_str_wtb);
 			
 			fu_to_file(output_str_wtb.p, &fwtb, 1);
 			
 			pu_free_string(&output_str_wtb);
 			
-			platinum_wtb_free(wtb);
+			wtb_free(wtb);
 			
 			fu_close(&fwtb);
 			
@@ -115,6 +139,32 @@ int main(int argc, char** argv)
 /*
 	Common
 */
+void wtb_tool_parse_arguments(int argc, char** argv)
+{
+	arg_node = ap_parse_argv(argv, argc, arg_list, arg_list_size);
+
+	AP_VALUE_NODE* arg_skip_ext_check = ap_get_node_by_arg(arg_node, "--skip_ext_check");
+
+	if(arg_skip_ext_check != NULL)
+	{
+		flag_skip_ext_check = 1;
+	}
+}
+
+void wtb_tool_print_usage(char* program_name)
+{
+	printf("Usage:\n");
+	printf("\tTo unpack: %s file.wtb\n", program_name);
+	printf("\tTo pack: %s <directory with DDS files>\n", program_name);
+	printf("\n");
+	printf("Options:\n");
+	printf("\tPacking:\n");
+	printf("\t\t%24s\t%s\n", "--skip_ext_check", "Do not remove the extension from the folder suffix");
+	printf("\n");
+	printf("DDS filenames in the unpacked directory are the texture IDs in decimal format.\n");
+	printf("Only change them if you know what you are doing.\n");
+}
+
 void wtb_tool_print_wtb(WTB_FILE* wtb)
 {
 	printf("Platform: %s\n", wtb->platform == 1 ? "PC" : "X360");

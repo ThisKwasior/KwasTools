@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-WMB4_FILE* platinum_wmb4_parse_wmb4(FU_FILE* f)
+WMB4_FILE* wmb4_parse_wmb4(FU_FILE* f)
 {
 	WMB4_FILE* wmb = (WMB4_FILE*)calloc(1, sizeof(WMB4_FILE));
 	if(wmb == NULL)
@@ -13,14 +13,14 @@ WMB4_FILE* platinum_wmb4_parse_wmb4(FU_FILE* f)
 		return NULL;
 	}
 	
-	platinum_wmb4_load_header(f, wmb);
-	platinum_wmb4_load_buffer_groups(f, wmb);
-	platinum_wmb4_load_vertices_indices(f, wmb);
+	wmb4_load_header(f, wmb);
+	wmb4_load_buffer_groups(f, wmb);
+	wmb4_load_vertices_indices(f, wmb);
 	
 	return wmb;
 }
 
-void platinum_wmb4_load_header(FU_FILE* f, WMB4_FILE* wmb)
+void wmb4_load_header(FU_FILE* f, WMB4_FILE* wmb)
 {
 	WMB4_HEADER* h = &wmb->header;
 	
@@ -72,7 +72,7 @@ void platinum_wmb4_load_header(FU_FILE* f, WMB4_FILE* wmb)
 	wmb->vertex_has_uv = ((h->flags.flag_10 == 0) && (h->flags.flag_200));
 }
 
-void platinum_wmb4_load_buffer_groups(FU_FILE* f, WMB4_FILE* wmb)
+void wmb4_load_buffer_groups(FU_FILE* f, WMB4_FILE* wmb)
 {
 	WMB4_HEADER* h = &wmb->header;
 	
@@ -102,7 +102,7 @@ void platinum_wmb4_load_buffer_groups(FU_FILE* f, WMB4_FILE* wmb)
 	}
 }
 
-void platinum_wmb4_load_vertices_indices(FU_FILE* f, WMB4_FILE* wmb)
+void wmb4_load_vertices_indices(FU_FILE* f, WMB4_FILE* wmb)
 {
 	WMB4_HEADER* h = &wmb->header;
 	WMB4_BUFFER_GROUP* group = &wmb->buffer_groups[0];
@@ -194,7 +194,7 @@ void platinum_wmb4_load_vertices_indices(FU_FILE* f, WMB4_FILE* wmb)
 	}
 }
 
-void platinum_wmb4_load_sub_meshes(FU_FILE* f, WMB4_FILE* wmb)
+void wmb4_load_sub_meshes(FU_FILE* f, WMB4_FILE* wmb)
 {
 	WMB4_HEADER* h = &wmb->header;
 	
@@ -220,7 +220,7 @@ void platinum_wmb4_load_sub_meshes(FU_FILE* f, WMB4_FILE* wmb)
 	}
 }
 
-void platinum_wmb4_load_slots_meshes(FU_FILE* f, WMB4_FILE* wmb)
+void wmb4_load_slots_meshes(FU_FILE* f, WMB4_FILE* wmb)
 {
 	WMB4_HEADER* h = &wmb->header;
 	uint8_t status = 0;
@@ -256,7 +256,7 @@ void platinum_wmb4_load_slots_meshes(FU_FILE* f, WMB4_FILE* wmb)
 	}
 }
 
-void platinum_wmb4_free(WMB4_FILE* wmb)
+void wmb4_free(WMB4_FILE* wmb)
 {
 	if(wmb)
 	{

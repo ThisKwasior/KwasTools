@@ -11,6 +11,8 @@
 	https://github.com/ArthurHeitmann/NierDocs/blob/master/tools/datRepacker/datRepacker.py
 */
 
+#define DAT_BLOCK_SIZE 4096
+
 typedef struct
 {
 	uint8_t magic[4];				/* {'D','A','T',0} */
@@ -56,22 +58,22 @@ typedef struct
 /*
 	Functions
 */
-DAT_FILE* platinum_dat_parse_dat(FU_FILE* file, const uint8_t fu_endian);
-DAT_FILE* platinum_dat_parse_directory(const char* dir);
+DAT_FILE* dat_parse_dat(FU_FILE* file, const uint8_t fu_endian);
+DAT_FILE* dat_parse_directory(const char* dir);
 
-FU_FILE* platinum_dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian);
+FU_FILE* dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian);
 
-void platinum_dat_gen_hash_data(DAT_FILE* dat);
+void dat_gen_hash_data(DAT_FILE* dat);
 
-uint32_t platinum_dat_hash_filename(const uint8_t* name);
+uint32_t dat_hash_filename(const uint8_t* name);
 
-uint32_t platinum_dat_bit_count(uint32_t value);
-uint32_t platinum_dat_next_pow_of_2_bits(uint32_t value);
-uint32_t platinum_dat_calc_prehash_shift(uint32_t value);
+uint32_t dat_bit_count(uint32_t value);
+uint32_t dat_next_pow_of_2_bits(uint32_t value);
+uint32_t dat_calc_prehash_shift(uint32_t value);
 
 /* Bubble sort */
-void platinum_dat_sort_hashes(uint32_t* hashes, uint16_t* indices, const uint32_t size);
+void dat_sort_hashes(uint32_t* hashes, uint16_t* indices, const uint32_t size);
 
-void platinum_dat_gen_bucket_list(const uint32_t files_amount, uint16_t* bucket_offsets, const uint32_t* hashes, const uint32_t prehash_shift);
+void dat_gen_bucket_list(const uint32_t files_amount, uint16_t* bucket_offsets, const uint32_t* hashes, const uint32_t prehash_shift);
 
-void platinum_dat_free_dat(DAT_FILE* dat);
+void dat_free_dat(DAT_FILE* dat);

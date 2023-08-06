@@ -7,9 +7,7 @@
 #include <kwaslib/utils/crypto/crc32.h>
 #include <kwaslib/utils/math/boundary.h>
 
-#define DAT_BLOCK_SIZE 4096
-
-DAT_FILE* platinum_dat_parse_dat(FU_FILE* file, const uint8_t fu_endian)
+DAT_FILE* dat_parse_dat(FU_FILE* file, const uint8_t fu_endian)
 {
 	DAT_FILE* dat = (DAT_FILE*)calloc(1, sizeof(DAT_FILE));
 	if(dat == NULL)
@@ -116,7 +114,7 @@ DAT_FILE* platinum_dat_parse_dat(FU_FILE* file, const uint8_t fu_endian)
 	return dat;
 }
 
-DAT_FILE* platinum_dat_parse_directory(const char* dir)
+DAT_FILE* dat_parse_directory(const char* dir)
 {
 	DL_DIR_LIST dirlist = {0};
 	dl_parse_directory(dir, &dirlist);
@@ -228,7 +226,7 @@ DAT_FILE* platinum_dat_parse_directory(const char* dir)
 	/*
 		Generate hashes
 	*/
-	platinum_dat_gen_hash_data(dat);
+	dat_gen_hash_data(dat);
 	
 	/*
 		Figure out file positions.
@@ -259,7 +257,7 @@ DAT_FILE* platinum_dat_parse_directory(const char* dir)
 	return dat;
 }
 
-FU_FILE* platinum_dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian)
+FU_FILE* dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian)
 {
 	FU_FILE* file = (FU_FILE*)calloc(1, sizeof(FU_FILE));
 	fu_create_mem_file(file);
@@ -289,6 +287,8 @@ FU_FILE* platinum_dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian)
 		fu_write_data(file, dat->entries[i].name, dat->entry_name_size);
 	
 	/* Write sizes */
+	fu_change_buf_size(file, dat->header.sizes_offset);
+	fu_seek(file, 0, FU_SEEK_END);
 	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
 		fu_write_u32(file, dat->entries[i].size, fu_endian);
 	
@@ -328,9 +328,9 @@ FU_FILE* platinum_dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian)
 	return file;
 }
 
-void platinum_dat_gen_hash_data(DAT_FILE* dat)
+void dat_gen_hash_data(DAT_FILE* dat)
 {
-	dat->prehash_shift = platinum_dat_calc_prehash_shift(dat->header.files_amount);
+	dat->prehash_shift = dat_calc_prehash_shift(dat->header.files_amount);
 	dat->bucket_offsets_size = 1 << (31 - dat->prehash_shift);
 
 	dat->bucket_offsets = (uint16_t*)calloc(dat->bucket_offsets_size, 2);
@@ -342,16 +342,16 @@ void platinum_dat_gen_hash_data(DAT_FILE* dat)
 	/* Hash filenames */
 	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
 	{
-		dat->hashes[i] = platinum_dat_hash_filename(dat->entries[i].name);
+		dat->hashes[i] = dat_hash_filename(dat->entries[i].name);
 		dat->indices[i] = i;
 	}
 
 	/* Sort by hash nibbles */
-	platinum_dat_sort_hashes(dat->hashes, dat->indices,
+	dat_sort_hashes(dat->hashes, dat->indices,
 							 dat->header.files_amount);
 
 	/* Generating bucket list */
-	platinum_dat_gen_bucket_list(dat->header.files_amount, dat->bucket_offsets,
+	dat_gen_bucket_list(dat->header.files_amount, dat->bucket_offsets,
 								 dat->hashes, dat->prehash_shift);
 
 	/* Set offset variables */
@@ -360,12 +360,12 @@ void platinum_dat_gen_hash_data(DAT_FILE* dat)
 	dat->indices_offset = dat->hashes_offset + dat->header.files_amount*4;
 }
 
-uint32_t platinum_dat_hash_filename(const uint8_t* name)
+uint32_t dat_hash_filename(const uint8_t* name)
 {
 	return crc32_encode(name, strlen((const char*)name)) & 0x7FFFFFFF;
 }
 
-uint32_t platinum_dat_bit_count(uint32_t value)
+uint32_t dat_bit_count(uint32_t value)
 {
 	uint32_t count = 0;
 	
@@ -378,7 +378,7 @@ uint32_t platinum_dat_bit_count(uint32_t value)
 	return count;
 }
 
-uint32_t platinum_dat_next_pow_of_2_bits(uint32_t value)
+uint32_t dat_next_pow_of_2_bits(uint32_t value)
 {
 	if(value == 0)
 	{
@@ -394,17 +394,17 @@ uint32_t platinum_dat_next_pow_of_2_bits(uint32_t value)
 		return 2;
 	}
 
-	return platinum_dat_bit_count(value - 1);
+	return dat_bit_count(value - 1);
 }
 
-uint32_t platinum_dat_calc_prehash_shift(uint32_t value)
+uint32_t dat_calc_prehash_shift(uint32_t value)
 {
 	const uint32_t max_prehash = 31;
-	const uint32_t calc_prehash = 32 - platinum_dat_next_pow_of_2_bits(value);
+	const uint32_t calc_prehash = 32 - dat_next_pow_of_2_bits(value);
 	return (max_prehash > calc_prehash) ? calc_prehash : max_prehash;
 }
 
-void platinum_dat_sort_hashes(uint32_t* hashes, uint16_t* indices, const uint32_t size)
+void dat_sort_hashes(uint32_t* hashes, uint16_t* indices, const uint32_t size)
 {
 	uint32_t* nibbles = (uint32_t*)calloc(size, 4);
 	
@@ -439,7 +439,7 @@ void platinum_dat_sort_hashes(uint32_t* hashes, uint16_t* indices, const uint32_
 	free(nibbles);
 }
 
-void platinum_dat_gen_bucket_list(const uint32_t files_amount, uint16_t* bucket_offsets, const uint32_t* hashes, const uint32_t prehash_shift)
+void dat_gen_bucket_list(const uint32_t files_amount, uint16_t* bucket_offsets, const uint32_t* hashes, const uint32_t prehash_shift)
 {
 	for(uint32_t i = 0; i != files_amount; ++i)
 	{
@@ -452,7 +452,7 @@ void platinum_dat_gen_bucket_list(const uint32_t files_amount, uint16_t* bucket_
 	}
 }
 
-void platinum_dat_free_dat(DAT_FILE* dat)
+void dat_free_dat(DAT_FILE* dat)
 {
 	if(dat)
 	{

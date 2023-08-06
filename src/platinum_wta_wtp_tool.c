@@ -2,14 +2,32 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <kwaslib/utils/io/arg_parser.h>
 #include <kwaslib/utils/io/path_utils.h>
 #include <kwaslib/utils/io/file_utils.h>
 #include <kwaslib/utils/cpu/endianness.h>
 #include <kwaslib/platinum/wtb.h>
 
 /*
+	Arguments
+*/
+const AP_ARG_DESC arg_list[] =
+{
+	{"--skip_ext_check", AP_TYPE_NOV}
+};
+const uint32_t arg_list_size = 1;
+
+AP_VALUE_NODE* arg_node = NULL;
+
+/* Flags */
+uint8_t flag_skip_ext_check = 0;
+
+void wta_tool_parse_arguments(int argc, char** argv);
+
+/*
 	Common
 */
+void wta_tool_print_usage(char* program_name);
 void wta_tool_print_wtb(WTB_FILE* wtb);
 
 /* 
@@ -28,22 +46,48 @@ int main(int argc, char** argv)
 {
 	if(argc == 1)
 	{
-		printf("Usage:\n");
-		printf("\tTo unpack: %s file.wta file.wtp\n", argv[0]);
-		printf("\tTo pack: %s [directory with DDS files]\n", argv[0]);
+		wta_tool_print_usage(argv[0]);
 		return 0;
 	}
 	
+	wta_tool_parse_arguments(argc, argv);
+	
 	/* It's a file so let's process WTA/WTP files */
 	if(pu_is_file(argv[1]) && pu_is_file(argv[2]))
-	{
+	{		
+		char* str_wta = NULL;
+		char* str_wtp = NULL;
+		
+		/* Let's figure out which file is which */
+		PU_PATH arg1_path = {0};
+		PU_PATH arg2_path = {0};
+		pu_split_path(argv[1], strlen(argv[1]), &arg1_path);
+		pu_split_path(argv[2], strlen(argv[2]), &arg2_path);
+
+		if(strncmp(arg1_path.ext.p, "wta", 3) == 0)
+		{
+			str_wta = &argv[1][0];
+			str_wtp = &argv[2][0];
+		}
+		else if(strncmp(arg2_path.ext.p, "wta", 3) == 0)
+		{
+			str_wta = &argv[2][0];
+			str_wtp = &argv[1][0];
+		}
+
+		pu_free_path(&arg1_path);
+		pu_free_path(&arg2_path);
+		
+		/* Open the files */
 		FU_FILE file_wta = {0};
 		FU_FILE file_wtp = {0};
-		fu_open_file(argv[1], 1, &file_wta);
-		fu_open_file(argv[2], 1, &file_wtp);
+		fu_open_file(str_wta, 1, &file_wta);
+		fu_open_file(str_wtp, 1, &file_wtp);
 		
-		WTB_FILE* wtb = platinum_wtb_parse_wta_wtp(&file_wta, &file_wtp);
+		/* Process the files to a WTB_FILE structure */
+		WTB_FILE* wtb = wtb_parse_wta_wtp(&file_wta, &file_wtp);
 		
+		/* Free memory */
 		fu_close(&file_wta);
 		fu_close(&file_wtp);
 		
@@ -71,7 +115,7 @@ int main(int argc, char** argv)
 			wta_tool_extract_to_folder(wtb, &wtp_path);
 			
 			/* Free all of it */
-			platinum_wtb_free(wtb);
+			wtb_free(wtb);
 			
 			printf("\nUnpacking done without issues (I hope)\n");
 		}
@@ -79,7 +123,7 @@ int main(int argc, char** argv)
 	else if(pu_is_dir(argv[1])) /* It's a directory so let's create WTA/WTP files */
 	{
 		/* Create WTB from a directory of files */
-		WTB_FILE* wtb = platinum_wtb_parse_directory(argv[1]);
+		WTB_FILE* wtb = wtb_parse_directory(argv[1]);
 		
 		if(wtb == NULL)
 		{
@@ -89,24 +133,33 @@ int main(int argc, char** argv)
 		{
 			FU_FILE fwta = {0};
 			FU_FILE fwtp = {0};
-			platinum_wtb_save_wta_wtp_to_fu_files(wtb, &fwta, &fwtp);
+			wtb_save_wta_wtp_to_fu_files(wtb, &fwta, &fwtp);
 			
-			/* Save generated WTA/WTP to file on disk */
+			uint32_t arg1_len = strlen(argv[1]);
+			
+			/* Change the directory path length to skip the suffix */
+			if(flag_skip_ext_check == 0 && argv[1][arg1_len-4] == '_')
+			{
+				arg1_len -= 4;
+			}
+			
+			/* Create path strings for the files */
 			PU_STRING output_str_wta = {0};
-			pu_create_string(argv[1], strlen(argv[1]), &output_str_wta);
+			pu_create_string(argv[1], arg1_len, &output_str_wta);
 			pu_insert_char(".wta", 5, -1, &output_str_wta);
 			
 			PU_STRING output_str_wtp = {0};
-			pu_create_string(argv[1], strlen(argv[1]), &output_str_wtp);
+			pu_create_string(argv[1], arg1_len, &output_str_wtp);
 			pu_insert_char(".wtp", 5, -1, &output_str_wtp);
 			
+			/* Save generated WTA/WTP to file on disk */
 			fu_to_file(output_str_wta.p, &fwta, 1);
 			fu_to_file(output_str_wtp.p, &fwtp, 1);
 			
 			pu_free_string(&output_str_wta);
 			pu_free_string(&output_str_wtp);
 			
-			platinum_wtb_free(wtb);
+			wtb_free(wtb);
 			
 			fu_close(&fwta);
 			fu_close(&fwtp);
@@ -125,6 +178,32 @@ int main(int argc, char** argv)
 /*
 	Common
 */
+void wta_tool_parse_arguments(int argc, char** argv)
+{
+	arg_node = ap_parse_argv(argv, argc, arg_list, arg_list_size);
+
+	AP_VALUE_NODE* arg_skip_ext_check = ap_get_node_by_arg(arg_node, "--skip_ext_check");
+
+	if(arg_skip_ext_check != NULL)
+	{
+		flag_skip_ext_check = 1;
+	}
+}
+
+void wta_tool_print_usage(char* program_name)
+{
+	printf("Usage:\n");
+	printf("\tTo unpack: %s file.wta file.wtp\n", program_name);
+	printf("\tTo pack: %s <directory with DDS files>\n", program_name);
+	printf("\n");
+	printf("Options:\n");
+	printf("\tPacking:\n");
+	printf("\t\t%24s\t%s\n", "--skip_ext_check", "Do not remove the extension from the folder suffix");
+	printf("\n");
+	printf("DDS filenames in the unpacked directory are the texture IDs in decimal format.\n");
+	printf("Only change them if you know what you are doing.\n");
+}
+
 void wta_tool_print_wtb(WTB_FILE* wtb)
 {
 	printf("Platform: %s\n", wtb->platform == 1 ? "PC" : "X360");

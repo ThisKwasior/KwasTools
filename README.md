@@ -36,6 +36,7 @@ After compiling, all tools and libraries are located in `KwasTools/bin`.
 * `platinum_dat_tool` - DAT unpacker/packer with experimental support for Xbox 360
 * `platinum_wta_wtp_tool` - WTA/WTP unpacker/packer with WIP Xbox 360 support
 * `platinum_wtb_tool` - WTB unpacker/packer with WIP Xbox 360 support
+* `platinum_misc_dat2dds2dat` - WIP WTA/WTP/WTB unpacker/packer directly from DAT/DTT
 
 ## Addons
 ### io_kwastools

@@ -13,18 +13,23 @@
 */
 const AP_ARG_DESC arg_list[] =
 {
-	{"--x360", AP_TYPE_NOV}
+	{"--x360", AP_TYPE_NOV},
+	{"--skip_ext_check", AP_TYPE_NOV},
 };
-const uint32_t arg_list_size = 1;
+const uint32_t arg_list_size = 2;
 
 AP_VALUE_NODE* arg_node = NULL;
+
+/* Flags */
+uint8_t dat_tool_endian = FU_HOST_ENDIAN;
+uint8_t flag_skip_ext_check = 0;
+
+void dat_tool_parse_arguments(int argc, char** argv);
 
 /*
 	Common
 */
-uint8_t dat_tool_endian = FU_HOST_ENDIAN;
-
-void dat_tool_parse_arguments(int argc, char** argv);
+void dat_tool_print_usage(char* program_name);
 void dat_tool_print_dat(DAT_FILE* dat);
 
 /* 
@@ -44,12 +49,7 @@ int main(int argc, char** argv)
 {
 	if(argc < 2)
 	{
-		printf("Usage:\n");
-		printf("\tTo unpack:\t\t%s <dat file> <options>\n", argv[0]);
-		printf("\tTo pack:\t\t%s <directory> <options>\n", argv[0]);
-		printf("\n");
-		printf("Options:\n");
-		printf("\t--x360\t\t\tProcess the DAT with Xbox 360 in mind (big endian)\n");
+		dat_tool_print_usage(argv[0]);
 		return 0;
 	}
 
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
 			dat_tool_extract_to_folder(dat, &dat_path);
 			
 			/* Free this guy */
-			platinum_dat_free_dat(dat);
+			dat_free_dat(dat);
 			
 			printf("\nUnpacking done without issues (I hope)\n");
 		}
@@ -94,24 +94,37 @@ int main(int argc, char** argv)
 	else if(pu_is_dir(argv[1])) /* It's a directory so let's create a DAT file */
 	{
 		/* Create DAT from a directory of files */
-		DAT_FILE* dat = platinum_dat_parse_directory(argv[1]);
+		DAT_FILE* dat = dat_parse_directory(argv[1]);
 		
 		/* Print the created DAT */
 		dat_tool_print_dat(dat);
 		
 		/* Convert DAT to FU_FILE */
 		printf("Preparing the file. This might take a moment.\n");
-		FU_FILE* file = platinum_dat_save_to_fu_file(dat, dat_tool_endian);
+		FU_FILE* file = dat_save_to_fu_file(dat, dat_tool_endian);
 		
 		/* Save generated DAT to file on disk */
 		PU_STRING output_str = {0};
 		pu_create_string(argv[1], strlen(argv[1]), &output_str);
-		pu_insert_char(".dat", 5, -1, &output_str);
 		
+		/* converting the suffix in the folder name to the 3-letter extension */
+		if(flag_skip_ext_check)
+		{
+			pu_insert_char(".dat", 5, -1, &output_str);
+		}
+		else
+		{
+			if(output_str.p[output_str.s-4] == '_')
+			{
+				output_str.p[output_str.s-4] = '.';
+			}
+		}
+		
+		/* Saving to the file and overwriting */
 		fu_to_file(output_str.p, file, 1);
 		
 		/* Free everything */
-		platinum_dat_free_dat(dat);
+		dat_free_dat(dat);
 		
 		fu_close(file);
 		free(file);
@@ -126,16 +139,39 @@ int main(int argc, char** argv)
 	return 0;
 }
 
+/*
+	Common
+*/
+
 void dat_tool_parse_arguments(int argc, char** argv)
 {
 	arg_node = ap_parse_argv(argv, argc, arg_list, arg_list_size);
 
 	AP_VALUE_NODE* arg_x360 = ap_get_node_by_arg(arg_node, "--x360");
+	AP_VALUE_NODE* arg_skip_ext_check = ap_get_node_by_arg(arg_node, "--skip_ext_check");
 	
 	if(arg_x360 != NULL)
 	{
 		dat_tool_endian = FU_BIG_ENDIAN;
 	}
+	
+	if(arg_skip_ext_check != NULL)
+	{
+		flag_skip_ext_check = 1;
+	}
+}
+
+void dat_tool_print_usage(char* program_name)
+{
+	printf("Usage:\n");
+	printf("\tTo unpack:\t\t%s <dat file> <options>\n", program_name);
+	printf("\tTo pack:\t\t%s <directory> <options>\n", program_name);
+	printf("\n");
+	printf("Options:\n");
+	printf("\tPacking and unpacking:\n");
+	printf("\t\t%24s\t%s\n", "--x360", "Process the DAT with Xbox 360 in mind (big endian)");
+	printf("\tPacking:\n");
+	printf("\t\t%24s\t%s\n", "--skip_ext_check", "Do not get the extension from the folder suffix");
 }
 
 void dat_tool_print_dat(DAT_FILE* dat)
@@ -185,7 +221,7 @@ DAT_FILE* dat_tool_parse_file(const char* filepath)
 	FU_FILE dat_file = {0};
 	fu_open_file(filepath, 1, &dat_file);
 	
-	DAT_FILE* dat = platinum_dat_parse_dat(&dat_file, dat_tool_endian);
+	DAT_FILE* dat = dat_parse_dat(&dat_file, dat_tool_endian);
 	
 	fu_close(&dat_file);
 	

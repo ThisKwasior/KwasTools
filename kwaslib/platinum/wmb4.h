@@ -280,15 +280,15 @@ typedef struct
 	Functions
 */
 
-WMB4_FILE* platinum_wmb4_parse_wmb4(FU_FILE* f);
+WMB4_FILE* wmb4_parse_wmb4(FU_FILE* f);
 
-void platinum_wmb4_load_header(FU_FILE* f, WMB4_FILE* wmb);
-void platinum_wmb4_load_buffer_groups(FU_FILE* f, WMB4_FILE* wmb);
-void platinum_wmb4_load_vertices_indices(FU_FILE* f, WMB4_FILE* wmb);
-void platinum_wmb4_load_sub_meshes(FU_FILE* f, WMB4_FILE* wmb);
-void platinum_wmb4_load_slots_meshes(FU_FILE* f, WMB4_FILE* wmb);
+void wmb4_load_header(FU_FILE* f, WMB4_FILE* wmb);
+void wmb4_load_buffer_groups(FU_FILE* f, WMB4_FILE* wmb);
+void wmb4_load_vertices_indices(FU_FILE* f, WMB4_FILE* wmb);
+void wmb4_load_sub_meshes(FU_FILE* f, WMB4_FILE* wmb);
+void wmb4_load_slots_meshes(FU_FILE* f, WMB4_FILE* wmb);
 
-void platinum_wmb4_free(WMB4_FILE* wmb);
+void wmb4_free(WMB4_FILE* wmb);
 
 /*
 	UNSIGNED_INT_10F_11F_11F_REV bit alignment for normals

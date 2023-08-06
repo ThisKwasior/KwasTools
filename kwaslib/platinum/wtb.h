@@ -101,16 +101,16 @@ typedef struct
 	Functions
 */
 
-WTB_FILE* platinum_wtb_parse_wta_wtp(FU_FILE* fwta, FU_FILE* fwtp);
-WTB_FILE* platinum_wtb_parse_wtb(FU_FILE* fwtb);
+WTB_FILE* wtb_parse_wta_wtp(FU_FILE* fwta, FU_FILE* fwtp);
+WTB_FILE* wtb_parse_wtb(FU_FILE* fwtb);
 
-WTB_FILE* platinum_wtb_parse_directory(const char* dir);
+WTB_FILE* wtb_parse_directory(const char* dir);
 
-void platinum_wtb_save_wtb_to_fu_file(WTB_FILE* wtb, FU_FILE* fwtb);
-void platinum_wtb_save_wta_wtp_to_fu_files(WTB_FILE* wtb, FU_FILE* fwta, FU_FILE* fwtp);
+void wtb_save_wtb_to_fu_file(WTB_FILE* wtb, FU_FILE* fwtb);
+void wtb_save_wta_wtp_to_fu_files(WTB_FILE* wtb, FU_FILE* fwta, FU_FILE* fwtp);
 
-uint8_t platinum_wtb_read_header(FU_FILE* file, WTB_FILE* wtb);
-void platinum_wtb_populate_entries(FU_FILE* file, WTB_FILE* wtb);
-void platinum_wtb_load_entries_dds(FU_FILE* file, WTB_FILE* wtb);
+uint8_t wtb_read_header(FU_FILE* file, WTB_FILE* wtb);
+void wtb_populate_entries(FU_FILE* file, WTB_FILE* wtb);
+void wtb_load_entries_dds(FU_FILE* file, WTB_FILE* wtb);
 
-void platinum_wtb_free(WTB_FILE* wtb);
+void wtb_free(WTB_FILE* wtb);

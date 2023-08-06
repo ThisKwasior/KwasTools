@@ -8,7 +8,7 @@
 
 #define WTB_BLOCK_SIZE 4096
 
-WTB_FILE* platinum_wtb_parse_wta_wtp(FU_FILE* fwta, FU_FILE* fwtp)
+WTB_FILE* wtb_parse_wta_wtp(FU_FILE* fwta, FU_FILE* fwtp)
 {
 	WTB_FILE* wtb = (WTB_FILE*)calloc(1, sizeof(WTB_FILE));
 	if(wtb == NULL)
@@ -18,22 +18,22 @@ WTB_FILE* platinum_wtb_parse_wta_wtp(FU_FILE* fwta, FU_FILE* fwtp)
 	}
 	
 	/* Reading the header */
-	const uint8_t valid = platinum_wtb_read_header(fwta, wtb);
+	const uint8_t valid = wtb_read_header(fwta, wtb);
 	if(valid == 0) return NULL;
 	
 	/* Load entries */
-	platinum_wtb_populate_entries(fwta, wtb);
-	platinum_wtb_load_entries_dds(fwtp, wtb);
+	wtb_populate_entries(fwta, wtb);
+	wtb_load_entries_dds(fwtp, wtb);
 	
 	return wtb;
 }
 
-WTB_FILE* platinum_wtb_parse_wtb(FU_FILE* fwtb)
+WTB_FILE* wtb_parse_wtb(FU_FILE* fwtb)
 {
-	return platinum_wtb_parse_wta_wtp(fwtb, fwtb);
+	return wtb_parse_wta_wtp(fwtb, fwtb);
 }
 
-WTB_FILE* platinum_wtb_parse_directory(const char* dir)
+WTB_FILE* wtb_parse_directory(const char* dir)
 {
 	DL_DIR_LIST dirlist = {0};
 	dl_parse_directory(dir, &dirlist);
@@ -117,7 +117,7 @@ WTB_FILE* platinum_wtb_parse_directory(const char* dir)
 	return wtb;
 }
 
-void platinum_wtb_save_wtb_to_fu_file(WTB_FILE* wtb, FU_FILE* fwtb)
+void wtb_save_wtb_to_fu_file(WTB_FILE* wtb, FU_FILE* fwtb)
 {
 	fu_create_mem_file(fwtb);
 	
@@ -168,7 +168,7 @@ void platinum_wtb_save_wtb_to_fu_file(WTB_FILE* wtb, FU_FILE* fwtb)
 	fu_seek(fwtb, 0, FU_SEEK_END);
 }
 
-void platinum_wtb_save_wta_wtp_to_fu_files(WTB_FILE* wtb, FU_FILE* fwta, FU_FILE* fwtp)
+void wtb_save_wta_wtp_to_fu_files(WTB_FILE* wtb, FU_FILE* fwta, FU_FILE* fwtp)
 {
 	fu_create_mem_file(fwta);
 	fu_create_mem_file(fwtp);
@@ -220,7 +220,7 @@ void platinum_wtb_save_wta_wtp_to_fu_files(WTB_FILE* wtb, FU_FILE* fwta, FU_FILE
 	fu_seek(fwtp, 0, FU_SEEK_END);
 }
 
-uint8_t platinum_wtb_read_header(FU_FILE* file, WTB_FILE* wtb)
+uint8_t wtb_read_header(FU_FILE* file, WTB_FILE* wtb)
 {
 	uint8_t status = 0;
 	uint64_t bytes_read = 0;
@@ -251,7 +251,7 @@ uint8_t platinum_wtb_read_header(FU_FILE* file, WTB_FILE* wtb)
 	return 1;
 }
 
-void platinum_wtb_populate_entries(FU_FILE* file, WTB_FILE* wtb)
+void wtb_populate_entries(FU_FILE* file, WTB_FILE* wtb)
 {
 	wtb->entries = (WTB_ENTRY*)calloc(wtb->header.tex_count, sizeof(WTB_ENTRY));
 	
@@ -325,7 +325,7 @@ void platinum_wtb_populate_entries(FU_FILE* file, WTB_FILE* wtb)
 	}
 }
 
-void platinum_wtb_load_entries_dds(FU_FILE* file, WTB_FILE* wtb)
+void wtb_load_entries_dds(FU_FILE* file, WTB_FILE* wtb)
 {
 	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
 	{
@@ -338,7 +338,7 @@ void platinum_wtb_load_entries_dds(FU_FILE* file, WTB_FILE* wtb)
 	}
 }
 
-void platinum_wtb_free(WTB_FILE* wtb)
+void wtb_free(WTB_FILE* wtb)
 {
 	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
 	{
