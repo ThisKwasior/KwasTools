@@ -2,9 +2,9 @@
 
 #include <stdint.h>
 
-#include <kwaslib/utils/io/file_utils.h>
-#include <kwaslib/utils/crypto/crc32.h>
-#include <kwaslib/utils/cg/x360_fmt.h>
+#include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/crypto/crc32.h>
+#include <kwaslib/core/cg/x360_fmt.h>
 
 /*
 	WTB contains both the metadata and texture data.

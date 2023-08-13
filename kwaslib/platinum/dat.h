@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-#include <kwaslib/utils/io/file_utils.h>
-#include <kwaslib/utils/io/dir_list.h>
+#include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/io/dir_list.h>
 
 /* 
 	Code here has been "borrowed" from NierDocs.

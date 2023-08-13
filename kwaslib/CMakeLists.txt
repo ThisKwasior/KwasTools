@@ -1,19 +1,23 @@
 cmake_minimum_required(VERSION 3.19)
 project(kwaslib)
 
-set(KWASLIB_SOURCES
-	${PROJECT_SOURCE_DIR}/utils/cpu/endianness.c
-	${PROJECT_SOURCE_DIR}/utils/crypto/crc32.c
-	${PROJECT_SOURCE_DIR}/utils/io/arg_parser.c
-	${PROJECT_SOURCE_DIR}/utils/io/dir_list.c
-	${PROJECT_SOURCE_DIR}/utils/io/file_utils.c
-	${PROJECT_SOURCE_DIR}/utils/io/path_utils.c
-	${PROJECT_SOURCE_DIR}/utils/io/type_readers.c
-	${PROJECT_SOURCE_DIR}/utils/io/type_writers.c
-	${PROJECT_SOURCE_DIR}/utils/math/boundary.c
-	${PROJECT_SOURCE_DIR}/utils/math/half.c
-	${PROJECT_SOURCE_DIR}/utils/math/vec.c
-	
+set(KWASLIB_CORE_ONLY False CACHE STRING "Build only core functionality of kwaslib")
+
+set(KWASLIB_CORE_SOURCES
+	${PROJECT_SOURCE_DIR}/core/cpu/endianness.c
+	${PROJECT_SOURCE_DIR}/core/crypto/crc32.c
+	${PROJECT_SOURCE_DIR}/core/io/arg_parser.c
+	${PROJECT_SOURCE_DIR}/core/io/dir_list.c
+	${PROJECT_SOURCE_DIR}/core/io/file_utils.c
+	${PROJECT_SOURCE_DIR}/core/io/path_utils.c
+	${PROJECT_SOURCE_DIR}/core/io/type_readers.c
+	${PROJECT_SOURCE_DIR}/core/io/type_writers.c
+	${PROJECT_SOURCE_DIR}/core/math/boundary.c
+	${PROJECT_SOURCE_DIR}/core/math/half.c
+	${PROJECT_SOURCE_DIR}/core/math/vec.c
+	)
+
+set(KWASLIB_MODULES_SOURCES
 	${PROJECT_SOURCE_DIR}/he/BINA.c
 	${PROJECT_SOURCE_DIR}/he/mirage.c
 	${PROJECT_SOURCE_DIR}/he/uv_anim.c
@@ -24,9 +28,14 @@ set(KWASLIB_SOURCES
 	${PROJECT_SOURCE_DIR}/platinum/wtb.c
 	)
 
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -Qn -fno-ident -fPIC" CACHE STRING "Compiler flags" FORCE)
-	
+set(KWASLIB_SOURCES
+	${KWASLIB_CORE_SOURCES}
+	)
+
+if(NOT ${KWASLIB_CORE_ONLY})
+	list(APPEND KWASLIB_SOURCES "${KWASLIB_MODULES_SOURCES}")
+endif()
+
 add_library(kwaslib SHARED ${KWASLIB_SOURCES})
 
 target_include_directories(kwaslib PRIVATE "${PROJECT_SOURCE_DIR}/../")
-

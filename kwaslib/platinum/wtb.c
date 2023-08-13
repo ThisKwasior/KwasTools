@@ -3,8 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <kwaslib/utils/io/dir_list.h>
-#include <kwaslib/utils/math/boundary.h>
+#include <kwaslib/core/io/dir_list.h>
+#include <kwaslib/core/math/boundary.h>
 
 #define WTB_BLOCK_SIZE 4096
 

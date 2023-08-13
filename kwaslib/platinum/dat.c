@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <kwaslib/utils/crypto/crc32.h>
-#include <kwaslib/utils/math/boundary.h>
+#include <kwaslib/core/crypto/crc32.h>
+#include <kwaslib/core/math/boundary.h>
 
 DAT_FILE* dat_parse_dat(FU_FILE* file, const uint8_t fu_endian)
 {

@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <kwaslib/utils/io/arg_parser.h>
-#include <kwaslib/utils/io/path_utils.h>
-#include <kwaslib/utils/io/file_utils.h>
-#include <kwaslib/utils/cpu/endianness.h>
+#include <kwaslib/core/io/arg_parser.h>
+#include <kwaslib/core/io/path_utils.h>
+#include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/cpu/endianness.h>
 #include <kwaslib/platinum/wtb.h>
 
 /*

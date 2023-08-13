@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include <kwaslib/utils/math/vec.h>
+#include <kwaslib/core/math/vec.h>
 
 #include "mirage.h"
 

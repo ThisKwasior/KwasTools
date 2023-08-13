@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-#include <kwaslib/utils/io/file_utils.h>
-#include <kwaslib/utils/io/path_utils.h>
+#include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/io/path_utils.h>
 
 #define MIRAGE_HEADER_SIZE			24
 #define MIRAGE_INFO_SIZE			24

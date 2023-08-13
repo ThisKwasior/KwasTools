@@ -7,20 +7,20 @@ extern "C" {
 /* 
 	Utils
 */
-#include <kwaslib/utils/cpu/endianness.h>
+#include <kwaslib/core/cpu/endianness.h>
 
-#include <kwaslib/utils/crypto/crc32.h>
+#include <kwaslib/core/crypto/crc32.h>
 
-#include <kwaslib/utils/io/arg_parser.h>
-#include <kwaslib/utils/io/dir_list.h>
-#include <kwaslib/utils/io/file_utils.h>
-#include <kwaslib/utils/io/path_utils.h>
-#include <kwaslib/utils/io/type_readers.h>
-#include <kwaslib/utils/io/type_writers.h>
+#include <kwaslib/core/io/arg_parser.h>
+#include <kwaslib/core/io/dir_list.h>
+#include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/io/path_utils.h>
+#include <kwaslib/core/io/type_readers.h>
+#include <kwaslib/core/io/type_writers.h>
 
-#include <kwaslib/utils/math/boundary.h>
-#include <kwaslib/utils/math/half.h>
-#include <kwaslib/utils/math/vec.h>
+#include <kwaslib/core/math/boundary.h>
+#include <kwaslib/core/math/half.h>
+#include <kwaslib/core/math/vec.h>
 
 /* 
 	Hedgehog Engine

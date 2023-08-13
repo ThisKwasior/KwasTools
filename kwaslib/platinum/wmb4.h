@@ -2,9 +2,9 @@
 
 #include <stdint.h>
 
-#include <kwaslib/utils/io/file_utils.h>
-#include <kwaslib/utils/math/half.h>
-#include <kwaslib/utils/math/vec.h>
+#include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/math/half.h>
+#include <kwaslib/core/math/vec.h>
 
 #define WMB4_VERTEX_BUFFER_COUNT	(uint32_t)(4)
 #define WMB4_MESH_SLOT_COUNT		(uint32_t)(4)
