@@ -1,0 +1,99 @@
+############ platinum_dat_tool
+
+==== Usage:
+        To unpack:              platinum_dat_tool.exe <dat file> <options>
+        To pack:                platinum_dat_tool.exe <directory> <options>
+
+==== Options:
+        Packing and unpacking:
+                                  --x360        Process the DAT/folder with Xbox 360 in mind (big endian)
+        Packing:
+                        --skip_ext_check        Do not get the extension from the folder suffix
+						
+==== Description:
+		First argument is always either a file or a folder, so you can just drag and drop the file/folder on the executable.
+
+		This program does the following:
+			- Extracts files from a valid DAT file to a folder with a name in format "<name>_<3-letter-extension>"
+			
+			- Creates a DAT file from a folder with a name in format "<name>_<3-letter-extension>".
+			  When the extension is present, it will append it to a final saved file,
+			  otherwise it'll ignore it and default to ".dat" extension.
+
+
+############ platinum_wta_wtp_tool
+
+==== Usage:
+        To unpack:				platinum_wta_wtp_tool.exe file.wta file.wtp
+        To pack:				platinum_wta_wtp_tool.exe <directory with DDS files>
+
+==== Options:
+        Packing:
+                        --skip_ext_check        Do not remove the extension from the folder suffix
+						
+==== Description:
+		First arguments are always either files or a folder, so you can just drag and drop files/folder on the executable.
+		File order is determined at runtime, so drag and drop as you like.
+
+		This program does the following:
+			- Extracts files from valid WTA/WTP files to a folder with a name in format "<name>_wtp" in the WTP's folder.
+			
+			- Creates a pair of WTA/WTP files from a folder with a name in format "<name>_<3-letter-extension>".
+			  When the extension is present, it will remove it from final saved files,
+			  otherwise it'll ignore it and use the entire file name.
+		
+		File names of extracted DDS files are the Texture ID of the texture in decimal number format (converted from hex to cpu endianness).
+		Said Texture ID is used by 3d models (WMB) to locate the correct resource.
+		Modify these IDs as you see fit, or add new DDS files with your own IDs.
+
+############ platinum_wtb_tool
+
+==== Usage:
+        To unpack:				platinum_wtb_tool.exe file.wtb
+        To pack:				platinum_wtb_tool.exe <directory with DDS files>
+
+==== Options:
+        Packing:
+                        --skip_ext_check        Do not remove the extension from the folder suffix
+						
+==== Description:
+		First argument is always either a file or a folder, so you can just drag and drop the file/folder on the executable.
+
+		This program does the following:
+			- Extracts files from valid WTB file to a folder with a name in format "<name>_wtb"
+			
+			- Creates a WTB file from a folder with a name in format "<name>_<3-letter-extension>".
+			  When the extension is present, it will remove it from the final saved file,
+			  otherwise it'll ignore it and use the entire file name.
+		
+		File names of extracted DDS files are the Texture ID of the texture in decimal number format (converted from hex to cpu endianness).
+		Said Texture ID is used by 3d models (WMB) to locate the correct resource.
+		Modify these IDs as you see fit, or add new DDS files with your own IDs.
+		
+############ platinum_misc_dat2dds2dat
+
+==== Usage:
+        To unpack:              platinum_misc_dat2dds2dat.exe <dat files>
+        To pack:                platinum_misc_dat2dds2dat.exe <directory with DDS files> <dat files>
+						
+==== Description:
+		A program requested by MGRR Modding community.
+		Similar to DTT2DDS, but needs both DAT and DTT to work.
+		It also can insert new WTA/WTP/WTB from a folder of DDS files.
+
+		This program does the following:
+			- Extracts DDS files from provided DAT and DTT files to a folder in format "<name>_<3-letter-extension>"
+			  (extension is either "_wtp" or "_wtb" depending on detected texture archive found in DATs).
+			  Order of input files is whatever but it will be looking for WTA/WTP/WTB with a name of the **FIRST** DAT file provided.
+			
+			- Internally creates a WTA/WTP or WTB file from a folder with a name in format "<name>_<3-letter-extension>" 
+			  and inserts it to provided DAT files.
+			  The folder name (minus the extension suffix) is being used to locate the correct files to replace.
+		
+		File names of extracted DDS files are the Texture ID of the texture in decimal number format (converted from hex to cpu endianness).
+		Said Texture ID is used by 3d models (WMB) to locate the correct resource.
+		Modify these IDs as you see fit, or add new DDS files with your own IDs.
+		
+		Due to this program being coded in like, an hour, there are probably bugs I don't know about.
+		One of these is that it sometimes creates files that won't load correctly in MGRR (talking about ".dat" file here, not ".dtt"),
+		but unpacking and repacking ".dat" with platinum_dat_tool fixed the issue for me.
