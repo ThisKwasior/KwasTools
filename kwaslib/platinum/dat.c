@@ -114,7 +114,7 @@ DAT_FILE* dat_parse_dat(FU_FILE* file, const uint8_t fu_endian)
 	return dat;
 }
 
-DAT_FILE* dat_parse_directory(const char* dir)
+DAT_FILE* dat_parse_directory(const char* dir, const uint8_t do_align)
 {
 	DL_DIR_LIST dirlist = {0};
 	dl_parse_directory(dir, &dirlist);
@@ -236,8 +236,8 @@ DAT_FILE* dat_parse_directory(const char* dir)
 								   + dat->indices_offset
 								   + 2*dat->header.files_amount;
 	
-	/*uint32_t bytes_to_pad = 4096 - (temp_data_pos%4096);*/
-	uint64_t bytes_to_pad = bound_calc_leftover(DAT_BLOCK_SIZE, temp_data_pos);
+	uint64_t bytes_to_pad = 0;
+	if(do_align) bytes_to_pad = bound_calc_leftover(DAT_BLOCK_SIZE, temp_data_pos);
 	
 	const uint32_t first_data_pos = temp_data_pos + bytes_to_pad;
 	uint32_t cur_data_pos = first_data_pos;
@@ -247,8 +247,7 @@ DAT_FILE* dat_parse_directory(const char* dir)
 		dat->entries[i].position = cur_data_pos;
 		
 		cur_data_pos += dat->entries[i].size;
-		/*bytes_to_pad = 4096 - (cur_data_pos%4096);*/
-		bytes_to_pad = bound_calc_leftover(DAT_BLOCK_SIZE, cur_data_pos);
+		if(do_align) bytes_to_pad = bound_calc_leftover(DAT_BLOCK_SIZE, cur_data_pos);
 		cur_data_pos += bytes_to_pad;
 	}
 	

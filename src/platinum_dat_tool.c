@@ -15,14 +15,16 @@ const AP_ARG_DESC arg_list[] =
 {
 	{"--x360", AP_TYPE_NOV},
 	{"--skip_ext_check", AP_TYPE_NOV},
+	{"--do_not_align", AP_TYPE_NOV},
 };
-const uint32_t arg_list_size = 2;
+const uint32_t arg_list_size = 3;
 
 AP_VALUE_NODE* arg_node = NULL;
 
 /* Flags */
 uint8_t dat_tool_endian = FU_HOST_ENDIAN;
 uint8_t flag_skip_ext_check = 0;
+uint8_t flag_do_alignment = 1;
 
 void dat_tool_parse_arguments(int argc, char** argv);
 
@@ -94,7 +96,7 @@ int main(int argc, char** argv)
 	else if(pu_is_dir(argv[1])) /* It's a directory so let's create a DAT file */
 	{
 		/* Create DAT from a directory of files */
-		DAT_FILE* dat = dat_parse_directory(argv[1]);
+		DAT_FILE* dat = dat_parse_directory(argv[1], flag_do_alignment);
 		
 		/* Print the created DAT */
 		dat_tool_print_dat(dat);
@@ -149,16 +151,11 @@ void dat_tool_parse_arguments(int argc, char** argv)
 
 	AP_VALUE_NODE* arg_x360 = ap_get_node_by_arg(arg_node, "--x360");
 	AP_VALUE_NODE* arg_skip_ext_check = ap_get_node_by_arg(arg_node, "--skip_ext_check");
+	AP_VALUE_NODE* arg_do_not_align = ap_get_node_by_arg(arg_node, "--do_not_align");
 	
-	if(arg_x360 != NULL)
-	{
-		dat_tool_endian = FU_BIG_ENDIAN;
-	}
-	
-	if(arg_skip_ext_check != NULL)
-	{
-		flag_skip_ext_check = 1;
-	}
+	if(arg_x360 != NULL) dat_tool_endian = FU_BIG_ENDIAN;
+	if(arg_skip_ext_check != NULL) flag_skip_ext_check = 1;
+	if(arg_do_not_align != NULL) flag_do_alignment = 0;
 }
 
 void dat_tool_print_usage(char* program_name)
@@ -172,6 +169,7 @@ void dat_tool_print_usage(char* program_name)
 	printf("\t\t%24s\t%s\n", "--x360", "Process the DAT with Xbox 360 in mind (big endian)");
 	printf("\tPacking:\n");
 	printf("\t\t%24s\t%s\n", "--skip_ext_check", "Do not get the extension from the folder suffix");
+	printf("\t\t%24s\t%s\n", "--do_not_align", "Do not align files to 4096 bytes (needed by shader.dat)");
 }
 
 void dat_tool_print_dat(DAT_FILE* dat)

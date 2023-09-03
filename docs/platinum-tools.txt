@@ -9,6 +9,7 @@
                                   --x360        Process the DAT/folder with Xbox 360 in mind (big endian)
         Packing:
                         --skip_ext_check        Do not get the extension from the folder suffix
+						  --do_not_align		Do not align files to 4096 bytes (needed by shader.dat)
 						
 ==== Description:
 		First argument is always either a file or a folder, so you can just drag and drop the file/folder on the executable.

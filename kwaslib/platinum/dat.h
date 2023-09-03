@@ -59,7 +59,7 @@ typedef struct
 	Functions
 */
 DAT_FILE* dat_parse_dat(FU_FILE* file, const uint8_t fu_endian);
-DAT_FILE* dat_parse_directory(const char* dir);
+DAT_FILE* dat_parse_directory(const char* dir, const uint8_t do_align);
 
 FU_FILE* dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian);
 
