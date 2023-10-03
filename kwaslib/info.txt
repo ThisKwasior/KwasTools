@@ -2,5 +2,6 @@ Each folder contains code for different games/engines.
 
 List:
  * core		-   Common helper utilities and general purpose code
+ * cri		-   CRIWARE
  * he		-   Hedgehog Engine 1 and 2
  * platinum	-   Platinum Games Engine (MGRR)

@@ -47,6 +47,9 @@ typedef struct
 uint8_t fu_open_file(const char* path, const uint8_t to_memory, FU_FILE* f);
 uint8_t fu_open_file_pu(PU_PATH* path, const uint8_t to_memory, FU_FILE* f);
 
+/* Just allocates the structure and returns a pointer */
+FU_FILE* fu_alloc_file();
+
 uint64_t fu_get_file_size(const char* path);
 uint64_t fu_get_file_size_pu(PU_PATH* path);
 
@@ -83,6 +86,14 @@ uint8_t fu_buffer_to_file_pu(PU_PATH* path, const char* buffer, const uint64_t s
 
 /*
 	Readers
+*/
+
+uint8_t fu_check_read_req(FU_FILE* f, const uint32_t req);
+
+/* 
+	Tries to read the amount of data requested to `buf`.
+	Amount of bytes read is returned with `bytes`. Can be NULL.
+	Returns status.	
 */
 uint8_t fu_read_data(FU_FILE* f, uint8_t* buf, const uint64_t size, uint64_t* read);
 uint8_t fu_read_u8(FU_FILE* f, uint8_t* status);

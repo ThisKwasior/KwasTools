@@ -64,3 +64,8 @@ static const char* x360_fmt_str[] =
 	"FMT_DXT5A",
 	"FMT_CTX1"
 };
+
+inline static const char* get_x360_fmt_str_by_id(const uint32_t id)
+{
+	return x360_fmt_str[id];
+}

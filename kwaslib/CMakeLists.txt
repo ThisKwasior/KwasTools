@@ -23,6 +23,9 @@ set(KWASLIB_MODULES_SOURCES
 	${PROJECT_SOURCE_DIR}/he/uv_anim.c
 	${PROJECT_SOURCE_DIR}/he/cam_anim.c
 
+	${PROJECT_SOURCE_DIR}/cri/utf.c
+	${PROJECT_SOURCE_DIR}/cri/awb.c
+
 	${PROJECT_SOURCE_DIR}/platinum/dat.c
 	${PROJECT_SOURCE_DIR}/platinum/wmb4.c
 	${PROJECT_SOURCE_DIR}/platinum/wtb.c

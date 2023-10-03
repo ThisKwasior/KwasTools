@@ -23,6 +23,12 @@ extern "C" {
 #include <kwaslib/core/math/vec.h>
 
 /* 
+	CRIWARE
+*/
+#include <kwaslib/cri/utf.h>
+#include <kwaslib/cri/awb.h>
+
+/* 
 	Hedgehog Engine
 */
 #include <kwaslib/he/BINA.h>

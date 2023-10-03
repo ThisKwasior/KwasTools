@@ -68,6 +68,11 @@ uint8_t fu_open_file_pu(PU_PATH* path, const uint8_t to_memory, FU_FILE* f)
 	return retval;
 }
 
+FU_FILE* fu_alloc_file()
+{
+	return (FU_FILE*)calloc(1, sizeof(FU_FILE));
+}
+
 uint64_t fu_get_file_size(const char* path)
 {
 	FILE* f = fopen(path, "rb");
@@ -243,7 +248,9 @@ uint8_t fu_add_to_buf_size(FU_FILE* f, const int64_t bytes_req)
 uint8_t fu_check_buf_rem(FU_FILE* f, const uint64_t bytes_req)
 {
 	if(f->writeable == 0)
+	{
 		return FU_NOTMEMF;
+	}
 	
 	if(f->rem >= bytes_req)
 	{
@@ -312,11 +319,21 @@ uint8_t fu_buffer_to_file_pu(PU_PATH* path, const char* buffer, const uint64_t s
 	Readers
 */
 
+uint8_t fu_check_read_req(FU_FILE* f, const uint32_t req)
+{
+	if(f->rem < req)
+	{
+		return FU_ERROR;
+	}
+
+	return FU_SUCCESS;
+}
+
 uint8_t fu_read_data(FU_FILE* f, uint8_t* buf, const uint64_t size, uint64_t* read)
 {
 	if(f->rem == 0)
 	{
-		*read = 0;
+		if(read != NULL) *read = 0;
 		return FU_EOF;
 	}
 	
@@ -339,7 +356,7 @@ uint8_t fu_read_data(FU_FILE* f, uint8_t* buf, const uint64_t size, uint64_t* re
 		fread(buf, to_read, 1, f->f);
 	}
 	
-	*read = to_read;
+	if(read != NULL) *read = to_read;
 	
 	f->pos += to_read;
 	f->rem = f->size - f->pos;
@@ -350,15 +367,16 @@ uint8_t fu_read_data(FU_FILE* f, uint8_t* buf, const uint64_t size, uint64_t* re
 uint8_t fu_read_u8(FU_FILE* f, uint8_t* status)
 {
 	uint8_t buf = 0;
-	uint64_t read = 0;
-	
-	if(f->rem < 1)
+
+	if(fu_check_read_req(f, 1) == FU_SUCCESS)
 	{
-		*status = FU_ERROR;
-		return 0;
+		const uint8_t stat = fu_read_data(f, (uint8_t*)&buf, 1, NULL);
+		if(status != NULL) *status = stat;
 	}
-	
-	*status = fu_read_data(f, (uint8_t*)&buf, 1, &read);
+	else
+	{
+		if(status != NULL) *status = FU_ERROR;
+	}
 	
 	return buf;
 }
@@ -366,24 +384,25 @@ uint8_t fu_read_u8(FU_FILE* f, uint8_t* status)
 uint16_t fu_read_u16(FU_FILE* f, uint8_t* status, const uint8_t endian)
 {
 	uint16_t buf = 0;
-	uint64_t read = 0;
-	
-	if(f->rem < 2)
+
+	if(fu_check_read_req(f, 2) == FU_SUCCESS)
 	{
-		*status = FU_ERROR;
-		return 0;
+		const uint8_t stat = fu_read_data(f, (uint8_t*)&buf, 2, NULL);
+		if(status != NULL) *status = stat;
+
+		switch(endian)
+		{
+			case FU_LITTLE_ENDIAN:
+				buf = tr_read_u16le((const uint8_t*)&buf);
+				break;
+			case FU_BIG_ENDIAN:
+				buf = tr_read_u16be((const uint8_t*)&buf);
+				break;
+		}
 	}
-	
-	*status = fu_read_data(f, (uint8_t*)&buf, 2, &read);
-	
-	switch(endian)
+	else
 	{
-		case 1:
-			buf = tr_read_u16le((const uint8_t*)&buf);
-			break;
-		case 2:
-			buf = tr_read_u16be((const uint8_t*)&buf);
-			break;
+		if(status != NULL) *status = FU_ERROR;
 	}
 	
 	return buf;
@@ -392,24 +411,25 @@ uint16_t fu_read_u16(FU_FILE* f, uint8_t* status, const uint8_t endian)
 uint32_t fu_read_u32(FU_FILE* f, uint8_t* status, const uint8_t endian)
 {
 	uint32_t buf = 0;
-	uint64_t read = 0;
-	
-	if(f->rem < 4)
+
+	if(fu_check_read_req(f, 4) == FU_SUCCESS)
 	{
-		*status = FU_ERROR;
-		return 0;
+		const uint8_t stat = fu_read_data(f, (uint8_t*)&buf, 4, NULL);
+		if(status != NULL) *status = stat;
+
+		switch(endian)
+		{
+			case FU_LITTLE_ENDIAN:
+				buf = tr_read_u32le((const uint8_t*)&buf);
+				break;
+			case FU_BIG_ENDIAN:
+				buf = tr_read_u32be((const uint8_t*)&buf);
+				break;
+		}
 	}
-	
-	*status = fu_read_data(f, (uint8_t*)&buf, 4, &read);
-	
-	switch(endian)
+	else
 	{
-		case 1:
-			buf = tr_read_u32le((const uint8_t*)&buf);
-			break;
-		case 2:
-			buf = tr_read_u32be((const uint8_t*)&buf);
-			break;
+		if(status != NULL) *status = FU_ERROR;
 	}
 	
 	return buf;
@@ -418,24 +438,25 @@ uint32_t fu_read_u32(FU_FILE* f, uint8_t* status, const uint8_t endian)
 uint64_t fu_read_u64(FU_FILE* f, uint8_t* status, const uint8_t endian)
 {
 	uint64_t buf = 0;
-	uint64_t read = 0;
-	
-	if(f->rem < 8)
+
+	if(fu_check_read_req(f, 8) == FU_SUCCESS)
 	{
-		*status = FU_ERROR;
-		return 0;
+		const uint8_t stat = fu_read_data(f, (uint8_t*)&buf, 8, NULL);
+		if(status != NULL) *status = stat;
+	
+		switch(endian)
+		{
+			case FU_LITTLE_ENDIAN:
+				buf = tr_read_u64le((const uint8_t*)&buf);
+				break;
+			case FU_BIG_ENDIAN:
+				buf = tr_read_u64be((const uint8_t*)&buf);
+				break;
+		}
 	}
-	
-	*status = fu_read_data(f, (uint8_t*)&buf, 8, &read);
-	
-	switch(endian)
+	else
 	{
-		case 1:
-			buf = tr_read_u64le((const uint8_t*)&buf);
-			break;
-		case 2:
-			buf = tr_read_u64be((const uint8_t*)&buf);
-			break;
+		if(status != NULL) *status = FU_ERROR;
 	}
 	
 	return buf;
@@ -444,24 +465,25 @@ uint64_t fu_read_u64(FU_FILE* f, uint8_t* status, const uint8_t endian)
 float fu_read_f32(FU_FILE* f, uint8_t* status, const uint8_t endian)
 {
 	float buf = 0;
-	uint64_t read = 0;
-	
-	if(f->rem < 4)
+
+	if(fu_check_read_req(f, 4) == FU_SUCCESS)
 	{
-		*status = FU_ERROR;
-		return 0;
+		const uint8_t stat = fu_read_data(f, (uint8_t*)&buf, 4, NULL);
+		if(status != NULL) *status = stat;
+
+		switch(endian)
+		{
+			case FU_LITTLE_ENDIAN:
+				buf = tr_read_f32le((const uint8_t*)&buf);
+				break;
+			case FU_BIG_ENDIAN:
+				buf = tr_read_f32be((const uint8_t*)&buf);
+				break;
+		}
 	}
-	
-	*status = fu_read_data(f, (uint8_t*)&buf, 4, &read);
-	
-	switch(endian)
+	else
 	{
-		case 1:
-			buf = tr_read_f32le((const uint8_t*)&buf);
-			break;
-		case 2:
-			buf = tr_read_f32be((const uint8_t*)&buf);
-			break;
+		if(status != NULL) *status = FU_ERROR;
 	}
 	
 	return buf;
@@ -470,24 +492,25 @@ float fu_read_f32(FU_FILE* f, uint8_t* status, const uint8_t endian)
 double fu_read_f64(FU_FILE* f, uint8_t* status, const uint8_t endian)
 {
 	double buf = 0;
-	uint64_t read = 0;
-	
-	if(f->rem < 8)
-	{
-		*status = FU_ERROR;
-		return 0;
-	}
-	
-	*status = fu_read_data(f, (uint8_t*)&buf, 8, &read);
 
-	switch(endian)
+	if(fu_check_read_req(f, 8) == FU_SUCCESS)
 	{
-		case 1:
-			buf = tr_read_f64le((const uint8_t*)&buf);
-			break;
-		case 2:
-			buf = tr_read_f64be((const uint8_t*)&buf);
-			break;
+		const uint8_t stat = fu_read_data(f, (uint8_t*)&buf, 8, NULL);
+		if(status != NULL) *status = stat;
+
+		switch(endian)
+		{
+			case FU_LITTLE_ENDIAN:
+				buf = tr_read_f64le((const uint8_t*)&buf);
+				break;
+			case FU_BIG_ENDIAN:
+				buf = tr_read_f64be((const uint8_t*)&buf);
+				break;
+		}
+	}
+	else
+	{
+		if(status != NULL) *status = FU_ERROR;
 	}
 	
 	return buf;
@@ -522,10 +545,10 @@ uint8_t fu_write_u16(FU_FILE* f, const uint16_t data, const uint8_t endian)
 	
 	switch(endian)
 	{
-		case 1:
+		case FU_LITTLE_ENDIAN:
 			tw_write_u16le(data, (uint8_t*)&buf);
 			break;
-		case 2:
+		case FU_BIG_ENDIAN:
 			tw_write_u16be(data, (uint8_t*)&buf);
 			break;
 	}
@@ -539,10 +562,10 @@ uint8_t fu_write_u32(FU_FILE* f, const uint32_t data, const uint8_t endian)
 	
 	switch(endian)
 	{
-		case 1:
+		case FU_LITTLE_ENDIAN:
 			tw_write_u32le(data, (uint8_t*)&buf);
 			break;
-		case 2:
+		case FU_BIG_ENDIAN:
 			tw_write_u32be(data, (uint8_t*)&buf);
 			break;
 	}
@@ -556,10 +579,10 @@ uint8_t fu_write_u64(FU_FILE* f, const uint64_t data, const uint8_t endian)
 	
 	switch(endian)
 	{
-		case 1:
+		case FU_LITTLE_ENDIAN:
 			tw_write_u64le(data, (uint8_t*)&buf);
 			break;
-		case 2:
+		case FU_BIG_ENDIAN:
 			tw_write_u64be(data, (uint8_t*)&buf);
 			break;
 	}
@@ -573,10 +596,10 @@ uint8_t fu_write_f32(FU_FILE* f, const float data, const uint8_t endian)
 	
 	switch(endian)
 	{
-		case 1:
+		case FU_LITTLE_ENDIAN:
 			tw_write_f32le(data, (uint8_t*)&buf);
 			break;
-		case 2:
+		case FU_BIG_ENDIAN:
 			tw_write_f32be(data, (uint8_t*)&buf);
 			break;
 	}
@@ -590,10 +613,10 @@ uint8_t fu_write_f64(FU_FILE* f, const double data, const uint8_t endian)
 	
 	switch(endian)
 	{
-		case 1:
+		case FU_LITTLE_ENDIAN:
 			tw_write_f64le(data, (uint8_t*)&buf);
 			break;
-		case 2:
+		case FU_BIG_ENDIAN:
 			tw_write_f64be(data, (uint8_t*)&buf);
 			break;
 	}

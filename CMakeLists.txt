@@ -22,6 +22,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 set(KWASTOOLS_PROGRAMS
+	${PROJECT_SOURCE_DIR}/src/cri_utf_tool.cpp
+	${PROJECT_SOURCE_DIR}/src/cri_awb_tool.cpp
+	
 	#${PROJECT_SOURCE_DIR}/src/pcmodeltool.cpp
 	${PROJECT_SOURCE_DIR}/src/he_anim_tool.cpp
 
@@ -66,7 +69,7 @@ set(ASSIMP_BUILD_COLLADA_IMPORTER ON)
 set(ASSIMP_BUILD_COLLADA_EXPORTER ON)
 set(ASSIMP_BUILD_GLTF_IMPORTER ON)
 set(ASSIMP_BUILD_GLTF_EXPORTER ON)
-add_subdirectory(${PROJECT_SOURCE_DIR}/utils/assimp)
+#add_subdirectory(${PROJECT_SOURCE_DIR}/utils/assimp)
 
 #target_link_libraries(KwasToolsUtils)
 # end utils library
@@ -75,7 +78,7 @@ foreach(program_src ${KWASTOOLS_PROGRAMS})
 	get_filename_component(program_name ${program_src} NAME_WLE)
 	add_executable(${program_name} ${program_src})
 	target_include_directories(${program_name} PRIVATE "${KWASTOOLS_UTILS_INCLUDES}")
-	target_link_libraries(${program_name} KwasToolsUtils assimp kwaslib)
+	target_link_libraries(${program_name} KwasToolsUtils kwaslib)
 endforeach(program_src ${KWASTOOLS_PROGRAMS})
 
 ### Copying license files
