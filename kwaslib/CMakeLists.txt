@@ -23,6 +23,7 @@ set(KWASLIB_MODULES_SOURCES
 	${PROJECT_SOURCE_DIR}/he/uv_anim.c
 	${PROJECT_SOURCE_DIR}/he/cam_anim.c
 
+	${PROJECT_SOURCE_DIR}/cri/acb_command.c
 	${PROJECT_SOURCE_DIR}/cri/utf.c
 	${PROJECT_SOURCE_DIR}/cri/awb.c
 

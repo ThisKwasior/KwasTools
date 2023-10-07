@@ -120,7 +120,7 @@ void cri_utf_parse_schema(FU_FILE* cri, CRI_UTF_FILE* utf)
 		/* Read and assign to all rows */
 		if(cur_col->desc.flag == COLUMN_FLAG_NAME_DEFAULT)
 		{
-			CRI_UTF_RECORD record = cri_utf_read_by_type(cri, utf, cur_col->desc.type);
+			CRI_UTF_RECORD record = cri_utf_read_by_type(cri, utf, cur_col);
 			
 			for(uint32_t j = 0; j != h->rows; ++j)
 			{
@@ -143,18 +143,18 @@ void cri_utf_read_rows(FU_FILE* cri, CRI_UTF_FILE* utf)
 			
 			if(cur_col->desc.flag == COLUMN_FLAG_NAME_ROW)
 			{
-				cur_col->records[i] = cri_utf_read_by_type(cri, utf, cur_col->desc.type);
+				cur_col->records[i] = cri_utf_read_by_type(cri, utf, cur_col);
 			}
 		}
 	}
 }
 
-CRI_UTF_RECORD cri_utf_read_by_type(FU_FILE* cri, CRI_UTF_FILE* utf, const CRI_UTF_TYPE type)
+CRI_UTF_RECORD cri_utf_read_by_type(FU_FILE* cri, CRI_UTF_FILE* utf, CRI_UTF_COLUMN* col)
 {
 	CRI_UTF_RECORD record = {0};
 	uint8_t status = 0;
 
-	switch(type)
+	switch(col->desc.type)
 	{
 		case COLUMN_TYPE_UINT8:
 		case COLUMN_TYPE_SINT8:
@@ -182,14 +182,14 @@ CRI_UTF_RECORD cri_utf_read_by_type(FU_FILE* cri, CRI_UTF_FILE* utf, const CRI_U
 			record.offset = fu_read_u32(cri, &status, FU_BIG_ENDIAN);
 			record.data.str = &utf->string_table[record.offset];
 			record.size = strlen(record.data.str);
-			printf("%s\n", record.data.str);
+			/*printf("%s\n", record.data.str);*/
 			break;
 		case COLUMN_TYPE_VLDATA:
 			record.offset = fu_read_u32(cri, &status, FU_BIG_ENDIAN);
 			record.size = fu_read_u32(cri, &status, FU_BIG_ENDIAN);
 			record.data.vl = &utf->data[record.offset];
 			
-			/* Load embedded UTF or AWB (AFS2) */
+			/* Load embedded UTF, AWB (AFS2) or ACB Command */
 			const uint64_t cur_pos_rows = fu_tell(cri);
 			
 			fu_seek(cri, utf->file_offset + utf->header.data_offset + 8 + record.offset, FU_SEEK_SET);
@@ -203,6 +203,11 @@ CRI_UTF_RECORD cri_utf_read_by_type(FU_FILE* cri, CRI_UTF_FILE* utf, const CRI_U
 			{
 				printf("Found AWB at 0x%llx\n", fu_tell(cri));
 				record.awb = awb_read_file(cri);
+			}
+			else if(strncmp("Command", col->name, 7) == 0)
+			{
+				printf("Found ACB Command at 0x%llx\n", fu_tell(cri));
+				record.acbcmd = acb_command_parse_data(record.data.vl, record.size);
 			}
 			
 			fu_seek(cri, cur_pos_rows, FU_SEEK_SET);

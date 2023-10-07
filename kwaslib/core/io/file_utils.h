@@ -75,6 +75,9 @@ uint8_t fu_add_to_buf_size(FU_FILE* f, const int64_t bytes_req);
 /* Checks and expands buf in FU_FILE if needed */
 uint8_t fu_check_buf_rem(FU_FILE* f, const uint64_t bytes_req);
 
+/* Create memory file from data provided */
+FU_FILE* fu_create_mem_file_data(const uint8_t* data, const uint64_t size);
+
 /*
 	Saving
 */

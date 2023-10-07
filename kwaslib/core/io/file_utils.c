@@ -262,6 +262,15 @@ uint8_t fu_check_buf_rem(FU_FILE* f, const uint64_t bytes_req)
 	return fu_add_to_buf_size(f, to_add);
 }
 
+FU_FILE* fu_create_mem_file_data(const uint8_t* data, const uint64_t size)
+{
+	FU_FILE* mem_fu = fu_alloc_file();
+	fu_create_mem_file(mem_fu);
+	fu_write_data(mem_fu, data, (uint64_t)size);
+	fu_seek(mem_fu, 0, FU_SEEK_SET);
+	return mem_fu;
+}
+
 /*
 	Saving
 */

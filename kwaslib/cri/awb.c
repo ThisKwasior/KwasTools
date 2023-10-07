@@ -155,7 +155,7 @@ void awb_read_entries(FU_FILE* awb, AWB_FILE* afs2)
 			afs2->entries[i].offset = fu_read_u32(awb, NULL, FU_LITTLE_ENDIAN);
 		}
 	}
-	
+
 	/* fix file offsets */ 
 	for(uint32_t i = 0; i != h->file_count; ++i)
 	{
@@ -170,7 +170,7 @@ void awb_read_entries(FU_FILE* awb, AWB_FILE* afs2)
 	{
 		afs2->entries[i].size = afs2->entries[i+1].offset - afs2->entries[i].offset;
 	}
-	
+
 	/* Check for data */
 	awb_check_for_data(awb, afs2);
 

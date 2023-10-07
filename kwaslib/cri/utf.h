@@ -5,6 +5,8 @@
 #include <kwaslib/core/io/file_utils.h>
 #include <kwaslib/cri/awb.h>
 
+#include "acb_command.h"
+
 /*
     Vgmstream source code we trust (and, uh, borrow from).
     Thank you very much for your work, vgmstream contributors!
@@ -110,6 +112,7 @@ typedef struct
 	/* UTF Table can hold these as VLDATA */
 	CRI_UTF_FILE* utf;
 	AWB_FILE* awb;
+	ACB_COMMAND* acbcmd;
 } CRI_UTF_RECORD;
 
 typedef struct
@@ -151,7 +154,7 @@ void cri_utf_read_string_data_table(FU_FILE* cri, CRI_UTF_FILE* utf);
 void cri_utf_parse_schema(FU_FILE* cri, CRI_UTF_FILE* utf);
 void cri_utf_read_rows(FU_FILE* cri, CRI_UTF_FILE* utf);
 
-CRI_UTF_RECORD cri_utf_read_by_type(FU_FILE* cri, CRI_UTF_FILE* utf, const CRI_UTF_TYPE type);
+CRI_UTF_RECORD cri_utf_read_by_type(FU_FILE* cri, CRI_UTF_FILE* utf, CRI_UTF_COLUMN* col);
 
 /* Writing */
 FU_FILE* cri_utf_write_file(CRI_UTF_FILE* utf);
