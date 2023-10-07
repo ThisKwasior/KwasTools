@@ -27,10 +27,13 @@ PU_STRING work_dir_str = {0};
 void utf_tool_to_xml(CRI_UTF_FILE* utf, PU_STRING* out);
 void utf_tool_table_to_xml(CRI_UTF_FILE* utf, pugi::xml_node* node);
 
+void utf_tool_acbcmd_to_xml(ACB_COMMAND* cmd, pugi::xml_node* node);
+
 /*
 	Packer
 */
 CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf);
+ACB_COMMAND* utf_tool_xml_to_acbcmd(pugi::xml_node* acbcmd);
 
 /* 
 	Entry
@@ -189,7 +192,7 @@ void utf_tool_table_to_xml(CRI_UTF_FILE* utf, pugi::xml_node* node)
 			{
 				utf_tool_table_to_xml(record->utf, &row);
 			}
-			else if(record->awb)
+			else if(record->awb) /* internal AWB */
 			{
 				PU_STRING dir = {0};
 				pu_create_string(work_dir_str.p, work_dir_str.s, &dir);
@@ -197,6 +200,10 @@ void utf_tool_table_to_xml(CRI_UTF_FILE* utf, pugi::xml_node* node)
 				sprintf(offset_str, "_0x%08x", record->awb->file_offset);
 				pu_insert_char(offset_str, strlen(offset_str), -1, &dir);
 				awb_tool_afs2_to_xml(record->awb, &row, &dir);
+			}
+			else if(record->acbcmd) // ACB command 
+			{
+				utf_tool_acbcmd_to_xml(record->acbcmd, &row);
 			}
 			else
 			{
@@ -227,6 +234,52 @@ void utf_tool_table_to_xml(CRI_UTF_FILE* utf, pugi::xml_node* node)
 					default: break;
 				}
 			}
+		}
+	}
+}
+
+void utf_tool_acbcmd_to_xml(ACB_COMMAND* cmd, pugi::xml_node* node)
+{
+	pugi::xml_node acb = node->append_child("ACBCMD");
+
+	for(uint32_t i = 0; i != cmd->opcodes_count; ++i)
+	{
+		ACB_COMMAND_OPCODE* cur_op = &cmd->opcodes[i];
+		pugi::xml_node opcode_node = acb.append_child("op");
+		opcode_node.append_attribute("opcode").set_value(cur_op->op);
+
+		pugi::xml_attribute type_attr = opcode_node.append_attribute("type");
+		pugi::xml_attribute val_attr = opcode_node.append_attribute("value");
+		switch(cur_op->type)
+		{
+			case OPCODE_TYPE_NOVAL:
+				type_attr.set_value("noval");
+				val_attr.set_value(0);
+				break;
+			case OPCODE_TYPE_UINT8:
+				type_attr.set_value("u8");
+				val_attr.set_value(cur_op->data.u8);
+				break;
+			case OPCODE_TYPE_UINT16:
+				type_attr.set_value("u16");
+				val_attr.set_value(cur_op->data.u16);
+				break;
+			case OPCODE_TYPE_UINT32:
+				type_attr.set_value("u32");
+				val_attr.set_value(cur_op->data.u32);
+				break;
+			case OPCODE_TYPE_UINT64:
+				type_attr.set_value("u64");
+				val_attr.set_value(cur_op->data.u64);
+				break;
+			case OPCODE_TYPE_FLOAT:
+				type_attr.set_value("f32");
+				val_attr.set_value(cur_op->data.f32);
+				break;
+			case OPCODE_TYPE_DOUBLE:
+				type_attr.set_value("f64");
+				val_attr.set_value(cur_op->data.f64);
+				break;
 		}
 	}
 }
@@ -337,8 +390,20 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 						cur_row->size = strlen(record.attribute("value").as_string())/2;
 						vl = utf_tool_hex_to_vl((uint8_t*)record.attribute("value").as_string(),
 												strlen(record.attribute("value").as_string()));
-						fu_write_data(data_table_fu, vl, cur_row->size);
-						free(vl);
+
+						/* 
+							Without this, VLDATA record that has no size will overlap with 
+							the next data
+						*/
+						if(cur_row->size == 0)
+						{
+							fu_write_u8(data_table_fu, 0);
+						}
+						else
+						{
+							fu_write_data(data_table_fu, vl, cur_row->size);
+							free(vl);
+						}
 						break;
 						
 					default: break;
@@ -354,6 +419,7 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 				fu_write_data(data_table_fu, (uint8_t*)utf_fu->buf, utf_fu->size);
 
 				fu_close(utf_fu);
+				free(utf_fu);
 			}
 			else if(strncmp(record.name(), "AWB", 3) == 0)
 			{
@@ -365,6 +431,19 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 				fu_write_data(data_table_fu, (uint8_t*)awb_fu->buf, awb_fu->size);
 
 				fu_close(awb_fu);
+				free(awb_fu);
+			}
+			else if(strncmp(record.name(), "ACBCMD", 6) == 0)
+			{
+				cur_row->acbcmd = utf_tool_xml_to_acbcmd(&record);
+				FU_FILE* acb_fu = acb_command_to_fu(cur_row->acbcmd);
+
+				cur_row->offset = fu_tell(data_table_fu);
+				cur_row->size = acb_fu->size;
+				fu_write_data(data_table_fu, (uint8_t*)acb_fu->buf, acb_fu->size);
+
+				fu_close(acb_fu);
+				free(acb_fu);
 			}
 
 			records_it += 1;
@@ -387,4 +466,68 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 	fu_close(data_table_fu);
 
 	return utf;
+}
+
+ACB_COMMAND* utf_tool_xml_to_acbcmd(pugi::xml_node* acbcmd)
+{
+	ACB_COMMAND* cmd = acb_command_alloc_command();
+
+	cmd->opcodes_count = kwasutils_get_xml_child_count(acbcmd, "op");
+	cmd->opcodes = acb_command_alloc_opcodes(cmd->opcodes_count);
+
+	uint32_t cur_op_id = 0;
+	for(pugi::xml_node op : acbcmd->children())
+	{
+		ACB_COMMAND_OPCODE* opcode = &cmd->opcodes[cur_op_id];
+		opcode->op = op.attribute("opcode").as_uint();
+		const pugi::char_t* type_str = op.attribute("type").as_string();
+
+		if(strncmp("noval", type_str, 5) == 0)
+		{
+			opcode->type = OPCODE_TYPE_NOVAL;
+			opcode->size = 0;
+		}
+		else if(strncmp("u8", type_str, 2) == 0)
+		{
+			opcode->type = OPCODE_TYPE_UINT8;
+			opcode->size = 1;
+			opcode->data.u8 = op.attribute("value").as_uint();
+		}
+		else if(strncmp("u16", type_str, 3) == 0)
+		{
+			opcode->type = OPCODE_TYPE_UINT16;
+			opcode->size = 2;
+			opcode->data.u16 = op.attribute("value").as_uint();
+		}
+		else if(strncmp("u32", type_str, 3) == 0)
+		{
+			opcode->type = OPCODE_TYPE_UINT32;
+			opcode->size = 4;
+			opcode->data.u32 = op.attribute("value").as_uint();
+		}
+		else if(strncmp("u64", type_str, 3) == 0)
+		{
+			opcode->type = OPCODE_TYPE_UINT64;
+			opcode->size = 8;
+			opcode->data.u64 = op.attribute("value").as_ullong();
+		}
+		else if(strncmp("f32", type_str, 3) == 0)
+		{
+			opcode->type = OPCODE_TYPE_FLOAT;
+			opcode->size = 4;
+			opcode->data.f32 = op.attribute("value").as_float();
+		}
+		else if(strncmp("f64", type_str, 3) == 0)
+		{
+			opcode->type = OPCODE_TYPE_DOUBLE;
+			opcode->size = 8;
+			opcode->data.f64 = op.attribute("value").as_double();
+		}
+
+		cur_op_id += 1;
+	}
+
+	acb_command_print(cmd);
+
+	return cmd;
 }
