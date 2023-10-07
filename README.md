@@ -17,7 +17,7 @@ $ cmake .. -G"MinGW Makefiles"
 $ mingw32-make -j 8
 ```
 
-### Linux
+### Linux/MSYS2
 ```
 $ git clone --recurse-submodules https://github.com/ThisKwasior/KwasTools
 $ cd KwasTools
@@ -31,6 +31,11 @@ After compiling, all tools and libraries are located in `KwasTools/bin`.
 ## Software
 ### Hedgehog Engine
 * `he_anim_tool` - Hedgehog Engine anim converter, like uv-anim and cam-anim
+
+### CRIWARE
+**Everything here will be moved to [CryTools](https://github.com/ThisKwasior/CryTools) repo sometime in the future. I'm keeping it all in KwasTools until I rewrite everything in there with kwaslib.**
+* `cri_utf_tool` - CRI UTF parser to and from XML. Will parse structures from VLDATA (currently only UTF and AWB).
+* `cri_awb_tool` - CRI AWB packer/unpacker. Supports creating AWBs from folder of files, custom XML config and unpacks AWBs to folder and XML config.
 
 ### Platinum Games
 * `platinum_dat_tool` - DAT unpacker/packer with experimental support for Xbox 360
