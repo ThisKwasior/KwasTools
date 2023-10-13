@@ -105,7 +105,7 @@ int main(int argc, char** argv)
 void utf_tool_print_usage(char* exe_path)
 {
 	printf("Converts CRIWARE UTF to XML and vice versa.\n");
-	printf("Also parses internal UTF tables and AWB archives.\n");
+	printf("Also parses internal UTF tables, AWB archives and limited subset of ACB Commands.\n");
 	printf("Usage:\n");
 	printf("\tTo unpack: %s <file.acb>\n", exe_path);
 	printf("\tTo pack: %s <file.xml>\n", exe_path);
