@@ -37,6 +37,9 @@ After compiling, all tools and libraries are located in `KwasTools/bin`.
 * `cri_utf_tool` - CRI UTF parser to and from XML. Will parse structures from VLDATA (currently only UTF and AWB).
 * `cri_awb_tool` - CRI AWB packer/unpacker. Supports creating AWBs from folder of files, custom XML config and unpacks AWBs to folder and XML config.
 
+### NW4R
+* `nw4r_misc_to_he_xml` - Converts SCN0 and SRT0 from Wii NW4R to Hedgehog Engine XML
+
 ### Platinum Games
 * `platinum_dat_tool` - DAT unpacker/packer with experimental support for Xbox 360
 * `platinum_wta_wtp_tool` - WTA/WTP unpacker/packer with WIP Xbox 360 support
@@ -45,5 +48,9 @@ After compiling, all tools and libraries are located in `KwasTools/bin`.
 
 ## Addons
 ### io_kwastools
-WIP addon for Blender 3.0+. 
-Currently allows for importing uv-anim and cam-anim in XML format and exporting cam-anim to XML format.
+WIP addon for Blender 3.0/4.0. 
+Current features:
+- cam-anim import and export
+- uv-anim import and export
+- Camera setup creation for cam-anim (searchable with F3)
+- UV Animator creation for uv-anim (searchable with F3, to use in material->Shift+A->Group)
