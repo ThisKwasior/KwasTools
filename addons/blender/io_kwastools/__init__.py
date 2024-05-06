@@ -1,5 +1,5 @@
 bl_info = {
-	"name": "KwasTools for Blender",
+	"name": "KwasTools for Blender 3.0/4.0",
 	"author": "Kwasior",
 	"version": (0, 1, 0),
 	"blender": (3, 0, 0),
@@ -15,25 +15,11 @@ import sys
 import os
 from bpy.props import *
 from bpy_extras.io_utils import ImportHelper
+from bpy.app.handlers import persistent
 
-from io_kwastools.importers.he import import_anim
+from io_kwastools.importers.he import import_anim as he_import
 from io_kwastools.exporters.he import export_anim as he_export
-
-class ImportHedgehogXMLAnim(bpy.types.Operator, ImportHelper):
-	bl_idname = "custom_import.hedgehog_xml_anim"
-	bl_label = "Import"
-	bl_options = {'PRESET', 'UNDO'}
-	filename_ext = ".xml"
-	filter_glob: StringProperty(default="*.xml", options={'HIDDEN'},)
-	filepath: StringProperty(subtype='FILE_PATH',)
-	files: CollectionProperty(type=bpy.types.PropertyGroup)
-	
-	def draw(self, context):
-		pass
-		
-	def execute(self, context):
-		import_anim.load(self.filepath)
-		return {'FINISHED'}
+from io_kwastools.common import he_common as he_common
 
 class KwasToolsImportMenu(bpy.types.Menu):
 	bl_label = "KwasTools"
@@ -41,7 +27,7 @@ class KwasToolsImportMenu(bpy.types.Menu):
 
 	def draw(self, context):
 		layout = self.layout
-		layout.operator(ImportHedgehogXMLAnim.bl_idname, text="Hedgehog Engine Anim XML (.xml)")
+		layout.operator(he_import.ImportHedgehogXMLAnim.bl_idname, text="Hedgehog Engine Anim XML (.xml)")
 		
 class KwasToolsExportMenu(bpy.types.Menu):
 	bl_label = "KwasTools"
@@ -49,15 +35,17 @@ class KwasToolsExportMenu(bpy.types.Menu):
 
 	def draw(self, context):
 		layout = self.layout
-		#layout.operator(he_export.ExportHedgehogUvAnim.bl_idname, text="Hedgehog Engine Uv-Anim XML (.xml)")
+		layout.operator(he_export.ExportHedgehogUvAnimV3.bl_idname, text="Hedgehog Engine Uv-Anim V3 XML (.xml)")
 		layout.operator(he_export.ExportHedgehogCamAnim.bl_idname, text="Hedgehog Engine Cam-Anim XML (.xml)")
 
 classes = (
-	ImportHedgehogXMLAnim,
 	KwasToolsImportMenu,
 	KwasToolsExportMenu,
-	he_export.ExportHedgehogUvAnim,
+	he_import.ImportHedgehogXMLAnim,
+	he_export.ExportHedgehogUvAnimV3,
 	he_export.ExportHedgehogCamAnim,
+	he_common.UVAnimatorCreateOperator,
+	he_common.CamAnimCreateSetupOperator
 )
 
 def menu_import(self, context):
@@ -72,10 +60,16 @@ def register():
 	
 	bpy.types.TOPBAR_MT_file_import.append(menu_import)
 	bpy.types.TOPBAR_MT_file_export.append(menu_export)
+	
+	bpy.types.VIEW3D_MT_object.append(he_common.UVAnimatorCreateOperator.menu_func)
+	bpy.types.VIEW3D_MT_object.append(he_common.CamAnimCreateSetupOperator.menu_func)
 
 def unregister():
 	bpy.types.TOPBAR_MT_file_import.remove(menu_import)
-	bpy.types.TOPBAR_MT_file_export.append(menu_export)
+	bpy.types.TOPBAR_MT_file_export.remove(menu_export)
+	
+	bpy.types.VIEW3D_MT_object.append(he_common.UVAnimatorCreateOperator.menu_func)
+	bpy.types.VIEW3D_MT_object.append(he_common.CamAnimCreateSetupOperator.menu_func)
 	
 	for cls in classes:
 		bpy.utils.unregister_class(cls)
