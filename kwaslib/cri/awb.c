@@ -10,7 +10,7 @@
 	Unpack
 */
 
-AWB_FILE* awb_read_file(FU_FILE* awb)
+AWB_FILE* awb_read_file(FU_FILE* awb, const uint32_t offset)
 {	
 	AWB_FILE* afs2 = awb_alloc_file();
 
@@ -19,11 +19,14 @@ AWB_FILE* awb_read_file(FU_FILE* awb)
 		printf("Could not allocate awb file structure\n");
 		return NULL;
 	}
+	
+	afs2->file_offset = offset;
 
 	awb_read_header(awb, afs2);
 	
 	if(strncmp(afs2->header.magic, AWB_MAGIC, 4) != 0)
 	{
+		printf("Something went horribly wrong with reading AFS2 file. Oops\n");
 		free(afs2);
 		return NULL;
 	}
@@ -114,8 +117,6 @@ void awb_extract_to_folder(AWB_FILE* afs2, PU_STRING* dir)
 
 void awb_read_header(FU_FILE* awb, AWB_FILE* afs2)
 {
-	afs2->file_offset = fu_tell(awb);
-	
 	AWB_HEADER* header = &afs2->header;
 
 	fu_read_data(awb, (uint8_t*)&header->magic[0], 4, NULL);
@@ -180,7 +181,7 @@ void awb_read_entries(FU_FILE* awb, AWB_FILE* afs2)
 	for(uint32_t i = 0; i != h->file_count; ++i)
 	{
 		afs2->entries[i].data = (uint8_t*)calloc(1, afs2->entries[i].size);
-		fu_seek(awb, afs2->file_offset + afs2->entries[i].offset, FU_SEEK_SET);
+		fu_seek(awb, afs2->entries[i].offset, FU_SEEK_SET);
 		fu_read_data(awb, afs2->entries[i].data, afs2->entries[i].size, NULL);
 	}
 }

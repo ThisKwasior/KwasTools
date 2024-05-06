@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/math/boundary.h>
 #include <kwaslib/cri/awb.h>
 
 #include "acb_command.h"

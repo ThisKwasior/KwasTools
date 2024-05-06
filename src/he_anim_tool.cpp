@@ -225,7 +225,7 @@ void anim_tool_cam_to_xml(CAM_ANIM_FILE* cam, PU_STRING* out)
 		CAM_ANIM_ENTRY* entry = &cam->entries[i];
 		
 		anim.append_attribute("name").set_value((const pugi::char_t*)entry->name);
-		anim.append_attribute("flag1").set_value(entry->flag1);
+		anim.append_attribute("rot_or_aim").set_value(entry->rot_or_aim);
 		anim.append_attribute("flag2").set_value(entry->flag2);
 		anim.append_attribute("flag3").set_value(entry->flag3);
 		anim.append_attribute("flag4").set_value(entry->flag4);
@@ -234,16 +234,16 @@ void anim_tool_cam_to_xml(CAM_ANIM_FILE* cam, PU_STRING* out)
 		anim.append_attribute("end_frame").set_value((const uint32_t)entry->end_frame);
 
 		anim.append_attribute("cam_pos_x").set_value(entry->cam_position.x);
-		anim.append_attribute("cam_pos_y").set_value(entry->cam_position.y);
 		anim.append_attribute("cam_pos_z").set_value(entry->cam_position.z);
+		anim.append_attribute("cam_pos_y").set_value(entry->cam_position.y);
 		anim.append_attribute("cam_rot_x").set_value(entry->cam_rotation.x);
-		anim.append_attribute("cam_rot_y").set_value(entry->cam_rotation.y);
 		anim.append_attribute("cam_rot_z").set_value(entry->cam_rotation.z);
+		anim.append_attribute("cam_rot_y").set_value(entry->cam_rotation.y);
 		anim.append_attribute("aim_pos_x").set_value(entry->aim_position.x);
-		anim.append_attribute("aim_pos_y").set_value(entry->aim_position.y);
 		anim.append_attribute("aim_pos_z").set_value(entry->aim_position.z);
+		anim.append_attribute("aim_pos_y").set_value(entry->aim_position.y);
 
-		anim.append_attribute("aim_z_rotation").set_value(entry->aim_z_rotation);
+		anim.append_attribute("twist").set_value(entry->twist);
 		anim.append_attribute("z_near").set_value(entry->z_near);
 		anim.append_attribute("z_far").set_value(entry->z_far);
 		anim.append_attribute("fov").set_value(entry->fov);
@@ -449,7 +449,7 @@ CAM_ANIM_FILE* anim_tool_xml_to_cam(pugi::xml_document& xml, std::vector<uint32_
 											   string_table_offsets_vec[string_table_offsets_vec.size()-1],
 											   cam->info.string_table_size);
 
-		cur_entry->flag1 = anim_node.attribute("flag1").as_uint();
+		cur_entry->rot_or_aim = anim_node.attribute("rot_or_aim").as_uint();
 		cur_entry->flag2 = anim_node.attribute("flag2").as_uint();
 		cur_entry->flag3 = anim_node.attribute("flag3").as_uint();
 		cur_entry->flag4 = anim_node.attribute("flag4").as_uint();
@@ -458,16 +458,16 @@ CAM_ANIM_FILE* anim_tool_xml_to_cam(pugi::xml_document& xml, std::vector<uint32_
 		cur_entry->end_frame = anim_node.attribute("end_frame").as_float();
 
 		cur_entry->cam_position.x = anim_node.attribute("cam_pos_x").as_float();
-		cur_entry->cam_position.y = anim_node.attribute("cam_pos_y").as_float();
 		cur_entry->cam_position.z = anim_node.attribute("cam_pos_z").as_float();
+		cur_entry->cam_position.y = anim_node.attribute("cam_pos_y").as_float();
 		cur_entry->cam_rotation.x = anim_node.attribute("cam_rot_x").as_float();
-		cur_entry->cam_rotation.y = anim_node.attribute("cam_rot_y").as_float();
 		cur_entry->cam_rotation.z = anim_node.attribute("cam_rot_z").as_float();
+		cur_entry->cam_rotation.y = anim_node.attribute("cam_rot_y").as_float();
 		cur_entry->aim_position.x = anim_node.attribute("aim_pos_x").as_float();
-		cur_entry->aim_position.y = anim_node.attribute("aim_pos_y").as_float();
 		cur_entry->aim_position.z = anim_node.attribute("aim_pos_z").as_float();
+		cur_entry->aim_position.y = anim_node.attribute("aim_pos_y").as_float();
 
-		cur_entry->aim_z_rotation = anim_node.attribute("aim_z_rotation").as_float();
+		cur_entry->twist = anim_node.attribute("twist").as_float();
 		cur_entry->z_near = anim_node.attribute("z_near").as_float();
 		cur_entry->z_far = anim_node.attribute("z_far").as_float();
 		cur_entry->fov = anim_node.attribute("fov").as_float();

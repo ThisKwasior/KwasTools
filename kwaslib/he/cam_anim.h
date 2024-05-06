@@ -6,6 +6,10 @@
 
 #include "mirage.h"
 
+#define CAM_ANIM_METADATA_FIXED_SIZE		4
+#define CAM_ANIM_METADATA_OFFSETS_OFFSET	(MIRAGE_INFO_SIZE+CAM_ANIM_METADATA_FIXED_SIZE)
+#define CAM_ANIM_ENTRY_FIXED_SIZE			80
+
 #define CAM_ANIM_TYPE_CAM_X		0
 #define CAM_ANIM_TYPE_CAM_Z		1
 #define CAM_ANIM_TYPE_CAM_Y		2
@@ -15,15 +19,11 @@
 #define CAM_ANIM_TYPE_AIM_X		6
 #define CAM_ANIM_TYPE_AIM_Z		7
 #define CAM_ANIM_TYPE_AIM_Y		8
-#define CAM_ANIM_TYPE_ROT_Z		9
+#define CAM_ANIM_TYPE_TWIST		9
 #define CAM_ANIM_TYPE_Z_NEAR	10
 #define CAM_ANIM_TYPE_Z_FAR		11
 #define CAM_ANIM_TYPE_FOV		12
 #define CAM_ANIM_TYPE_ASPECT	13
-
-#define CAM_ANIM_METADATA_FIXED_SIZE		4
-#define CAM_ANIM_METADATA_OFFSETS_OFFSET	28
-#define CAM_ANIM_ENTRY_FIXED_SIZE			80
 
 typedef struct
 {
@@ -34,7 +34,7 @@ typedef struct
 typedef struct
 {
 	uint32_t name_offset;
-	uint8_t flag1; /* 1 */
+	uint8_t rot_or_aim; /* 0 for rotation fields, 1 for aim+twist */
 	uint8_t flag2; /* 0 */
 	uint8_t flag3; /* 0 */
 	uint8_t flag4; /* 0 */
@@ -43,9 +43,9 @@ typedef struct
 	float end_frame;
 	uint32_t keyframe_set_count;
 	VEC3_FLOAT cam_position;
-	VEC3_FLOAT cam_rotation; /* Redundant with aim */
+	VEC3_FLOAT cam_rotation; /* Redundant with rot_or_aim=1 */
 	VEC3_FLOAT aim_position;
-	float aim_z_rotation;
+	float twist; /* aim z rotation */
 	float z_near;
 	float z_far;
 	float fov;

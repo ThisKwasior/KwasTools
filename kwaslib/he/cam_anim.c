@@ -13,7 +13,7 @@ static const char* CAM_ANIM_KF_SET_TYPES[] =
 	"AIM_POS_X",
 	"AIM_POS_Z",
 	"AIM_POS_Y",
-	"ROT_Z",
+	"TWIST",
 	"Z_NEAR",
 	"Z_FAR",
 	"Z_FOV",
@@ -115,7 +115,7 @@ void cam_anim_write_entries(FU_FILE* file, CAM_ANIM_FILE* cam)
 		CAM_ANIM_ENTRY* ce = &cam->entries[i];
 		
 		fu_write_u32(file, ce->name_offset, FU_BIG_ENDIAN);
-		fu_write_u8(file, ce->flag1);
+		fu_write_u8(file, ce->rot_or_aim);
 		fu_write_u8(file, ce->flag2);
 		fu_write_u8(file, ce->flag3);
 		fu_write_u8(file, ce->flag4);
@@ -125,16 +125,16 @@ void cam_anim_write_entries(FU_FILE* file, CAM_ANIM_FILE* cam)
 		fu_write_u32(file, ce->keyframe_set_count, FU_BIG_ENDIAN);
 
 		fu_write_f32(file, ce->cam_position.x, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->cam_position.y, FU_BIG_ENDIAN);
 		fu_write_f32(file, ce->cam_position.z, FU_BIG_ENDIAN);
+		fu_write_f32(file, ce->cam_position.y, FU_BIG_ENDIAN);
 		fu_write_f32(file, ce->cam_rotation.x, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->cam_rotation.y, FU_BIG_ENDIAN);
 		fu_write_f32(file, ce->cam_rotation.z, FU_BIG_ENDIAN);
+		fu_write_f32(file, ce->cam_rotation.y, FU_BIG_ENDIAN);
 		fu_write_f32(file, ce->aim_position.x, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->aim_position.y, FU_BIG_ENDIAN);
 		fu_write_f32(file, ce->aim_position.z, FU_BIG_ENDIAN);
+		fu_write_f32(file, ce->aim_position.y, FU_BIG_ENDIAN);
 
-		fu_write_f32(file, ce->aim_z_rotation, FU_BIG_ENDIAN);
+		fu_write_f32(file, ce->twist, FU_BIG_ENDIAN);
 		fu_write_f32(file, ce->z_near, FU_BIG_ENDIAN);
 		fu_write_f32(file, ce->z_far, FU_BIG_ENDIAN);
 		fu_write_f32(file, ce->fov, FU_BIG_ENDIAN);
@@ -166,7 +166,7 @@ void cam_anim_load_entries(FU_FILE* file, CAM_ANIM_FILE* cam)
 		CAM_ANIM_ENTRY* entry = &cam->entries[i];
 		
 		entry->name_offset = fu_read_u32(file, &status, FU_BIG_ENDIAN);
-		entry->flag1 = fu_read_u8(file, &status);
+		entry->rot_or_aim = fu_read_u8(file, &status);
 		entry->flag2 = fu_read_u8(file, &status);
 		entry->flag3 = fu_read_u8(file, &status);
 		entry->flag4 = fu_read_u8(file, &status);
@@ -176,16 +176,16 @@ void cam_anim_load_entries(FU_FILE* file, CAM_ANIM_FILE* cam)
 		entry->keyframe_set_count = fu_read_u32(file, &status, FU_BIG_ENDIAN);
 
 		entry->cam_position.x = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->cam_position.y = fu_read_f32(file, &status, FU_BIG_ENDIAN);
 		entry->cam_position.z = fu_read_f32(file, &status, FU_BIG_ENDIAN);
+		entry->cam_position.y = fu_read_f32(file, &status, FU_BIG_ENDIAN);
 		entry->cam_rotation.x = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->cam_rotation.y = fu_read_f32(file, &status, FU_BIG_ENDIAN);
 		entry->cam_rotation.z = fu_read_f32(file, &status, FU_BIG_ENDIAN);
+		entry->cam_rotation.y = fu_read_f32(file, &status, FU_BIG_ENDIAN);
 		entry->aim_position.x = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->aim_position.y = fu_read_f32(file, &status, FU_BIG_ENDIAN);
 		entry->aim_position.z = fu_read_f32(file, &status, FU_BIG_ENDIAN);
+		entry->aim_position.y = fu_read_f32(file, &status, FU_BIG_ENDIAN);
 
-		entry->aim_z_rotation = fu_read_f32(file, &status, FU_BIG_ENDIAN);
+		entry->twist = fu_read_f32(file, &status, FU_BIG_ENDIAN);
 		entry->z_near = fu_read_f32(file, &status, FU_BIG_ENDIAN);
 		entry->z_far = fu_read_f32(file, &status, FU_BIG_ENDIAN);
 		entry->fov = fu_read_f32(file, &status, FU_BIG_ENDIAN);
@@ -235,7 +235,7 @@ void cam_anim_print_entries(CAM_ANIM_FILE* cam)
 		printf("\tEntry[%u/%u]\n", i+1, cam->metadata.anim_count);
 		printf("\t\tName offset: 0x%x | %s\n", cam->entries[i].name_offset,
 											   cam->entries[i].name);
-		printf("\t\tFlag1: %u\n", cam->entries[i].flag1);
+		printf("\t\tRotation or Aim: %u\n", cam->entries[i].rot_or_aim);
 		printf("\t\tFlag2: %u\n", cam->entries[i].flag2);
 		printf("\t\tFlag3: %u\n", cam->entries[i].flag3);
 		printf("\t\tFlag4: %u\n", cam->entries[i].flag4);
@@ -245,16 +245,16 @@ void cam_anim_print_entries(CAM_ANIM_FILE* cam)
 		printf("\t\tKeyframe set count: %u\n", cam->entries[i].keyframe_set_count);
 
 		printf("\t\tCam pos: (%f,%f,%f)\n", cam->entries[i].cam_position.x,
-											cam->entries[i].cam_position.y,
-											cam->entries[i].cam_position.z);
+											cam->entries[i].cam_position.z,
+											cam->entries[i].cam_position.y);
 		printf("\t\tCam rot: (%f,%f,%f)\n", cam->entries[i].cam_rotation.x,
-											cam->entries[i].cam_rotation.y,
-											cam->entries[i].cam_rotation.z);
+											cam->entries[i].cam_rotation.z,
+											cam->entries[i].cam_rotation.y);
 		printf("\t\tAim pos: (%f,%f,%f)\n", cam->entries[i].aim_position.x,
-											cam->entries[i].aim_position.y,
-											cam->entries[i].aim_position.z);
+											cam->entries[i].aim_position.z,
+											cam->entries[i].aim_position.y);
 
-		printf("\t\tAim z rot: %f\n", cam->entries[i].aim_z_rotation);
+		printf("\t\tAim z rot: %f\n", cam->entries[i].twist);
 		printf("\t\tZ near: %f\n", cam->entries[i].z_near);
 		printf("\t\tZ far: %f\n", cam->entries[i].z_far);
 		printf("\t\tFOV: %f\n", cam->entries[i].fov);

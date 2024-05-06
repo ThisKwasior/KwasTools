@@ -27,6 +27,8 @@ set(KWASTOOLS_PROGRAMS
 	
 	#${PROJECT_SOURCE_DIR}/src/pcmodeltool.cpp
 	${PROJECT_SOURCE_DIR}/src/he_anim_tool.cpp
+	
+	${PROJECT_SOURCE_DIR}/src/nw4r_misc_to_he_xml.cpp
 
 	${PROJECT_SOURCE_DIR}/src/platinum_dat_tool.c
 	${PROJECT_SOURCE_DIR}/src/platinum_wta_wtp_tool.c

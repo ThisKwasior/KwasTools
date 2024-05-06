@@ -417,6 +417,9 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 				cur_row->offset = fu_tell(data_table_fu);
 				cur_row->size = utf_fu->size;
 				fu_write_data(data_table_fu, (uint8_t*)utf_fu->buf, utf_fu->size);
+				
+				//const uint64_t bound_add = bound_calc_leftover(16, fu_tell(data_table_fu));
+				//fu_add_to_buf_size(data_table_fu, bound_add);
 
 				fu_close(utf_fu);
 				free(utf_fu);
@@ -429,6 +432,9 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 				cur_row->offset = fu_tell(data_table_fu);
 				cur_row->size = awb_fu->size;
 				fu_write_data(data_table_fu, (uint8_t*)awb_fu->buf, awb_fu->size);
+				
+				//const uint64_t bound_add = bound_calc_leftover(16, fu_tell(data_table_fu));
+				//fu_add_to_buf_size(data_table_fu, bound_add);
 
 				fu_close(awb_fu);
 				free(awb_fu);

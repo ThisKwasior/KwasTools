@@ -51,7 +51,7 @@ typedef struct
 	Functions
 */
 
-AWB_FILE* awb_read_file(FU_FILE* awb);
+AWB_FILE* awb_read_file(FU_FILE* awb, const uint32_t offset);
 AWB_FILE* awb_parse_directory(const char* dir);
 
 void awb_extract_to_folder(AWB_FILE* afs2, PU_STRING* dir);

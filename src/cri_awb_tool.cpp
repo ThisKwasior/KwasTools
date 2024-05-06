@@ -67,7 +67,7 @@ int main(int argc, char** argv)
 		{
 			FU_FILE awb = {0};
 			fu_open_file(argv[1], 1, &awb);
-			AWB_FILE* afs2 = awb_read_file(&awb);
+			AWB_FILE* afs2 = awb_read_file(&awb, fu_tell(&awb));
 			awb_print(afs2);
 
 			/* Append XML extension */

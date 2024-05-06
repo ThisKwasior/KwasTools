@@ -26,6 +26,10 @@ set(KWASLIB_MODULES_SOURCES
 	${PROJECT_SOURCE_DIR}/cri/acb_command.c
 	${PROJECT_SOURCE_DIR}/cri/utf.c
 	${PROJECT_SOURCE_DIR}/cri/awb.c
+	
+	${PROJECT_SOURCE_DIR}/nw4r/brres.c
+	${PROJECT_SOURCE_DIR}/nw4r/srt0.c
+	${PROJECT_SOURCE_DIR}/nw4r/scn0.c
 
 	${PROJECT_SOURCE_DIR}/platinum/dat.c
 	${PROJECT_SOURCE_DIR}/platinum/wmb4.c

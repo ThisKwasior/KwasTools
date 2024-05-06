@@ -202,7 +202,11 @@ CRI_UTF_RECORD cri_utf_read_by_type(FU_FILE* cri, CRI_UTF_FILE* utf, CRI_UTF_COL
 			else if(strncmp((char*)record.data.vl, AWB_MAGIC, 4) == 0)
 			{
 				printf("Found AWB at 0x%llx\n", fu_tell(cri));
-				record.awb = awb_read_file(cri);
+				FU_FILE* internal_awb = fu_create_mem_file_data(record.data.vl, record.size);
+				record.awb = awb_read_file(internal_awb, fu_tell(cri));
+				awb_print(record.awb);
+				fu_close(internal_awb);
+				free(internal_awb);
 			}
 			else if(strncmp("Command", col->name, 7) == 0)
 			{
