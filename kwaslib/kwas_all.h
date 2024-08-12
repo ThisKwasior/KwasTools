@@ -22,6 +22,8 @@ extern "C" {
 #include <kwaslib/core/math/half.h>
 #include <kwaslib/core/math/vec.h>
 
+#include <kwaslib/core/data/dbl_link_list.h>
+
 /* 
 	CRIWARE
 */

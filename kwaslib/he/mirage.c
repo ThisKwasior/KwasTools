@@ -4,42 +4,39 @@
 
 void mirage_read_header(FU_FILE* mirage, MIRAGE_HEADER* header)
 {
-	uint8_t status = 0;
 	fu_seek(mirage, 0, FU_SEEK_SET);
-	header->file_size = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	header->root_node_type = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	header->root_node_size = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	header->root_node_offset = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	header->footer_offset = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	header->file_end_offset = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
+	header->file_size = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	header->root_node_type = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	header->root_node_size = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	header->root_node_offset = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	header->footer_offset = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	header->file_end_offset = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
 }
 
 void mirage_read_info(FU_FILE* mirage, MIRAGE_INFO* info)
 {
-	uint8_t status = 0;
 	fu_seek(mirage, MIRAGE_HEADER_SIZE, FU_SEEK_SET);
-	info->metadata_offset = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	info->metadata_size = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	info->keyframes_offset = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	info->keyframes_size = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	info->string_table_offset = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
-	info->string_table_size = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
+	info->metadata_offset = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	info->metadata_size = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	info->keyframes_offset = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	info->keyframes_size = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	info->string_table_offset = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
+	info->string_table_size = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
 }
 
 MIRAGE_KEYFRAME* mirage_read_keyframes(FU_FILE* mirage, MIRAGE_INFO* info)
 {
-	const uint32_t kfs_count = info->keyframes_size/8;
-	MIRAGE_KEYFRAME* kfs = (MIRAGE_KEYFRAME*)calloc(kfs_count, sizeof(MIRAGE_KEYFRAME));
+	const uint32_t kfs_count = info->keyframes_size/MIRAGE_KEYFRAME_SIZE;
+	MIRAGE_KEYFRAME* kfs = (MIRAGE_KEYFRAME*)calloc(kfs_count, MIRAGE_KEYFRAME_SIZE);
 	
 	if(kfs == NULL) return NULL;
 	
 	fu_seek(mirage, MIRAGE_HEADER_SIZE + info->keyframes_offset, FU_SEEK_SET);
 	
-	uint8_t status = 0;
 	for(uint32_t i = 0; i != kfs_count; ++i)
 	{
-		kfs[i].index = fu_read_f32(mirage, &status, FU_BIG_ENDIAN);
-		kfs[i].value = fu_read_f32(mirage, &status, FU_BIG_ENDIAN);
+		kfs[i].index = fu_read_f32(mirage, NULL, FU_BIG_ENDIAN);
+		kfs[i].value = fu_read_f32(mirage, NULL, FU_BIG_ENDIAN);
 	}
 	
 	return kfs;
@@ -51,26 +48,23 @@ char* mirage_read_string_table(FU_FILE* mirage, MIRAGE_INFO* info)
 	
 	if(string_table == NULL) return NULL;
 	
-	uint64_t bytes_read = 0;
 	fu_seek(mirage, MIRAGE_HEADER_SIZE + info->string_table_offset, FU_SEEK_SET);
-	fu_read_data(mirage, (uint8_t*)string_table, info->string_table_size, &bytes_read);
+	fu_read_data(mirage, (uint8_t*)string_table, info->string_table_size, NULL);
 	
 	return string_table;
 }
 
 void mirage_read_footer(FU_FILE* mirage, MIRAGE_HEADER* header, MIRAGE_FOOTER* footer)
 {
-	uint8_t status = 0;
-	
 	fu_seek(mirage, header->footer_offset, FU_SEEK_SET);
-	footer->offset_count = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
+	footer->offset_count = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
 	footer->offsets = (uint32_t*)calloc(sizeof(uint32_t), footer->offset_count);
 	
 	if(footer->offsets == NULL) return;
 	
 	for(uint32_t i = 0; i != footer->offset_count; ++i)
 	{
-		footer->offsets[i] = fu_read_u32(mirage, &status, FU_BIG_ENDIAN);
+		footer->offsets[i] = fu_read_u32(mirage, NULL, FU_BIG_ENDIAN);
 	}
 }
 
@@ -102,7 +96,7 @@ void mirage_write_keyframes(FU_FILE* mirage, MIRAGE_INFO* info, MIRAGE_KEYFRAME*
 {
 	fu_seek(mirage, MIRAGE_HEADER_SIZE + info->keyframes_offset, FU_SEEK_SET);
 	
-	const uint32_t kfs_count = info->keyframes_size/8;
+	const uint32_t kfs_count = info->keyframes_size/MIRAGE_KEYFRAME_SIZE;
 	
 	for(uint32_t i = 0; i != kfs_count; ++i)
 	{

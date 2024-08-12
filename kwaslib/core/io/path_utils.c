@@ -176,7 +176,7 @@ int pu_create_dir_char(const char* path)
 #if defined(__WIN32__) || defined(__MINGW32__)
     return mkdir(path);
 #else
-    return mkdir(path, S_IFDIR);
+    return mkdir(path, 0766);
 #endif
 }
 

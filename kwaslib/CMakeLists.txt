@@ -15,6 +15,7 @@ set(KWASLIB_CORE_SOURCES
 	${PROJECT_SOURCE_DIR}/core/math/boundary.c
 	${PROJECT_SOURCE_DIR}/core/math/half.c
 	${PROJECT_SOURCE_DIR}/core/math/vec.c
+	${PROJECT_SOURCE_DIR}/core/data/dbl_link_list.c
 	)
 
 set(KWASLIB_MODULES_SOURCES
