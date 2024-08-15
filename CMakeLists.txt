@@ -34,7 +34,8 @@ set(KWASTOOLS_PROGRAMS
 	${PROJECT_SOURCE_DIR}/src/platinum_wta_wtp_tool.c
 	${PROJECT_SOURCE_DIR}/src/platinum_wtb_tool.c
 	#${PROJECT_SOURCE_DIR}/src/platinum_wmb4_tool.cpp
-	${PROJECT_SOURCE_DIR}/src/platinum_misc_dat2dds2dat.c
+	#${PROJECT_SOURCE_DIR}/src/platinum_misc_dat2dds2dat.c
+	#${PROJECT_SOURCE_DIR}/src/platinum_dat_test.c
 	)
 
 set(KWASTOOLS_UTILS

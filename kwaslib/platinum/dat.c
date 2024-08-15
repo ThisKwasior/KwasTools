@@ -3,470 +3,466 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <kwaslib/core/crypto/crc32.h>
 #include <kwaslib/core/math/boundary.h>
 
-DAT_FILE* dat_parse_dat(FU_FILE* file, const uint8_t fu_endian)
+DAT_FILE* dat_parse(FU_FILE* file, const uint8_t fu_endian)
 {
 	DAT_FILE* dat = (DAT_FILE*)calloc(1, sizeof(DAT_FILE));
-	if(dat == NULL)
-	{
-		printf("Could not allocate dat file structure\n");
-		return NULL;
-	}
 	
-	/* Reading the magic */
-	uint64_t bytes_read = 0;
-	uint8_t status = 0;
-	fu_read_data(file, &dat->header.magic[0], 4, &bytes_read);
+	if(dat == NULL) return NULL;
 	
-	if(strncmp("DAT\0", (const char*)&dat->header.magic[0], 4) != 0)
+	/* Reading magic */
+	fu_read_data(file, &dat->header.magic[0], 4, NULL);
+	
+	/* Check if we have a DAT\0 file */
+	if(strncmp(DAT_MAGIC, (const char*)&dat->header.magic[0], 4) != 0)
 	{
-		printf("File is not a valid DAT file\n");
 		free(dat);
 		return NULL;
 	}
 	
 	/* Reading the rest of the header */
-	dat->header.files_amount = fu_read_u32(file, &status, fu_endian);
-	dat->header.positions_offset = fu_read_u32(file, &status, fu_endian);
-	dat->header.extensions_offset = fu_read_u32(file, &status, fu_endian);
-	dat->header.names_offset = fu_read_u32(file, &status, fu_endian);
-	dat->header.sizes_offset = fu_read_u32(file, &status, fu_endian);
-	dat->header.hashes_offset = fu_read_u32(file, &status, fu_endian);
-	dat->header.unk1C = fu_read_u32(file, &status, fu_endian);
+	dat->header.file_count = fu_read_u32(file, NULL, fu_endian);
+	dat->header.positions_offset = fu_read_u32(file, NULL, fu_endian);
+	dat->header.extensions_offset = fu_read_u32(file, NULL, fu_endian);
+	dat->header.names_offset = fu_read_u32(file, NULL, fu_endian);
+	dat->header.sizes_offset = fu_read_u32(file, NULL, fu_endian);
+	dat->header.hashes_offset = fu_read_u32(file, NULL, fu_endian);
+	dat->header.unk1C = fu_read_u32(file, NULL, fu_endian);
 	
-	/* Allocating entries */
-	dat->entries = (DAT_FILE_ENTRY*)calloc(1, dat->header.files_amount*sizeof(DAT_FILE_ENTRY));
-	if(dat->entries == NULL)
-	{
-		printf("Could not allocate entries\n");
-		free(dat);
-		return NULL;
-	}
-	
-	/* Reading the names size */
+	/* Reading file entries */
 	fu_seek(file, dat->header.names_offset, FU_SEEK_SET);
+	dat->entry_name_size = fu_read_u32(file, NULL, fu_endian);
 	
-	dat->entry_name_size = fu_read_u32(file, &status, fu_endian);
-	
-	/* Reading entries */
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
 	{
-		/* Position */
-		fu_seek(file, dat->header.positions_offset+(i*4), FU_SEEK_SET);
-		dat->entries[i].position = fu_read_u32(file, &status, fu_endian);
+		uint32_t position = 0;
+		uint8_t extension[4] = {0};
+		uint8_t* name = NULL;
+		uint32_t size = 0;
+		uint8_t* data = NULL;
 		
-		/* Extension */
-		fu_seek(file, dat->header.extensions_offset+(i*4), FU_SEEK_SET);
-		fu_read_data(file, (uint8_t*)&dat->entries[i].extension[0], 4, &bytes_read);
+		fu_seek(file, dat->header.positions_offset + (i*4), FU_SEEK_SET);
+		position = fu_read_u32(file, NULL, fu_endian);
 		
-		/* Names */
-		fu_seek(file, dat->header.names_offset+4+(i*dat->entry_name_size), FU_SEEK_SET);
-		dat->entries[i].name = (uint8_t*)calloc(1, dat->entry_name_size);
-		fu_read_data(file, dat->entries[i].name, dat->entry_name_size, &bytes_read);
+		fu_seek(file, dat->header.extensions_offset + (i*4), FU_SEEK_SET);
+		fu_read_data(file, &extension[0], 4, NULL);
 		
-		/* Sizes */
-		fu_seek(file, dat->header.sizes_offset+(i*4), FU_SEEK_SET);
-		dat->entries[i].size = fu_read_u32(file, &status, fu_endian);
+		fu_seek(file, dat->header.names_offset + 4 + (i*dat->entry_name_size), FU_SEEK_SET);
+		name = (uint8_t*)calloc(1, dat->entry_name_size);
+		fu_read_data(file, &name[0], dat->entry_name_size, NULL);
 		
-		/* Data */
-		fu_seek(file, dat->entries[i].position, FU_SEEK_SET);
-		dat->entries[i].data = (uint8_t*)calloc(1, dat->entries[i].size);
-		fu_read_data(file, dat->entries[i].data, dat->entries[i].size, &bytes_read);
+		fu_seek(file, dat->header.sizes_offset + (i*4), FU_SEEK_SET);
+		size = fu_read_u32(file, NULL, fu_endian);
+		
+		fu_seek(file, position, FU_SEEK_SET);
+		data = (uint8_t*)calloc(1, size);
+		fu_read_data(file, &data[0], size, NULL);
+		
+		DAT_FILE_ENTRY* entry = dat_entry_from_data(position, &extension[0],
+													dat->entry_name_size, name,
+													size, data);
+													
+		dat->entries = dat_append_entry(dat->entries, entry);
+		
+		free(name);
+		free(data);
 	}
 	
-	/* Hash info */
+	/* Reading hashes */
 	fu_seek(file, dat->header.hashes_offset, FU_SEEK_SET);
-	dat->prehash_shift = fu_read_u32(file, &status, fu_endian);
-	dat->bucket_offsets_offset = fu_read_u32(file, &status, fu_endian);
-	dat->hashes_offset = fu_read_u32(file, &status, fu_endian);
-	dat->indices_offset = fu_read_u32(file, &status, fu_endian);
+	dat->hashes.prehash_shift = fu_read_u32(file, NULL, fu_endian);
+	dat->hashes.bucket_offset = fu_read_u32(file, NULL, fu_endian);
+	dat->hashes.hashes_offset = fu_read_u32(file, NULL, fu_endian);
+	dat->hashes.indices_offset = fu_read_u32(file, NULL, fu_endian);
+	dat->hashes.bucket_size = dat_calc_bucket_size(dat->hashes.prehash_shift);
 	
-	dat->bucket_offsets_size = (dat->hashes_offset - dat->bucket_offsets_offset)/2;
-	
-	/* Bucket offsets */
-	fu_seek(file, dat->header.hashes_offset+dat->bucket_offsets_offset, FU_SEEK_SET);
-	dat->bucket_offsets = (uint16_t*)calloc(1, dat->bucket_offsets_size*2);
-	for(uint32_t i = 0; i != dat->bucket_offsets_size; ++i)
+	fu_seek(file, dat->header.hashes_offset + dat->hashes.bucket_offset, FU_SEEK_SET);
+	dat->hashes.bucket = (uint16_t*)calloc(dat->hashes.bucket_size, sizeof(uint16_t));
+	for(uint32_t i = 0; i != dat->hashes.bucket_size; ++i)
 	{
-		dat->bucket_offsets[i] = fu_read_u16(file, &status, fu_endian);
+		dat->hashes.bucket[i] = fu_read_u16(file, NULL, fu_endian);
 	}
 	
-	/* Indices */
-	fu_seek(file, dat->header.hashes_offset+dat->indices_offset, FU_SEEK_SET);
-	dat->indices = (uint16_t*)calloc(1, dat->header.files_amount*2);
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
+	fu_seek(file, dat->header.hashes_offset + dat->hashes.hashes_offset, FU_SEEK_SET);
+	dat->hashes.hashes = (DAT_HASH*)calloc(dat->header.file_count, sizeof(DAT_HASH));
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
 	{
-		dat->indices[i] = fu_read_u16(file, &status, fu_endian);
+		dat->hashes.hashes[i].index = i;
+		dat->hashes.hashes[i].hash = fu_read_u32(file, NULL, fu_endian);
 	}
 	
-	/* Hashes */
-	fu_seek(file, dat->header.hashes_offset+dat->hashes_offset, FU_SEEK_SET);
-	dat->hashes = (uint32_t*)calloc(1, dat->header.files_amount*4);
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
+	fu_seek(file, dat->header.hashes_offset + dat->hashes.indices_offset, FU_SEEK_SET);
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
 	{
-		//fu_read_data(file, (uint8_t*)&dat->hashes[dat->indices[i]], 4, &bytes_read);
-		dat->hashes[dat->indices[i]] = fu_read_u32(file, &status, fu_endian);
+		dat->hashes.hashes[i].pos = fu_read_u16(file, NULL, fu_endian);
 	}
 	
-	return dat;
-}
-
-DAT_FILE* dat_parse_directory(const char* dir, const uint8_t do_align)
-{
-	DL_DIR_LIST dirlist = {0};
-	dl_parse_directory(dir, &dirlist);
-	
-	DAT_FILE* dat = (DAT_FILE*)calloc(1, sizeof(DAT_FILE));
-	if(dat == NULL)
-	{
-		printf("Could not allocate dat file structure\n");
-		return NULL;
-	}
-	
-	strncpy((char*)dat->header.magic, "DAT\0", 4);
-	
-	dat->header.files_amount = dirlist.file_count;
-	
-	for(uint32_t i = 0; i != dirlist.size; ++i)
-	{
-		if(dirlist.entries[i].type == DL_TYPE_FILE)
-		{
-			PU_STRING temp_file_path = {0};
-			pu_path_to_string(&dirlist.entries[i].path, &temp_file_path);
-			if(dat->entry_name_size < temp_file_path.s)
-			{
-				dat->entry_name_size = temp_file_path.s;
-			}
-			pu_free_string(&temp_file_path);
-		}
-	}
-	
-	/* For NULL terminator */
-	dat->entry_name_size += 1;
-	
-	/* 
-		Allocate and populate DAT entries 
-	*/
-	dat->entries = (DAT_FILE_ENTRY*)calloc(dat->header.files_amount, sizeof(DAT_FILE_ENTRY));
-	
-	uint32_t dir_it = 0;
-	for(uint32_t i = 0; i != dirlist.size; ++i)
-	{
-		if(dirlist.entries[i].type == DL_TYPE_FILE)
-		{
-			/* Preparing file path */
-			PU_STRING temp_file_path = {0};
-			pu_path_to_string(&dirlist.entries[i].path, &temp_file_path);
-			
-			PU_STRING file_dir_path = {0};
-			pu_path_to_string(&dirlist.path, &file_dir_path);
-			pu_insert_char("/", 1, -1, &file_dir_path);
-			pu_insert_char(temp_file_path.p, temp_file_path.s, -1, &file_dir_path);
-			
-			/* Open the file */
-			FU_FILE temp_file = {0};
-			fu_open_file(file_dir_path.p, 1, &temp_file);
-			
-			/* load the data to DAT entry */
-			dat->entries[dir_it].size = temp_file.size;
-			
-			memcpy(dat->entries[dir_it].extension, dirlist.entries[i].path.ext.p, 3);
-			
-			dat->entries[dir_it].name = (uint8_t*)calloc(1, dat->entry_name_size);
-			memcpy(dat->entries[dir_it].name, temp_file_path.p, temp_file_path.s);
-			
-			uint64_t bytes_read = 0;
-			dat->entries[dir_it].data = (uint8_t*)calloc(1, dat->entries[dir_it].size);
-			fu_read_data(&temp_file, dat->entries[dir_it].data,
-						 dat->entries[dir_it].size, &bytes_read);
-			
-			/* Freeing strings and closing the file */
-			pu_free_string(&temp_file_path);
-			pu_free_string(&file_dir_path);
-			fu_close(&temp_file);
-			
-			/* Next DAT entry */
-			dir_it += 1;
-		}
-	}
-	
-	/* 
-		Figure out offsets in the header
-	*/
-	
-	/* Constant. Always after the header. */
-	/* Header is 0x20 bytes.*/
-	/* Positions are 32bit unsigned integers */
-	dat->header.positions_offset = 0x20;
-	
-	/* Extensions are 3 characters long in 4 byte arrays */
-	/* Position offset + positions*files amount */
-	dat->header.extensions_offset = dat->header.positions_offset
-									+ (4*dat->header.files_amount);
-	
-	/* Names have a fixed size, the longest file name + NULL terminator */
-	/* The first unsigned int in names sections is the size */
-	/* Extensions offset + extensions*files amount */
-	dat->header.names_offset = dat->header.extensions_offset
-							   + (4*dat->header.files_amount);
-
-	/* Sizes are 32bit unsigned integers */
-	dat->header.sizes_offset = dat->header.names_offset
-							   + (dat->entry_name_size*dat->header.files_amount)
-							   + 4;
-							  
-	/* Hashes is a section with its own sections */
-	/* First is the 0x10 header with a unsigned 32bit shift value and 3 offsets */
-	dat->header.hashes_offset = dat->header.sizes_offset
-							    + (4*dat->header.files_amount);
-								
-	/*
-		Generate hashes
-	*/
-	dat_gen_hash_data(dat);
-	
-	/*
-		Figure out file positions.
-		Files are aligned to 4096 byte boundaries.
-	*/
-	const uint32_t temp_data_pos = dat->header.hashes_offset
-								   + dat->indices_offset
-								   + 2*dat->header.files_amount;
-	
-	uint64_t bytes_to_pad = 0;
-	if(do_align) bytes_to_pad = bound_calc_leftover(DAT_BLOCK_SIZE, temp_data_pos);
-	
-	const uint32_t first_data_pos = temp_data_pos + bytes_to_pad;
-	uint32_t cur_data_pos = first_data_pos;
-	
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
-	{
-		dat->entries[i].position = cur_data_pos;
-		
-		cur_data_pos += dat->entries[i].size;
-		if(do_align) bytes_to_pad = bound_calc_leftover(DAT_BLOCK_SIZE, cur_data_pos);
-		cur_data_pos += bytes_to_pad;
-	}
-	
-	dl_free_list(&dirlist);
-
 	return dat;
 }
 
 FU_FILE* dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian)
 {
-	FU_FILE* file = (FU_FILE*)calloc(1, sizeof(FU_FILE));
+	FU_FILE* file = fu_alloc_file();
 	fu_create_mem_file(file);
 	
-	//fu_write_data(file, (const uint8_t*)&dat->header, sizeof(DAT_HEADER));
 	fu_write_data(file, &dat->header.magic[0], 4);
-	fu_write_u32(file, dat->header.files_amount, fu_endian);
+	fu_write_u32(file, dat->header.file_count, fu_endian);
 	fu_write_u32(file, dat->header.positions_offset, fu_endian);
 	fu_write_u32(file, dat->header.extensions_offset, fu_endian);
 	fu_write_u32(file, dat->header.names_offset, fu_endian);
 	fu_write_u32(file, dat->header.sizes_offset, fu_endian);
 	fu_write_u32(file, dat->header.hashes_offset, fu_endian);
 	fu_write_u32(file, dat->header.unk1C, fu_endian);
-
+	
+	fu_change_buf_size(file, dat->header.hashes_offset);
+	
 	/* Write positions */
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
-		fu_write_u32(file, dat->entries[i].position, fu_endian);
-	
-	/* Write extensions */
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
-		fu_write_data(file, dat->entries[i].extension, 4);
-	
-	/* Write names */
-	fu_write_u32(file, dat->entry_name_size, fu_endian);
-	
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
-		fu_write_data(file, dat->entries[i].name, dat->entry_name_size);
-	
-	/* Write sizes */
-	fu_change_buf_size(file, dat->header.sizes_offset);
-	fu_seek(file, 0, FU_SEEK_END);
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
-		fu_write_u32(file, dat->entries[i].size, fu_endian);
-	
-	/* Write hash info */
-	fu_write_u32(file, dat->prehash_shift, fu_endian);
-	fu_write_u32(file, dat->bucket_offsets_offset, fu_endian);
-	fu_write_u32(file, dat->hashes_offset, fu_endian);
-	fu_write_u32(file, dat->indices_offset, fu_endian);
-
-	/* Bucket offsets */
-	for(uint32_t i = 0; i != dat->bucket_offsets_size; ++i)
-		fu_write_u16(file, dat->bucket_offsets[i], fu_endian);
-	
-	/* Hashes */
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
-		fu_write_u32(file, dat->hashes[i], fu_endian);
-		//fu_write_u32(file, dat->hashes[dat->indices[i]], FU_HOST_ENDIAN);
-	
-	/* Indices */
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
-		fu_write_u16(file, dat->indices[i], fu_endian);
-	
-	/* File data */
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
+	fu_seek(file, dat->header.positions_offset, FU_SEEK_SET);
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
 	{
-		const int64_t padding = dat->entries[i].position - fu_tell(file);
-		fu_add_to_buf_size(file, padding);
-		fu_seek(file, 0, FU_SEEK_END);
-		fu_write_data(file, dat->entries[i].data, dat->entries[i].size);
+		DAT_FILE_ENTRY* entry = dat_get_entry_node(dat->entries, i);
+		fu_write_u32(file, entry->position, fu_endian);
 	}
 	
-	/* Pad the end so that it's aligned to 4096 bytes */
-	/*const int64_t padding = 4096 - (fu_tell(&file)%4096);*/
-	const int64_t padding = bound_calc_leftover(DAT_BLOCK_SIZE, fu_tell(file));
-	fu_add_to_buf_size(file, padding);
+	/* Write extensions */
+	fu_seek(file, dat->header.extensions_offset, FU_SEEK_SET);
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
+	{
+		DAT_FILE_ENTRY* entry = dat_get_entry_node(dat->entries, i);
+		fu_write_data(file, &entry->extension[0], 4);
+	}
+	
+	/* Write names */
+	fu_seek(file, dat->header.names_offset, FU_SEEK_SET);
+	fu_write_u32(file, dat->entry_name_size, fu_endian);
+	
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
+	{
+		fu_seek(file, dat->header.names_offset + 4 + (i*dat->entry_name_size), FU_SEEK_SET);
+		DAT_FILE_ENTRY* entry = dat_get_entry_node(dat->entries, i);
+		fu_write_data(file, entry->name, strlen((const char*)entry->name));
+	}
+	
+	/* Write sizes */
+	fu_seek(file, dat->header.sizes_offset, FU_SEEK_SET);
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
+	{
+		DAT_FILE_ENTRY* entry = dat_get_entry_node(dat->entries, i);
+		fu_write_u32(file, entry->size, fu_endian);
+	}
+	
+	/* Write hashes */
+	fu_seek(file, dat->header.hashes_offset, FU_SEEK_SET);
+	fu_write_u32(file, dat->hashes.prehash_shift, fu_endian);
+	fu_write_u32(file, dat->hashes.bucket_offset, fu_endian);
+	fu_write_u32(file, dat->hashes.hashes_offset, fu_endian);
+	fu_write_u32(file, dat->hashes.indices_offset, fu_endian);
+	
+	fu_seek(file, dat->header.hashes_offset + dat->hashes.bucket_offset, FU_SEEK_SET);
+	for(uint32_t i = 0; i != dat->hashes.bucket_size; ++i)
+		fu_write_u16(file, dat->hashes.bucket[i], fu_endian);
+	
+	fu_seek(file, dat->header.hashes_offset + dat->hashes.hashes_offset, FU_SEEK_SET);
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
+		fu_write_u32(file, dat->hashes.hashes[i].hash, fu_endian);
+	
+	fu_seek(file, dat->header.hashes_offset + dat->hashes.hashes_offset, FU_SEEK_SET);
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
+		fu_write_u32(file, dat->hashes.hashes[dat->hashes.order[i]].hash, fu_endian);
+	
+	fu_seek(file, dat->header.hashes_offset + dat->hashes.indices_offset, FU_SEEK_SET);
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
+		fu_write_u16(file, dat->hashes.hashes[dat->hashes.order[i]].index, fu_endian);
+	
+	/* Writing file data */
+	DAT_FILE_ENTRY* last_entry = dat_get_entry_node(dat->entries, -1);
+	fu_change_buf_size(file, last_entry->position);
+	
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
+	{
+		DAT_FILE_ENTRY* entry = dat_get_entry_node(dat->entries, i);
+		fu_seek(file, entry->position, FU_SEEK_SET);
+		fu_write_data(file, entry->data, entry->size);
+	}
 	
 	return file;
 }
 
-void dat_gen_hash_data(DAT_FILE* dat)
+void dat_update(DAT_FILE* dat, const uint32_t alignment)
 {
-	dat->prehash_shift = dat_calc_prehash_shift(dat->header.files_amount);
-	dat->bucket_offsets_size = 1 << (31 - dat->prehash_shift);
-
-	dat->bucket_offsets = (uint16_t*)calloc(dat->bucket_offsets_size, 2);
-	dat->hashes = (uint32_t*)calloc(dat->header.files_amount, 4);
-	dat->indices = (uint16_t*)calloc(dat->header.files_amount, 2);
-
-	memset(dat->bucket_offsets, 0xFF, dat->bucket_offsets_size*2);
-
-	/* Hash filenames */
-	for(uint32_t i = 0; i != dat->header.files_amount; ++i)
-	{
-		dat->hashes[i] = dat_hash_filename(dat->entries[i].name);
-		dat->indices[i] = i;
-	}
-
-	/* Sort by hash nibbles */
-	dat_sort_hashes(dat->hashes, dat->indices,
-							 dat->header.files_amount);
-
-	/* Generating bucket list */
-	dat_gen_bucket_list(dat->header.files_amount, dat->bucket_offsets,
-								 dat->hashes, dat->prehash_shift);
-
-	/* Set offset variables */
-	dat->bucket_offsets_offset = 0x10; /* Constant */
-	dat->hashes_offset = dat->bucket_offsets_offset + dat->bucket_offsets_size*2;
-	dat->indices_offset = dat->hashes_offset + dat->header.files_amount*4;
+	if(dat->entries == NULL) return;
+	
+	dat_free_hashes(&dat->hashes);
+	
+	dat->hashes = dat_generate_hashes(dat->entries);
+	dat->entry_name_size = dat_get_max_name_size(dat->entries);
+	dat->header = dat_generate_header(dat->entries, &dat->hashes, dat->entry_name_size);
+	dat_generate_positions(&dat->header, &dat->hashes, dat->entries, alignment);
 }
 
-uint32_t dat_hash_filename(const uint8_t* name)
+DAT_FILE_ENTRY* dat_entry_from_data(const uint32_t position,
+									const uint8_t* extension,
+									const uint32_t name_size,
+									const uint8_t* name,
+									const uint32_t size,
+									const uint8_t* data)
 {
-	return crc32_encode(name, strlen((const char*)name)) & 0x7FFFFFFF;
+	DAT_FILE_ENTRY* entry = (DAT_FILE_ENTRY*)calloc(1, sizeof(DAT_FILE_ENTRY));
+	
+	entry->position = position;
+	
+	memcpy(&entry->extension[0], extension, 4);
+	
+	entry->name = (uint8_t*)calloc(1, name_size);
+	memcpy(&entry->name[0], name, name_size);
+	
+	entry->size = size;
+	
+	entry->data = (uint8_t*)calloc(1, size);
+	memcpy(&entry->data[0], data, size);
+	
+	return entry;
 }
 
-uint32_t dat_bit_count(uint32_t value)
+DAT_HEADER dat_generate_header(DBL_LIST_NODE* entries,
+							   DAT_HASHES* hashes,
+							   const uint32_t entry_name_size)
 {
-	uint32_t count = 0;
+	DAT_HEADER h = {0};
 	
-	while(value > 0)
-	{
-		count += 1;
-		value >>= 1;
-	}
+	memcpy(&h.magic[0], DAT_MAGIC, 4);
+	h.file_count = dbl_list_count(entries);
 	
-	return count;
-}
-
-uint32_t dat_next_pow_of_2_bits(uint32_t value)
-{
-	if(value == 0)
-	{
-		return 1;
-	}
+	uint32_t cur_pos = 0x20;
 	
-	/*
-		MGRR has this wrong with 1 or 2 files 
-		And it breaks on larget values for some reason, 1378 for example.
+	h.positions_offset = cur_pos;
+	
+	cur_pos += (4*h.file_count);
+	h.extensions_offset = cur_pos;
+	
+	cur_pos += (4*h.file_count);
+	h.names_offset = cur_pos;
+	
+	/* 
+		Sections in the header are aligned to 4 bytes.
+		We can't be certain the names section will always be aligned
+		so we need to add padding.
 	*/
-	if(value == 1 || value == 2)
-	{
-		return 2;
-	}
-
-	return dat_bit_count(value - 1);
-}
-
-uint32_t dat_calc_prehash_shift(uint32_t value)
-{
-	const uint32_t max_prehash = 31;
-	const uint32_t calc_prehash = 32 - dat_next_pow_of_2_bits(value);
-	return (max_prehash > calc_prehash) ? calc_prehash : max_prehash;
-}
-
-void dat_sort_hashes(uint32_t* hashes, uint16_t* indices, const uint32_t size)
-{
-	uint32_t* nibbles = (uint32_t*)calloc(size, 4);
+	cur_pos += 4 + (entry_name_size*h.file_count);
+	cur_pos += bound_calc_leftover(4, cur_pos);
+	h.sizes_offset = cur_pos;
 	
-	/* Generate nibbles */
-	for(uint32_t i = 0; i != size; ++i)
+	cur_pos += (4*h.file_count);
+	h.hashes_offset = cur_pos;
+	
+	return h;
+}
+
+DAT_HASHES dat_generate_hashes(DBL_LIST_NODE* entries)
+{
+	DAT_HASHES hashes = {0};
+	
+	const uint32_t file_count = dbl_list_count(entries);
+	hashes.prehash_shift = dat_calc_prehash_shift(file_count);
+	hashes.bucket_size = dat_calc_bucket_size(hashes.prehash_shift);
+	
+	hashes.hashes = (DAT_HASH*)calloc(file_count, sizeof(DAT_HASH));
+	hashes.order = (uint32_t*)calloc(file_count, sizeof(uint32_t));
+	hashes.bucket = (uint16_t*)calloc(hashes.bucket_size, sizeof(uint16_t));
+	memset(hashes.bucket, 0xFF, hashes.bucket_size*2);
+	
+	for(uint32_t i = 0; i != file_count; ++i)
 	{
-		nibbles[i] = (hashes[i] & 0x70000000);
+		DAT_FILE_ENTRY* entry = dat_get_entry_node(entries, i);
+		hashes.hashes[i].hash = dat_calc_hash_from_name(entry->name, strlen((const char*)entry->name));
+		hashes.hashes[i].pos = hashes.hashes[i].hash>>hashes.prehash_shift;
+		hashes.hashes[i].index = i;
+	}
+	
+	/* Generating the order */
+	uint32_t min = -1;
+	uint32_t max = 0;
+	
+	for(uint32_t i = 0; i != file_count; ++i)
+	{
+		if(min > hashes.hashes[i].pos) min = hashes.hashes[i].pos;
+		if(max < hashes.hashes[i].pos) max = hashes.hashes[i].pos;
 	}
 
-	/* Bubble sort */
-	for(uint32_t step = 0; step < size-1; ++step)
+	uint32_t order_it = 0;
+	for(uint32_t i = 0; i != file_count; ++i)
 	{
-		for(uint32_t i = 0; i < (size - step - 1); ++i)
+		for(uint32_t j = 0; j != file_count; ++j)
 		{
-			if(nibbles[i] > nibbles[i + 1])
+			if(i == hashes.hashes[j].pos)
 			{
-				const uint32_t temp_hash = hashes[i];
-				const uint16_t temp_idx = indices[i];
-				const uint32_t temp_nibb = nibbles[i];
-				
-				hashes[i] = hashes[i+1];
-				indices[i] = indices[i+1];
-				nibbles[i] = nibbles[i+1];
-				
-				hashes[i+1] = temp_hash;
-				indices[i+1] = temp_idx;
-				nibbles[i+1] = temp_nibb;
+				hashes.order[order_it++] = hashes.hashes[j].index;
 			}
 		}
 	}
 	
-	free(nibbles);
+	/* Generate bucket offsets */
+	for(uint32_t i = 0; i != file_count; ++i)
+	{
+		if(hashes.bucket_size > hashes.hashes[i].pos)
+		{
+			if(hashes.bucket[hashes.hashes[hashes.order[i]].pos] == 0xFFFF)
+			{
+				hashes.bucket[hashes.hashes[hashes.order[i]].pos] = i;
+			}
+		}
+	}
+	
+	/* Calculating offsets */
+	hashes.bucket_offset = 0x10;
+	hashes.hashes_offset = hashes.bucket_offset + (2*hashes.bucket_size);
+	hashes.indices_offset = hashes.hashes_offset + (4*file_count);
+	
+	return hashes;
 }
 
-void dat_gen_bucket_list(const uint32_t files_amount, uint16_t* bucket_offsets, const uint32_t* hashes, const uint32_t prehash_shift)
+void dat_generate_positions(DAT_HEADER* header, DAT_HASHES* hashes,
+							DBL_LIST_NODE* entries, const uint32_t alignment)
 {
-	for(uint32_t i = 0; i != files_amount; ++i)
+	uint32_t pos = header->hashes_offset;
+	
+	/* Hashes section */
+	pos += 16 + (2*hashes->bucket_size) + (4*header->file_count)*2;
+	
+	/* First position */
+	if(alignment)
+		pos += bound_calc_leftover(alignment, pos);
+	
+	for(uint32_t i = 0; i != header->file_count; ++i)
 	{
-		const uint32_t bucket_off_id = hashes[i] >> prehash_shift;
-
-		if(bucket_offsets[bucket_off_id] == 0xFFFF)
+		DAT_FILE_ENTRY* entry = dat_get_entry_node(entries, i);
+		entry->position = pos;
+		pos += entry->size;
+		
+		if(alignment)
 		{
-			bucket_offsets[bucket_off_id] = i;
+			const uint32_t padding = bound_calc_leftover(alignment, pos);
+			pos += padding;
 		}
 	}
 }
 
-void dat_free_dat(DAT_FILE* dat)
+DBL_LIST_NODE* dat_append_entry(DBL_LIST_NODE* entries, DAT_FILE_ENTRY* entry)
 {
-	if(dat)
+	DBL_LIST_NODE* node = dbl_list_append(entries, entry, sizeof(DAT_FILE_ENTRY));
+	
+	return node;
+}
+
+DAT_FILE_ENTRY* dat_get_entry_node(DBL_LIST_NODE* entries, const uint64_t pos)
+{
+	return (DAT_FILE_ENTRY*)dbl_list_get_node(entries, pos)->data;
+}
+
+void dat_free_entry(DAT_FILE_ENTRY* entry)
+{
+	entry->position = 0;
+	entry->size = 0;
+	memset(entry->extension, 0, 4);
+	free(entry->name);
+	entry->name = NULL;
+	free(entry->data);
+	entry->data = NULL;
+}
+
+void dat_free_hashes(DAT_HASHES* hashes)
+{
+	free(hashes->bucket);
+	free(hashes->hashes);
+	free(hashes->order);
+	memset(hashes, 0, sizeof(DAT_HASHES));
+}
+
+void dat_free(DAT_FILE* dat)
+{
+	DBL_LIST_NODE* node = dat->entries;
+	while(node != NULL)
 	{
-		for(uint32_t i = 0; i != dat->header.files_amount; ++i)
-		{
-			free(dat->entries[i].name);
-			free(dat->entries[i].data);
-		}
+		dat_free_entry((DAT_FILE_ENTRY*)node->data);
+		node = node->next;
 	}
 	
-	free(dat->entries);
+	dat->entries = dbl_list_free_list(dat->entries);
 	
-	free(dat->bucket_offsets);
-	free(dat->hashes);
-	free(dat->indices);
+	memset(&dat->header, 0, sizeof(DAT_HEADER));
 	
-	free(dat);
+	dat_free_hashes(&dat->hashes);
 }
+
+/* Helper */
+
+const uint8_t dat_bit_length(const uint64_t value)
+{
+	if(value == 1) return 1;
+	
+	uint8_t last_bit_pos = 0;
+	
+	for(uint8_t i = 0; i != 64; ++i)
+	{
+		const uint8_t bit = (value>>i)&1;
+		if(bit) last_bit_pos = i;
+	}
+	
+	return last_bit_pos;
+}
+
+const uint8_t dat_calc_prehash_shift(const uint32_t file_count)
+{
+	const uint8_t shift = 31 - dat_bit_length(file_count);
+	
+	/* 
+		DATs with file counts greater than 256 
+		still report the shift being 24, even though it
+		should be 23 and go lower with each power of 2.
+	*/
+	if(shift < 24) return 24;
+	
+	return shift;
+}
+
+const uint8_t dat_calc_bucket_size(const uint8_t prehash_shift)
+{
+	return (uint8_t)(1<<(31 - prehash_shift));
+}
+
+const uint32_t dat_get_max_name_size(DBL_LIST_NODE* entries)
+{
+	uint32_t len = 0;
+	
+	DBL_LIST_NODE* node = entries;
+	while(node != NULL)
+	{
+		const DAT_FILE_ENTRY* entry = (DAT_FILE_ENTRY*)node->data;
+		const uint32_t name_len = strlen((const char*)entry->name);
+		if(name_len > len) len = name_len;
+		node = node->next;
+	}
+	
+	return len + 1;
+}
+
+const uint32_t dat_calc_hash_from_name(const uint8_t* name, const uint64_t length)
+{
+	uint8_t* lowercase = (uint8_t*)calloc(1, length);
+	
+	for(uint32_t i = 0; i != length; ++i)
+	{
+		lowercase[i] = tolower(name[i]);
+	}
+	
+	const uint32_t hash = crc32_encode(lowercase, length)&0x7FFFFFFF;
+	
+	free(lowercase);
+	
+	return hash;
+}
+

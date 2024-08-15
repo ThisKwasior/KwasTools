@@ -154,4 +154,6 @@ DBL_LIST_NODE* dbl_list_free_list(DBL_LIST_NODE* head)
 	{
 		head = dbl_list_remove_node(head, dbl_list_get_node(head, 0));
 	}
+	
+	return head;
 }

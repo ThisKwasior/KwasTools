@@ -4,19 +4,22 @@
 
 #include <kwaslib/core/io/file_utils.h>
 #include <kwaslib/core/io/dir_list.h>
+#include <kwaslib/core/data/dbl_link_list.h>
 
 /* 
-	Code here has been "borrowed" from NierDocs.
+	Code here has been "borrowed" from NierDocs and xxk-i.
 	Thank you very much!
 	https://github.com/ArthurHeitmann/NierDocs/blob/master/tools/datRepacker/datRepacker.py
+	https://github.com/xxk-i/DATrepacker
 */
 
-#define DAT_BLOCK_SIZE 4096
+#define DAT_MAGIC				(const char*)"DAT\0"
+#define DAT_DEFAULT_BLOCK_SIZE	2048
 
 typedef struct
 {
 	uint8_t magic[4];				/* {'D','A','T',0} */
-	uint32_t files_amount;			/* Amount of files in the container */
+	uint32_t file_count;			/* Amount of files in the container */
 	uint32_t positions_offset;
 	uint32_t extensions_offset;
 	uint32_t names_offset;
@@ -30,9 +33,31 @@ typedef struct
 	uint32_t position;				/* Position in the file */
 	uint32_t size;					/* File size */
 	uint8_t extension[4];			/* File extension */
-	uint8_t* name;					/* File name */
+	uint8_t* name;					/* File name, NULL terminated */
 	uint8_t* data;					/* File data */
 } DAT_FILE_ENTRY;
+
+typedef struct
+{
+	uint32_t hash;
+	uint32_t pos;
+	uint32_t index;
+} DAT_HASH;
+
+typedef struct
+{
+	uint32_t prehash_shift;
+	uint32_t bucket_offset; /* Constant 0x10 */
+	uint32_t hashes_offset;
+	uint32_t indices_offset;
+	
+	uint16_t* bucket;
+	uint32_t bucket_size;
+	
+	uint32_t* order;
+	
+	DAT_HASH* hashes;
+} DAT_HASHES;
 
 typedef struct
 {
@@ -41,39 +66,61 @@ typedef struct
 	uint32_t entry_name_size;		/* Size for file names
 									   First value in names section */
 									   
-	DAT_FILE_ENTRY* entries;		/* File entries */
+	DBL_LIST_NODE* entries;			/* File entries in doubly linked list */
 	
-	uint32_t prehash_shift;
-	uint32_t bucket_offsets_offset; /* Constant 0x10 */
-	uint32_t hashes_offset;
-	uint32_t indices_offset;
-	
-	uint32_t bucket_offsets_size;
-	
-	uint16_t* bucket_offsets;
-	uint32_t* hashes; /* Size is header.files_amount / CRC32 encode of a file name. */
-	uint16_t* indices; /* Size is header.files_amount */
+	DAT_HASHES hashes;				/* Section pointed to by header.hashes_offset */
 } DAT_FILE;
 
 /*
 	Functions
 */
-DAT_FILE* dat_parse_dat(FU_FILE* file, const uint8_t fu_endian);
-DAT_FILE* dat_parse_directory(const char* dir, const uint8_t do_align);
 
+DAT_FILE* dat_parse(FU_FILE* file, const uint8_t fu_endian);
 FU_FILE* dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian);
 
-void dat_gen_hash_data(DAT_FILE* dat);
+/* 
+	Updates fields in the structure -
+	header, entry_name_size and hashes based on entries list.
+	
+	Everything is calculated based on entries
+	to make things simpler for data manipulation in code.
+	
+	The only thing not needed in each entry is the position;
+	it's gonna get updated too since we don't know the position
+	beforehand due to alignment.
+	You can set it to 0 when calling `dat_entry_from_data()`.
+*/
+void dat_update(DAT_FILE* dat, const uint32_t alignment);
 
-uint32_t dat_hash_filename(const uint8_t* name);
+DAT_FILE_ENTRY* dat_entry_from_data(const uint32_t position,
+									const uint8_t* extension,
+									const uint32_t name_size,
+									const uint8_t* name,
+									const uint32_t size,
+									const uint8_t* data);
 
-uint32_t dat_bit_count(uint32_t value);
-uint32_t dat_next_pow_of_2_bits(uint32_t value);
-uint32_t dat_calc_prehash_shift(uint32_t value);
+DAT_HEADER dat_generate_header(DBL_LIST_NODE* entries,
+							   DAT_HASHES* hashes,
+							   const uint32_t entry_name_size);
+							   
+DAT_HASHES dat_generate_hashes(DBL_LIST_NODE* entries);
 
-/* Bubble sort */
-void dat_sort_hashes(uint32_t* hashes, uint16_t* indices, const uint32_t size);
+void dat_generate_positions(DAT_HEADER* header, DAT_HASHES* hashes,
+							DBL_LIST_NODE* entries, const uint32_t alignment);
 
-void dat_gen_bucket_list(const uint32_t files_amount, uint16_t* bucket_offsets, const uint32_t* hashes, const uint32_t prehash_shift);
+DBL_LIST_NODE* dat_append_entry(DBL_LIST_NODE* entries, DAT_FILE_ENTRY* entry);
+DAT_FILE_ENTRY* dat_get_entry_node(DBL_LIST_NODE* entries, const uint64_t pos);
 
-void dat_free_dat(DAT_FILE* dat);
+/* Doesn't free the struct itself */							
+void dat_free_entry(DAT_FILE_ENTRY* entry);
+void dat_free_hashes(DAT_HASHES* hashes);
+
+/* Doesn't free the DAT itself */	
+void dat_free(DAT_FILE* dat);
+
+/* Helper */
+const uint8_t dat_bit_length(const uint64_t value);
+const uint8_t dat_calc_prehash_shift(const uint32_t file_count);
+const uint8_t dat_calc_bucket_size(const uint8_t prehash_shift);
+const uint32_t dat_get_max_name_size(DBL_LIST_NODE* entries);
+const uint32_t dat_calc_hash_from_name(const uint8_t* name, const uint64_t length);
