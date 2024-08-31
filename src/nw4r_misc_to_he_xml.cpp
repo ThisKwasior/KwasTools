@@ -204,7 +204,7 @@ void nw4r_scn0_to_camanim_xml(SCN0_HEADER* header, SCN0_SECTION* camera_section,
 	{
 		BRRES_KEYFRAME* cur_kf = &camera_section->kf_sets[SCN0_CAMERA_FOV_Y].keyframes[i];
 		const double mypi = 3.141592653589;
-		const double aspect = camera_section->cam.aspect;
+		//const double aspect = camera_section->cam.aspect;
 		const double angle_x_rad = (cur_kf->value*mypi)/180.f;
 		//const double angle_y_rad = 2*atan(tan(angle_x_rad/2.f)*aspect);
 		cur_kf->value = angle_x_rad;
@@ -215,7 +215,7 @@ void nw4r_scn0_to_camanim_xml(SCN0_HEADER* header, SCN0_SECTION* camera_section,
 	{
 		BRRES_KEYFRAME* cur_kf = &camera_section->kf_sets[SCN0_CAMERA_TWIST].keyframes[i];
 		const double mypi = 3.141592653589;
-		const double twist = camera_section->cam.twist;
+		//const double twist = camera_section->cam.twist;
 		const double twist_rad = (cur_kf->value*mypi)/180.f;
 		cur_kf->value = twist_rad;
 	}
