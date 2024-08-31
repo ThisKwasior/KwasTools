@@ -6,7 +6,12 @@
 #include <kwaslib/core/io/path_utils.h>
 #include <kwaslib/core/io/file_utils.h>
 #include <kwaslib/core/cpu/endianness.h>
+#include <kwaslib/core/data/image/image.h>
+#include <kwaslib/core/data/image/gtf.h>
 #include <kwaslib/platinum/wtb.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <kwaslib/ext/stb_image_write.h>
 
 /*
 	Arguments
@@ -167,13 +172,13 @@ void wtb_tool_print_usage(char* program_name)
 
 void wtb_tool_print_wtb(WTB_FILE* wtb)
 {
-	printf("Platform: %s\n", wtb->platform == 1 ? "PC" : "X360");
+	printf("Platform: %s\n", wtb->platform == 1 ? "PC" : "X360/PS3");
 	printf("Texture count: %u\n", wtb->header.tex_count);
 	printf("Texture offset array: %x\n", wtb->header.tex_offset_array_offset);
 	printf("Size offset array: %x\n", wtb->header.tex_size_offset);
 	printf("Unknown offset array: %x\n", wtb->header.unk_array_offset);
 	printf("Texture ID offset array: %x\n", wtb->header.tex_id_array_offset);
-	printf("Texture info offset array: %x\n\n", wtb->header.tex_info_offset);
+	printf("Texture info offset array: %x\n\n", wtb->header.xpr_info_offset);
 	
 	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
 	{
@@ -181,33 +186,6 @@ void wtb_tool_print_wtb(WTB_FILE* wtb)
 		printf("\tOffset %u\n", wtb->entries[i].offset);
 		printf("\tSize %u\n", wtb->entries[i].size);
 		printf("\tID %u/%x\n", wtb->entries[i].id, wtb->entries[i].id);
-		
-		if(wtb->header.tex_info_offset)
-		{
-			WTB_X360_INFO* xo = &wtb->entries[i].x360;
-			printf("    XBOX 360 INFO:\n");
-			printf("\tUnk set: %08x %08x %08x %08x %08x %08x %08x\n",
-			       xo->unk_0, xo->unk_4, xo->unk_8, xo->unk_C,
-				   xo->unk_10, xo->unk_14, xo->unk_18);
-			printf("\tUnk_19: %x\n", xo->unk_19);
-			printf("\tStride: %x / %u\n", xo->stride, xo->stride*128);
-			printf("\tFlags: %02x%02x%02x\n", xo->flags[0], xo->flags[1], xo->flags[2]);
-
-			printf("\tunk_23: %x\n", xo->unk_23);
-			printf("\tSurface fmt: %x / %s\n", xo->surface_fmt, x360_fmt_str[xo->surface_fmt]);
-			printf("\tResolution: %x / %ux%u\n", xo->packed_res,
-												 xo->unpacked_width,
-												 xo->unpacked_height);
-			
-			printf("\tSome fmt 1: %x / %s\n", xo->some_fmt_again_1, x360_fmt_str[xo->some_fmt_again_1]);
-			printf("\tSome fmt 2: %x / %s\n", xo->some_fmt_again_2, x360_fmt_str[xo->some_fmt_again_2]);
-			
-			printf("\tMipmap stuff 1: %x / %u\n", xo->mipmap_stuff_1, xo->mipmap_stuff_1);
-			printf("\tMipmap stuff 2: %x / %u\n", xo->mipmap_stuff_2, xo->mipmap_stuff_2);
-			
-			printf("\tunk_31: %x / %u\n", xo->unk_31, xo->unk_31);
-			printf("\tunk_32: %x / %u\n", xo->unk_32, xo->unk_32);
-		}
 	}
 }
 
@@ -223,7 +201,7 @@ void wtb_tool_extract_to_folder(WTB_FILE* wtb, PU_PATH* folder)
 		/* Get the id as a string */
 		char id_str[11] = {0};
 		sprintf(&id_str[0], "%u", wtb->entries[i].id);
-		printf("%u\n", wtb->entries[i].id);
+		printf("ID: %u\n", wtb->entries[i].id);
 		const uint32_t len = strlen(&id_str[0]);
 		
 		/*  Construct the path */
@@ -231,12 +209,42 @@ void wtb_tool_extract_to_folder(WTB_FILE* wtb, PU_PATH* folder)
 		pu_path_to_string(folder, &temp_file_str);
 		pu_insert_char("/", 1, -1, &temp_file_str);
 		pu_insert_char(id_str, len, -1, &temp_file_str);
-		pu_insert_char(".dds", 4, -1, &temp_file_str);
-		
+
 		FU_FILE temp_file = {0};
 		fu_create_mem_file(&temp_file);
 		fu_write_data(&temp_file, wtb->entries[i].data, wtb->entries[i].size);
-		fu_to_file(temp_file_str.p, &temp_file, 1);
+		fu_seek(&temp_file, 0, FU_SEEK_SET);
+		
+		if(wtb->platform == FU_BIG_ENDIAN)
+		{
+			pu_insert_char(".png", 4, -1, &temp_file_str);
+			
+			IMAGE* img = NULL;
+			uint64_t img_size = 0;
+			uint8_t* img_data = NULL;
+			
+			if(wtb->header.xpr_info_offset) /* X360 */
+			{
+				img = x360_texture_to_image(wtb->entries[i].x360, (uint8_t*)temp_file.buf, temp_file.size);
+			}
+			else /* PS3 */
+			{
+				GTF_FILE gtf = gtf_read_file(&temp_file);
+				img = gtf_to_image(&gtf);
+			}
+			
+			img_data = img_to_raw_data(img, &img_size);
+			
+			stbi_write_png(temp_file_str.p, img->width, img->height, img->bpp, img_data, img->width*img->bpp);
+			
+			free(img_data);
+			img_free_image(img);
+		}
+		else
+		{
+			pu_insert_char(".dds", 4, -1, &temp_file_str);
+			fu_to_file(temp_file_str.p, &temp_file, 1);
+		}
 		
 		//printf("Path: %s\n", temp_file_str.p);
 		

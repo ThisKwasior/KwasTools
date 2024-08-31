@@ -246,7 +246,7 @@ uint8_t wtb_read_header(FU_FILE* file, WTB_FILE* wtb)
 	wtb->header.tex_size_offset = fu_read_u32(file, &status, wtb->platform);
 	wtb->header.unk_array_offset = fu_read_u32(file, &status, wtb->platform);
 	wtb->header.tex_id_array_offset = fu_read_u32(file, &status, wtb->platform);
-	wtb->header.tex_info_offset = fu_read_u32(file, &status, wtb->platform);
+	wtb->header.xpr_info_offset = fu_read_u32(file, &status, wtb->platform);
 	
 	return 1;
 }
@@ -276,51 +276,16 @@ void wtb_populate_entries(FU_FILE* file, WTB_FILE* wtb)
 		wtb->entries[i].id = fu_read_u32(file, &status, wtb->platform);
 		
 		/* XBOX 360 info */
-		if(wtb->platform == FU_BIG_ENDIAN)
+		if(wtb->platform == FU_BIG_ENDIAN && wtb->header.xpr_info_offset)
 		{
-			WTB_X360_INFO* xo = &wtb->entries[i].x360;
+			D3DBaseTexture* xb = &wtb->entries[i].x360;
+			uint32_t* xb_dword = (uint32_t*)xb;
+			fu_seek(file, wtb->header.xpr_info_offset+(i*sizeof(D3DBaseTexture)), FU_SEEK_SET);
 			
-			fu_seek(file, wtb->header.tex_info_offset+(i*52), FU_SEEK_SET);
-			xo->unk_0 = fu_read_u32(file, &status, wtb->platform);
-			xo->unk_4 = fu_read_u32(file, &status, wtb->platform);
-			xo->unk_8 = fu_read_u32(file, &status, wtb->platform);
-			xo->unk_C = fu_read_u32(file, &status, wtb->platform);
-			xo->unk_10 = fu_read_u32(file, &status, wtb->platform);
-			xo->unk_14 = fu_read_u32(file, &status, wtb->platform);
-			xo->unk_18 = fu_read_u32(file, &status, wtb->platform);
-			
-			const uint8_t unk_19_stride = fu_read_u8(file, &status);
-			xo->unk_19 = unk_19_stride>>6;
-			xo->stride = unk_19_stride;
-			
-			xo->flags[0] = fu_read_u8(file, &status);
-			xo->flags[1] = fu_read_u8(file, &status);
-			xo->flags[2] = fu_read_u8(file, &status);
-			
-			xo->padding_A0[0] = fu_read_u8(file, &status);
-			xo->padding_A0[1] = fu_read_u8(file, &status);
-			xo->padding_A0[2] = fu_read_u8(file, &status);
-			
-			const uint8_t unk_23_surface_fmt = fu_read_u8(file, &status);
-			xo->unk_23 = unk_23_surface_fmt>>6;
-			xo->surface_fmt = unk_23_surface_fmt;
-			
-			xo->packed_res = fu_read_u32(file, &status, wtb->platform);
-			xo->unk_28 = fu_read_u16(file, &status, wtb->platform);
-			xo->some_fmt_again_1 = fu_read_u8(file, &status);
-			xo->some_fmt_again_2 = fu_read_u8(file, &status);
-			xo->unk_2C = fu_read_u16(file, &status, wtb->platform);
-			xo->mipmap_stuff_1 = fu_read_u8(file, &status);
-			xo->mipmap_stuff_2 = fu_read_u8(file, &status);
-			
-			xo->unk_30 = fu_read_u8(file, &status);
-			xo->unk_31 = fu_read_u8(file, &status);
-			xo->unk_32 = fu_read_u8(file, &status);
-			xo->unk_33 = fu_read_u8(file, &status);
-			
-			/* Unpacking the resolution */
-			xo->unpacked_width = (uint32_t)xo->packed_res&0xFFF;
-			xo->unpacked_height = (uint32_t)(xo->packed_res>>12)&0xFFF;
+			for(uint32_t i = 0; i != (sizeof(D3DBaseTexture)/sizeof(uint32_t)); ++i)
+			{
+				xb_dword[i] = fu_read_u32(file, NULL, FU_BIG_ENDIAN);
+			}
 		}
 	}
 }

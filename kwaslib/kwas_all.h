@@ -23,6 +23,13 @@ extern "C" {
 #include <kwaslib/core/math/vec.h>
 
 #include <kwaslib/core/data/dbl_link_list.h>
+#include <kwaslib/core/data/image/dds.h>
+#include <kwaslib/core/data/image/gtf.h>
+#include <kwaslib/core/data/image/image.h>
+#include <kwaslib/core/data/image/image_pixel.h>
+#include <kwaslib/core/data/image/s3tc.h>
+#include <kwaslib/core/data/image/x360_texture.h>
+#include <kwaslib/core/data/image/x360_enum.h>
 
 /* 
 	CRIWARE
@@ -52,6 +59,12 @@ extern "C" {
 #include <kwaslib/platinum/dat.h>
 #include <kwaslib/platinum/wmb4.h>
 #include <kwaslib/platinum/wtb.h>
+
+/*
+	External
+*/
+#include <kwaslib/ext/stb_image.h>
+#include <kwaslib/ext/stb_image_write.h>
 
 #ifdef __cplusplus
 }

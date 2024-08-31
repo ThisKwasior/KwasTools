@@ -16,6 +16,10 @@ set(KWASLIB_CORE_SOURCES
 	${PROJECT_SOURCE_DIR}/core/math/half.c
 	${PROJECT_SOURCE_DIR}/core/math/vec.c
 	${PROJECT_SOURCE_DIR}/core/data/dbl_link_list.c
+	${PROJECT_SOURCE_DIR}/core/data/image/image.c
+	${PROJECT_SOURCE_DIR}/core/data/image/s3tc.c
+	${PROJECT_SOURCE_DIR}/core/data/image/gtf.c
+	${PROJECT_SOURCE_DIR}/core/data/image/x360_texture.c
 	)
 
 set(KWASLIB_MODULES_SOURCES
