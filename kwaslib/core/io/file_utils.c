@@ -80,7 +80,12 @@ uint64_t fu_get_file_size(const char* path)
 	if(f)
 	{
 		fseek(f, 0, SEEK_END);
+
+#if defined(__WIN32__) || defined(__MINGW32__)
 		const uint64_t len = ftello64(f);
+#else
+		const uint64_t len = ftello(f);
+#endif
 		fclose(f);
 		return len;
 	}

@@ -1,5 +1,9 @@
 #pragma once
 
+#if defined(__unix__) || defined(__linux__)
+#define _FILE_OFFSET_BITS 64
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 

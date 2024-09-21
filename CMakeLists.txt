@@ -10,7 +10,7 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Release")	
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os -fdata-sections -ffunction-sections" CACHE STRING "C Compiler flags" FORCE)
 	set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} " CACHE STRING "CXX Compiler flags" FORCE)
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fPIC -fno-ident -s -Wl,--gc-sections" CACHE STRING "EXE link flags" FORCE)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm -fPIC -fno-ident -s -Wl,--gc-sections" CACHE STRING "EXE link flags" FORCE)
 	
 	set(CMAKE_STATIC_LINKER_FLAGS "-s" CACHE STRING "Static library linker flags" FORCE)
 	set(CMAKE_SHARED_LINKER_FLAGS "-s" CACHE STRING "Shared library linker flags" FORCE)
@@ -18,7 +18,8 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -Wall " CACHE STRING "C Compiler flags" FORCE)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Wall " CACHE STRING "CXX Compiler flags" FORCE)
+	set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} " CACHE STRING "CXX Compiler flags" FORCE)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm " CACHE STRING "EXE link flags" FORCE)
 endif()
 
 set(KWASTOOLS_PROGRAMS
