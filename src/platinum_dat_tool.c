@@ -295,17 +295,17 @@ DBL_LIST_NODE* dat_tool_load_files_from_dir(const char* dir)
 			name = (uint8_t*)file_name.p;
 			name_size = file_name.s;
 			
-			if(dirlist.entries[i].path.ext.s < 4)
+			if(dirlist.entries[i].path.ext.s >= 3)
 			{
 				memcpy(&extension[0],
 					   dirlist.entries[i].path.ext.p,
-					   dirlist.entries[i].path.ext.s);
+					   3);
 			}
 			else
 			{
 				memcpy(&extension[0],
 					   dirlist.entries[i].path.ext.p,
-					   4);
+					   dirlist.entries[i].path.ext.s);
 			}
 			
 			/* Append new entry to the list */
@@ -318,6 +318,8 @@ DBL_LIST_NODE* dat_tool_load_files_from_dir(const char* dir)
 			pu_free_string(&file_dir_path);
 		}
 	}
+	
+	dl_free_list(&dirlist);
 	
 	return head;
 }

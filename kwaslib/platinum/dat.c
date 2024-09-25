@@ -217,7 +217,7 @@ DAT_FILE_ENTRY* dat_entry_from_data(const uint32_t position,
 	
 	memcpy(&entry->extension[0], extension, 4);
 	
-	entry->name = (uint8_t*)calloc(1, name_size);
+	entry->name = (uint8_t*)calloc(1, name_size+1); /* NULL terminator */
 	memcpy(&entry->name[0], name, name_size);
 	
 	entry->size = size;
