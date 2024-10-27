@@ -281,6 +281,22 @@ void utf_tool_acbcmd_to_xml(ACB_COMMAND* cmd, pugi::xml_node* node)
 				type_attr.set_value("f64");
 				val_attr.set_value(cur_op->data.f64);
 				break;
+			case OPCODE_TYPE_UINT24:
+				type_attr.set_value("u24");
+				val_attr.set_value(cur_op->data.u24);
+				break;
+			case OPCODE_TYPE_UINT40:
+				type_attr.set_value("u40");
+				val_attr.set_value(cur_op->data.u40);
+				break;
+			case OPCODE_TYPE_UINT48:
+				type_attr.set_value("u48");
+				val_attr.set_value(cur_op->data.u48);
+				break;
+			case OPCODE_TYPE_UINT56:
+				type_attr.set_value("u56");
+				val_attr.set_value(cur_op->data.u56);
+				break;
 		}
 	}
 }
@@ -529,6 +545,30 @@ ACB_COMMAND* utf_tool_xml_to_acbcmd(pugi::xml_node* acbcmd)
 			opcode->type = OPCODE_TYPE_DOUBLE;
 			opcode->size = 8;
 			opcode->data.f64 = op.attribute("value").as_double();
+		}
+		else if(strncmp("u24", type_str, 3) == 0)
+		{
+			opcode->type = OPCODE_TYPE_UINT24;
+			opcode->size = 3;
+			opcode->data.u24 = op.attribute("value").as_uint();
+		}
+		else if(strncmp("u40", type_str, 3) == 0)
+		{
+			opcode->type = OPCODE_TYPE_UINT40;
+			opcode->size = 5;
+			opcode->data.u40 = op.attribute("value").as_ullong();
+		}
+		else if(strncmp("u48", type_str, 3) == 0)
+		{
+			opcode->type = OPCODE_TYPE_UINT48;
+			opcode->size = 6;
+			opcode->data.u48 = op.attribute("value").as_ullong();
+		}
+		else if(strncmp("u56", type_str, 3) == 0)
+		{
+			opcode->type = OPCODE_TYPE_UINT56;
+			opcode->size = 7;
+			opcode->data.u56 = op.attribute("value").as_ullong();
 		}
 
 		cur_op_id += 1;

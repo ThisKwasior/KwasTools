@@ -141,48 +141,44 @@ void awb_read_entries(FU_FILE* awb, AWB_FILE* afs2)
 	/* file IDs */
 	for(uint32_t i = 0; i != h->file_count; ++i)
 	{
-		afs2->entries[i].id = fu_read_u16(awb, NULL, FU_LITTLE_ENDIAN);
+		if(h->id_align == 2) afs2->entries[i].id = fu_read_u16(awb, NULL, FU_LITTLE_ENDIAN);
+		if(h->id_align == 4) afs2->entries[i].id = fu_read_u32(awb, NULL, FU_LITTLE_ENDIAN);
 	}
 	
 	/* file offsets */
 	for(uint32_t i = 0; i != h->file_count+1; ++i)
 	{
-		if(h->offset_size == 2)
-		{
-			afs2->entries[i].offset = fu_read_u16(awb, NULL, FU_LITTLE_ENDIAN);
-		}
-		else if(h->offset_size == 4)
-		{
-			afs2->entries[i].offset = fu_read_u32(awb, NULL, FU_LITTLE_ENDIAN);
-		}
+		if(h->offset_size == 2) afs2->entries[i].offset = fu_read_u16(awb, NULL, FU_LITTLE_ENDIAN);
+		if(h->offset_size == 4) afs2->entries[i].offset = fu_read_u32(awb, NULL, FU_LITTLE_ENDIAN);
 	}
 
-	/* fix file offsets */ 
-	for(uint32_t i = 0; i != h->file_count; ++i)
-	{
-		if(afs2->entries[i].offset % h->alignment)
-		{
-			afs2->entries[i].offset += bound_calc_leftover(h->alignment, afs2->entries[i].offset);
-		}
-	}
-	
-	/* file sizes */
-	for(uint32_t i = 0; i != h->file_count; ++i)
-	{
-		afs2->entries[i].size = afs2->entries[i+1].offset - afs2->entries[i].offset;
-	}
-
-	/* Check for data */
+	/* Check if data exists */
 	awb_check_for_data(awb, afs2);
 
-	/* file data */
-	if(afs2->no_data == 1) return;
-
-	for(uint32_t i = 0; i != h->file_count; ++i)
+	if(afs2->no_data == 0)
 	{
-		afs2->entries[i].data = (uint8_t*)calloc(1, afs2->entries[i].size);
-		fu_seek(awb, afs2->entries[i].offset, FU_SEEK_SET);
-		fu_read_data(awb, afs2->entries[i].data, afs2->entries[i].size, NULL);
+		/* fix file offsets */ 
+		for(uint32_t i = 0; i != h->file_count; ++i)
+		{
+			if(afs2->entries[i].offset % h->alignment)
+			{
+				afs2->entries[i].offset += bound_calc_leftover(h->alignment, afs2->entries[i].offset);
+			}
+		}
+	
+		/* file sizes */
+		for(uint32_t i = 0; i != h->file_count; ++i)
+		{
+			afs2->entries[i].size = afs2->entries[i+1].offset - afs2->entries[i].offset;
+		}
+		
+		/* file data */
+		for(uint32_t i = 0; i != h->file_count; ++i)
+		{
+			afs2->entries[i].data = (uint8_t*)calloc(1, afs2->entries[i].size);
+			fu_seek(awb, afs2->entries[i].offset, FU_SEEK_SET);
+			fu_read_data(awb, afs2->entries[i].data, afs2->entries[i].size, NULL);
+		}
 	}
 }
 
@@ -215,26 +211,43 @@ void awb_write_entries(FU_FILE* awb, AWB_FILE* afs2)
 	AWB_HEADER* header = &afs2->header;
 
 	for(uint32_t i = 0; i != header->file_count; ++i)
-		fu_write_u16(awb, afs2->entries[i].id, FU_LITTLE_ENDIAN);
+	{
+		if(header->id_align == 2) fu_write_u16(awb, afs2->entries[i].id, FU_LITTLE_ENDIAN);
+		if(header->id_align == 4) fu_write_u32(awb, afs2->entries[i].id, FU_LITTLE_ENDIAN);
+	}
 
-	for(uint32_t i = 0; i != header->file_count; ++i)
-		fu_write_u32(awb, afs2->entries[i].offset, FU_LITTLE_ENDIAN);
-
-	/* End of the file */
-	const uint32_t end_off = afs2->entries[header->file_count-1].offset + afs2->entries[header->file_count-1].size;
-	fu_write_u32(awb, end_off, FU_LITTLE_ENDIAN);
-
-	/* Don't do data stuff when no data */
-	if(afs2->no_data == 1) return;
-
-	/* Reserve entire file size */
-	fu_change_buf_size(awb, end_off);
-
-	/* Write the file data */
 	for(uint32_t i = 0; i != header->file_count; ++i)
 	{
-		fu_seek(awb, afs2->entries[i].offset, FU_SEEK_SET);
-		fu_write_data(awb, afs2->entries[i].data, afs2->entries[i].size);
+		if(header->offset_size == 2) fu_write_u16(awb, afs2->entries[i].offset, FU_LITTLE_ENDIAN);
+		if(header->offset_size == 4) fu_write_u32(awb, afs2->entries[i].offset, FU_LITTLE_ENDIAN);
+	}
+
+	if(afs2->no_data == 0)
+	{
+		/* End of the file */
+		const uint32_t end_off = afs2->entries[header->file_count-1].offset + afs2->entries[header->file_count-1].size;
+		fu_write_u32(awb, end_off, FU_LITTLE_ENDIAN);
+
+		/* Don't do data stuff when no data is present */
+		if(afs2->no_data == 1) return;
+
+		/* Reserve entire file size */
+		fu_change_buf_size(awb, end_off);
+
+		/* Write the file data */
+		for(uint32_t i = 0; i != header->file_count; ++i)
+		{
+			fu_seek(awb, afs2->entries[i].offset, FU_SEEK_SET);
+			fu_write_data(awb, afs2->entries[i].data, afs2->entries[i].size);
+		}
+	}
+	else /* No data */
+	{
+		/* End of the file */
+		const uint32_t end_off = afs2->entries[header->file_count].offset;
+
+		if(header->offset_size == 2) fu_write_u16(awb, end_off, FU_LITTLE_ENDIAN);
+		if(header->offset_size == 4) fu_write_u32(awb, end_off, FU_LITTLE_ENDIAN);
 	}
 }
 

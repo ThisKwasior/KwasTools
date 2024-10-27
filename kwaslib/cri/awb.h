@@ -32,7 +32,7 @@ typedef struct
 
 typedef struct
 {
-	uint16_t id;
+	uint32_t id;
 	uint32_t offset;
 	uint8_t* data;
 	uint32_t size;

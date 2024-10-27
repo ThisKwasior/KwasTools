@@ -49,6 +49,18 @@ FU_FILE* acb_command_to_fu(ACB_COMMAND* cmd)
 			case OPCODE_TYPE_DOUBLE:
 				fu_write_f64(data_fu, cur_op->data.f64, FU_BIG_ENDIAN);
 				break;
+			case OPCODE_TYPE_UINT24:
+				fu_write_data(data_fu, (uint8_t*)&cur_op->data.u32, 3);
+				break;
+			case OPCODE_TYPE_UINT40:
+				fu_write_data(data_fu, (uint8_t*)&cur_op->data.u64, 5);
+				break;
+			case OPCODE_TYPE_UINT48:
+				fu_write_data(data_fu, (uint8_t*)&cur_op->data.u64, 6);
+				break;
+			case OPCODE_TYPE_UINT56:
+				fu_write_data(data_fu, (uint8_t*)&cur_op->data.u64, 7);
+				break;
 		}
 	}
 
@@ -106,6 +118,22 @@ ACB_COMMAND* acb_command_check_data(FU_FILE* data_fu)
 						cur_op.data.u64 = fu_read_u64(data_fu, NULL, FU_BIG_ENDIAN);
 						cur_op.type = OPCODE_TYPE_UINT64;
 						break;
+					case 3:
+						fu_read_data(data_fu, (uint8_t*)&cur_op.data.u32, 3, NULL);
+						cur_op.type = OPCODE_TYPE_UINT24;
+						break;
+					case 5:
+						fu_read_data(data_fu, (uint8_t*)&cur_op.data.u64, 5, NULL);
+						cur_op.type = OPCODE_TYPE_UINT40;
+						break;
+					case 6:
+						fu_read_data(data_fu, (uint8_t*)&cur_op.data.u64, 6, NULL);
+						cur_op.type = OPCODE_TYPE_UINT48;
+						break;
+					case 7:
+						fu_read_data(data_fu, (uint8_t*)&cur_op.data.u64, 7, NULL);
+						cur_op.type = OPCODE_TYPE_UINT56;
+						break;
 				}
 
 				break;
@@ -128,9 +156,48 @@ ACB_COMMAND* acb_command_check_data(FU_FILE* data_fu)
 
 				break;
 			
-			/* Found no valid opcode */
+			/* Found unknown opcode */
 			default:
-				opcode = -1;
+				printf("!!! UNKNOWN ACB OPCODE %u OF SIZE %u !!!\n", cur_op.op, cur_op.size);
+				
+				switch(cur_op.size)
+				{
+					case 0:
+						cur_op.type = OPCODE_TYPE_NOVAL;
+						break;
+					case 1:
+						cur_op.data.u8 = fu_read_u8(data_fu, NULL);
+						cur_op.type = OPCODE_TYPE_UINT8;
+						break;
+					case 2:
+						cur_op.data.u16 = fu_read_u16(data_fu, NULL, FU_BIG_ENDIAN);
+						cur_op.type = OPCODE_TYPE_UINT16;
+						break;
+					case 4:
+						cur_op.data.u32 = fu_read_u32(data_fu, NULL, FU_BIG_ENDIAN);
+						cur_op.type = OPCODE_TYPE_UINT32;
+						break;
+					case 8:
+						cur_op.data.u64 = fu_read_u64(data_fu, NULL, FU_BIG_ENDIAN);
+						cur_op.type = OPCODE_TYPE_UINT64;
+						break;
+					case 3:
+						fu_read_data(data_fu, (uint8_t*)&cur_op.data.u32, 3, NULL);
+						cur_op.type = OPCODE_TYPE_UINT24;
+						break;
+					case 5:
+						fu_read_data(data_fu, (uint8_t*)&cur_op.data.u64, 5, NULL);
+						cur_op.type = OPCODE_TYPE_UINT40;
+						break;
+					case 6:
+						fu_read_data(data_fu, (uint8_t*)&cur_op.data.u64, 6, NULL);
+						cur_op.type = OPCODE_TYPE_UINT48;
+						break;
+					case 7:
+						fu_read_data(data_fu, (uint8_t*)&cur_op.data.u64, 7, NULL);
+						cur_op.type = OPCODE_TYPE_UINT56;
+						break;
+				}
 				break;
 		}
 		
@@ -214,6 +281,18 @@ void acb_command_print(ACB_COMMAND* cmd)
 				break;
 			case OPCODE_TYPE_DOUBLE:
 				printf("\tValue: %lf\n", cur_op->data.f64);
+				break;
+			case OPCODE_TYPE_UINT24:
+				printf("\tValue: %u\n", cur_op->data.u24);
+				break;
+			case OPCODE_TYPE_UINT40:
+				printf("\tValue: %lu\n", cur_op->data.u40);
+				break;
+			case OPCODE_TYPE_UINT48:
+				printf("\tValue: %lu\n", cur_op->data.u48);
+				break;
+			case OPCODE_TYPE_UINT56:
+				printf("\tValue: %lu\n", cur_op->data.u56);
 				break;
 		}
 	}

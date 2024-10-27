@@ -37,7 +37,11 @@ typedef enum {
     OPCODE_TYPE_UINT64			= 0x06,
     OPCODE_TYPE_FLOAT			= 0x08,
     OPCODE_TYPE_DOUBLE			= 0x09,
-    OPCODE_TYPE_NOVAL			= 0x0f
+    OPCODE_TYPE_NOVAL			= 0x0f,
+	OPCODE_TYPE_UINT24			= 0xf3,
+	OPCODE_TYPE_UINT40			= 0xf5,
+	OPCODE_TYPE_UINT48			= 0xf6,
+	OPCODE_TYPE_UINT56			= 0xf7,
 } ACB_COMMAND_TYPE;
 
 typedef struct
@@ -49,10 +53,14 @@ typedef struct
 	
 	union
 	{
-		uint8_t u8;
-		uint16_t u16;
-		uint32_t u32;
-		uint64_t u64;
+		uint8_t u8;			/* 1 */
+		uint16_t u16;		/* 2 */
+		uint32_t u24 : 24;	/* 3 */
+		uint32_t u32;		/* 4 */
+		uint64_t u40 : 40;	/* 5 */
+		uint64_t u48 : 48;	/* 6 */
+		uint64_t u56 : 56;	/* 7 */
+		uint64_t u64;		/* 8 */
 		float f32;
 		double f64;
 	} data;
