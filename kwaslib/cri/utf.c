@@ -235,7 +235,14 @@ FU_FILE* cri_utf_write_file(CRI_UTF_FILE* utf)
 	cri_utf_write_schema(cri, utf);
 	cri_utf_write_rows(cri, utf);
 	
+	/* Resizing the FU_FILE , seeking to the end and writing the section */
+	fu_change_buf_size(cri, utf->header.string_table_offset + 8);
+	fu_seek(cri, 0, FU_SEEK_END);
 	fu_write_data(cri, (uint8_t*)utf->string_table, utf->string_table_size);
+	
+	/* Same here */
+	fu_change_buf_size(cri, utf->header.data_offset + 8);
+	fu_seek(cri, 0, FU_SEEK_END);
 	fu_write_data(cri, utf->data, utf->data_size);
 	
 	return cri;
@@ -329,7 +336,10 @@ void cri_utf_recalc_for_write(CRI_UTF_FILE* utf)
 	
 	const uint32_t rows_size = utf->header.row_width * utf->header.rows;
 	utf->header.string_table_offset = utf->header.rows_offset + rows_size;
+
 	utf->header.data_offset = utf->header.string_table_offset + utf->string_table_size;
+	utf->header.data_offset += bound_calc_leftover(32, utf->header.data_offset + 8);
+	
 	utf->header.table_size = utf->header.data_offset + utf->data_size;
 }
 

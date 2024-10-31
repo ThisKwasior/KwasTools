@@ -468,6 +468,12 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 				fu_close(acb_fu);
 				free(acb_fu);
 			}
+			
+			if(cur_row->size != 0)
+			{
+				fu_change_buf_size(data_table_fu, data_table_fu->size + bound_calc_leftover(16, data_table_fu->size));
+				fu_seek(data_table_fu, 0, FU_SEEK_END);
+			}
 
 			records_it += 1;
 		}
