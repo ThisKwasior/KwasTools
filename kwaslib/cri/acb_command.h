@@ -24,6 +24,7 @@ typedef enum
 	OPCODE_POS_3D_DISTANCE_MAX				= 69,	/* float/double */
 	OPCODE_VOLUME_GAIN_RESOLUTION100		= 87,
 	OPCODE_UNK_006F							= 111,
+	OPCODE_VOLUME_CONTROL					= 146,	/* float/double */
 	OPCODE_NOTE_ON							= 2000,
 	OPCODE_DELAY							= 2001,
 	OPCODE_UNK_07D5							= 2005,

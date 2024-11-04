@@ -141,6 +141,7 @@ ACB_COMMAND* acb_command_check_data(FU_FILE* data_fu)
 			/* float */
 			case OPCODE_POS_3D_DISTANCE_MIN:
 			case OPCODE_POS_3D_DISTANCE_MAX:
+			case OPCODE_VOLUME_CONTROL:
 
 				switch(cur_op.size)
 				{
