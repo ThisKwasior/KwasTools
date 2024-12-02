@@ -16,7 +16,7 @@
 	that's just the end of the file.
 */
 
-#define AWB_MAGIC		"AFS2"
+#define AWB_MAGIC		(const char*)"AFS2"
 #define AWB_ID_OFFSET	0x10
 
 typedef struct

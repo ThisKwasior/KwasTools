@@ -40,6 +40,7 @@ void dat_tool_print_dat(DAT_FILE* dat);
 */
 DAT_FILE* dat_tool_parse_file(const char* filepath);
 void dat_tool_extract_to_folder(DAT_FILE* dat, PU_PATH* folder);
+void dat_tool_write_order_info(DAT_FILE* dat, PU_PATH* folder); /* HACK: HACK!!!!!!!! */
 
 /* 
 	Packer
@@ -237,6 +238,8 @@ void dat_tool_extract_to_folder(DAT_FILE* dat, PU_PATH* folder)
 {
 	pu_create_dir(folder);
 	
+	dat_tool_write_order_info(dat, folder);
+	
 	for(uint32_t i = 0; i != dat->header.file_count; ++i)
 	{
 		DAT_FILE_ENTRY* entry = dat_get_entry_node(dat->entries, i);
@@ -257,6 +260,31 @@ void dat_tool_extract_to_folder(DAT_FILE* dat, PU_PATH* folder)
 	}
 }
 
+void dat_tool_write_order_info(DAT_FILE* dat, PU_PATH* folder)
+{
+	PU_STRING temp_file_str = {0};
+	pu_path_to_string(folder, &temp_file_str);
+	pu_insert_char("/", 1, -1, &temp_file_str);
+	pu_insert_char("kwastools.info", 14, -1, &temp_file_str);
+	
+	FU_FILE temp_file = {0};
+	fu_create_mem_file(&temp_file);
+	fu_write_u32(&temp_file, dat->header.file_count, FU_LITTLE_ENDIAN);
+	
+	for(uint32_t i = 0; i != dat->header.file_count; ++i)
+	{
+		DAT_FILE_ENTRY* entry = dat_get_entry_node(dat->entries, i);
+		const uint32_t name_size = strlen(entry->name);
+		fu_write_u32(&temp_file, name_size, FU_LITTLE_ENDIAN);
+		fu_write_data(&temp_file, entry->name, name_size);
+	}
+
+	fu_to_file(temp_file_str.p, &temp_file, 1);
+	
+	fu_close(&temp_file);
+	pu_free_string(&temp_file_str);
+}
+
 /* 
 	Packer
 */
@@ -266,10 +294,12 @@ DBL_LIST_NODE* dat_tool_load_files_from_dir(const char* dir)
 	DL_DIR_LIST dirlist = {0};
 	dl_parse_directory(dir, &dirlist);
 	
+	FU_FILE kwasinfo = {0};
+	
 	for(uint32_t i = 0; i != dirlist.size; ++i)
 	{
 		if(dirlist.entries[i].type == DL_TYPE_FILE)
-		{
+		{	
 			uint32_t size = 0;
 			uint8_t extension[4] = {0};
 			uint8_t* name = NULL;
@@ -283,6 +313,15 @@ DBL_LIST_NODE* dat_tool_load_files_from_dir(const char* dir)
 			pu_path_to_string(&dirlist.path, &file_dir_path);
 			pu_insert_char("/", 1, -1, &file_dir_path);
 			pu_insert_char(file_name.p, file_name.s, -1, &file_dir_path);
+			
+			if(strncmp("kwastools.info", file_name.p, 14) == 0)
+			{
+				printf("Loading kwastools.info\n");
+				fu_open_file(file_dir_path.p, 1, &kwasinfo);
+				pu_free_string(&file_name);
+				pu_free_string(&file_dir_path);
+				continue;
+			}
 			
 			/* Loading the file */
 			FU_FILE dat_file = {0};
@@ -320,6 +359,48 @@ DBL_LIST_NODE* dat_tool_load_files_from_dir(const char* dir)
 	}
 	
 	dl_free_list(&dirlist);
+	
+	if(kwasinfo.size)
+	{
+		const uint32_t files_count = fu_read_u32(&kwasinfo, NULL, FU_LITTLE_ENDIAN);
+		DBL_LIST_NODE* head_new = NULL;
+		uint8_t name_buf[255] = {0};
+		
+		for(uint32_t i = 0; i != files_count; ++i)
+		{
+			const uint32_t name_size = fu_read_u32(&kwasinfo, NULL, FU_LITTLE_ENDIAN);
+			fu_read_data(&kwasinfo, &name_buf[0], name_size, NULL);
+			printf("%s \n", name_buf);
+			
+			for(uint32_t j = 0; j != files_count; ++j)
+			{
+				DAT_FILE_ENTRY* cur_entry = dat_get_entry_node(head, j);
+				printf("\t%s\n", cur_entry->name);
+				if(strncmp(name_buf, cur_entry->name, name_size) == 0)
+				{
+					DAT_FILE_ENTRY* new_entry = dat_entry_from_data(cur_entry->position,
+																	cur_entry->extension,
+																	name_size,
+																	cur_entry->name,
+																	cur_entry->size,
+																	cur_entry->data);
+					
+					head_new = dat_append_entry(head_new, new_entry);
+					break;
+				}
+			}
+		}
+
+		DBL_LIST_NODE* node = head;
+		while(node != NULL)
+		{
+			dat_free_entry((DAT_FILE_ENTRY*)node->data);
+			node = node->next;
+		}
+		
+		head = dbl_list_free_list(head);
+		head = head_new;
+	}
 	
 	return head;
 }

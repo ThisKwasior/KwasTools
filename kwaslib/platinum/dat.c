@@ -284,15 +284,7 @@ DAT_HASHES dat_generate_hashes(DBL_LIST_NODE* entries)
 	}
 	
 	/* Generating the order */
-	uint32_t min = -1;
-	uint32_t max = 0;
 	
-	for(uint32_t i = 0; i != file_count; ++i)
-	{
-		if(min > hashes.hashes[i].pos) min = hashes.hashes[i].pos;
-		if(max < hashes.hashes[i].pos) max = hashes.hashes[i].pos;
-	}
-
 	uint32_t order_it = 0;
 	for(uint32_t i = 0; i != file_count; ++i)
 	{
