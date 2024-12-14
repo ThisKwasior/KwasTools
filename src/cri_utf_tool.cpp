@@ -368,7 +368,7 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 			/* Just assign the data */
 			if(strncmp(record.name(), "record", 6) == 0)
 			{
-				uint8_t* vl = 0;
+				uint8_t* vl = NULL;
 
 				switch(cur_col->desc.type)
 				{
@@ -408,20 +408,8 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 						vl = utf_tool_hex_to_vl((uint8_t*)record.attribute("value").as_string(),
 												strlen(record.attribute("value").as_string()));
 
-						/* 
-							Without this, VLDATA record that has no size will overlap with 
-							the next data
-						*/
-						if(cur_row->size == 0)
-						{
-							fu_write_u8(data_table_fu, 0);
-						}
-						else
-						{
-							fu_write_data(data_table_fu, vl, cur_row->size);
-							free(vl);
-						}
-						break;
+						fu_write_data(data_table_fu, vl, cur_row->size);
+						free(vl);
 						
 					default: break;
 				}
@@ -434,9 +422,6 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 				cur_row->offset = fu_tell(data_table_fu);
 				cur_row->size = utf_fu->size;
 				fu_write_data(data_table_fu, (uint8_t*)utf_fu->buf, utf_fu->size);
-				
-				//const uint64_t bound_add = bound_calc_leftover(16, fu_tell(data_table_fu));
-				//fu_add_to_buf_size(data_table_fu, bound_add);
 
 				fu_close(utf_fu);
 				free(utf_fu);
@@ -449,9 +434,6 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 				cur_row->offset = fu_tell(data_table_fu);
 				cur_row->size = awb_fu->size;
 				fu_write_data(data_table_fu, (uint8_t*)awb_fu->buf, awb_fu->size);
-				
-				//const uint64_t bound_add = bound_calc_leftover(16, fu_tell(data_table_fu));
-				//fu_add_to_buf_size(data_table_fu, bound_add);
 
 				fu_close(awb_fu);
 				free(awb_fu);
@@ -469,11 +451,8 @@ CRI_UTF_FILE* utf_tool_xml_to_utf(pugi::xml_node* criutf)
 				free(acb_fu);
 			}
 			
-			if(cur_row->size != 0)
-			{
-				fu_change_buf_size(data_table_fu, data_table_fu->size + bound_calc_leftover(16, data_table_fu->size));
-				fu_seek(data_table_fu, 0, FU_SEEK_END);
-			}
+			fu_change_buf_size(data_table_fu, data_table_fu->size + bound_calc_leftover(32, data_table_fu->size));
+			fu_seek(data_table_fu, 0, FU_SEEK_END);
 
 			records_it += 1;
 		}
