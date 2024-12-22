@@ -243,7 +243,7 @@ void awb_tool_xml_to_afs2_data(pugi::xml_node* awb, AWB_FILE* afs2)
 		to different offsets.
 	*/
 	h->file_count = kwasutils_get_xml_child_count(&order, "entry");
-	const uint32_t files_size = kwasutils_get_xml_child_count(&files, "file");
+	//const uint32_t files_size = kwasutils_get_xml_child_count(&files, "file");
 	
 	/* Read files order */
 	std::vector<uint32_t> file_order;
