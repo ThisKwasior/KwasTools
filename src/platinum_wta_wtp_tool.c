@@ -5,6 +5,7 @@
 #include <kwaslib/core/io/arg_parser.h>
 #include <kwaslib/core/io/path_utils.h>
 #include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/io/string_utils.h>
 #include <kwaslib/core/cpu/endianness.h>
 #include <kwaslib/core/data/image/image.h>
 #include <kwaslib/core/data/image/gtf.h>
@@ -64,24 +65,22 @@ int main(int argc, char** argv)
 		char* str_wtp = NULL;
 		
 		/* Let's figure out which file is which */
-		PU_PATH arg1_path = {0};
-		PU_PATH arg2_path = {0};
-		pu_split_path(argv[1], strlen(argv[1]), &arg1_path);
-		pu_split_path(argv[2], strlen(argv[2]), &arg2_path);
+		PU_PATH* arg1_path = pu_split_path(argv[1], strlen(argv[1]));
+		PU_PATH* arg2_path = pu_split_path(argv[2], strlen(argv[2]));
 
-		if(strncmp(arg1_path.ext.p, "wta", 3) == 0)
+		if(strncmp(arg1_path->ext->ptr, "wta", 3) == 0)
 		{
 			str_wta = &argv[1][0];
 			str_wtp = &argv[2][0];
 		}
-		else if(strncmp(arg2_path.ext.p, "wta", 3) == 0)
+		else if(strncmp(arg2_path->ext->ptr, "wta", 3) == 0)
 		{
 			str_wta = &argv[2][0];
 			str_wtp = &argv[1][0];
 		}
 
-		pu_free_path(&arg1_path);
-		pu_free_path(&arg2_path);
+		pu_free_path(arg1_path);
+		pu_free_path(arg2_path);
 		
 		/* Open the files */
 		FU_FILE file_wta = {0};
@@ -106,21 +105,20 @@ int main(int argc, char** argv)
 			wta_tool_print_wtb(wtb);
 			
 			/* Directory name */
-			PU_PATH wtp_path = {0};
-			pu_split_path(argv[1], strlen(argv[1]), &wtp_path);
-			pu_free_string(&wtp_path.ext);
-			wtp_path.type = PU_PATH_TYPE_DIR;
-			pu_insert_char("_wtp", 4, -1, &wtp_path.name);
+			PU_PATH* wtp_path = pu_split_path(argv[1], strlen(argv[1]));
+			su_remove(wtp_path->ext, 0, -1);
+			wtp_path->type = PU_PATH_TYPE_DIR;
+			su_insert_char(wtp_path->name, -1, "_wtp", 4);
 			
-			PU_STRING str = {0};
-			pu_path_to_string(&wtp_path, &str);
-			printf("Dir path: %s\n", str.p);
+			SU_STRING* str = pu_path_to_string(wtp_path);
+			printf("Dir path: %s\n", str->ptr);
 			
 			/* Save to a directory */
-			wta_tool_extract_to_folder(wtb, &wtp_path);
+			wta_tool_extract_to_folder(wtb, wtp_path);
 			
 			/* Free all of it */
 			wtb_free(wtb);
+            pu_free_path(wtp_path);
 			
 			printf("\nUnpacking done without issues (I hope)\n");
 		}
@@ -149,20 +147,18 @@ int main(int argc, char** argv)
 			}
 			
 			/* Create path strings for the files */
-			PU_STRING output_str_wta = {0};
-			pu_create_string(argv[1], arg1_len, &output_str_wta);
-			pu_insert_char(".wta", 5, -1, &output_str_wta);
+			SU_STRING* output_str_wta = su_create_string(argv[1], arg1_len);
+			su_insert_char(output_str_wta, -1, ".wta", 5);
 			
-			PU_STRING output_str_wtp = {0};
-			pu_create_string(argv[1], arg1_len, &output_str_wtp);
-			pu_insert_char(".wtp", 5, -1, &output_str_wtp);
+			SU_STRING* output_str_wtp = su_create_string(argv[1], arg1_len);
+			su_insert_char(output_str_wtp, -1, ".wtp", 5);
 			
 			/* Save generated WTA/WTP to file on disk */
-			fu_to_file(output_str_wta.p, &fwta, 1);
-			fu_to_file(output_str_wtp.p, &fwtp, 1);
+			fu_to_file(output_str_wta->ptr, &fwta, 1);
+			fu_to_file(output_str_wtp->ptr, &fwtp, 1);
 			
-			pu_free_string(&output_str_wta);
-			pu_free_string(&output_str_wtp);
+			su_free(output_str_wta);
+			su_free(output_str_wtp);
 			
 			wtb_free(wtb);
 			
@@ -244,10 +240,9 @@ void wta_tool_extract_to_folder(WTB_FILE* wtb, PU_PATH* folder)
 		const uint32_t len = strlen(&id_str[0]);
 		
 		/*  Construct the path */
-		PU_STRING temp_file_str = {0};
-		pu_path_to_string(folder, &temp_file_str);
-		pu_insert_char("/", 1, -1, &temp_file_str);
-		pu_insert_char(id_str, len, -1, &temp_file_str);
+		SU_STRING* temp_file_str = pu_path_to_string(folder);
+		su_insert_char(temp_file_str, -1, "/", 1);
+		su_insert_char(temp_file_str, -1, id_str, len);
 
 		FU_FILE temp_file = {0};
 		fu_create_mem_file(&temp_file);
@@ -256,7 +251,7 @@ void wta_tool_extract_to_folder(WTB_FILE* wtb, PU_PATH* folder)
 		
 		if(wtb->platform == FU_BIG_ENDIAN)
 		{
-			pu_insert_char(".png", 4, -1, &temp_file_str);
+			su_insert_char(temp_file_str, -1, ".png", 4);
 			
 			IMAGE* img = NULL;
 			uint64_t img_size = 0;
@@ -274,21 +269,21 @@ void wta_tool_extract_to_folder(WTB_FILE* wtb, PU_PATH* folder)
 			
 			img_data = img_to_raw_data(img, &img_size);
 			
-			stbi_write_png(temp_file_str.p, img->width, img->height, img->bpp, img_data, img->width*img->bpp);
+			stbi_write_png(temp_file_str->ptr, img->width, img->height, img->bpp, img_data, img->width*img->bpp);
 			
 			free(img_data);
 			img_free_image(img);
 		}
 		else
 		{
-			pu_insert_char(".dds", 4, -1, &temp_file_str);
-			fu_to_file(temp_file_str.p, &temp_file, 1);
+			su_insert_char(temp_file_str, -1, ".dds", 4);
+			fu_to_file(temp_file_str->ptr, &temp_file, 1);
 		}
 		
 		//printf("Path: %s\n", temp_file_str.p);
 		
 		fu_close(&temp_file);
-		pu_free_string(&temp_file_str);
+		su_free(temp_file_str);
 	}
 }
 

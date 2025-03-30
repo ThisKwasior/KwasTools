@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "path_utils.h"
+#include "string_utils.h"
 
 #define FU_SUCCESS	0
 #define FU_ERROR	1

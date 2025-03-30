@@ -287,13 +287,13 @@ void acb_command_print(ACB_COMMAND* cmd)
 				printf("\tValue: %u\n", cur_op->data.u24);
 				break;
 			case OPCODE_TYPE_UINT40:
-				printf("\tValue: %lu\n", cur_op->data.u40);
+				printf("\tValue: %llu\n", (uint64_t)cur_op->data.u40);
 				break;
 			case OPCODE_TYPE_UINT48:
-				printf("\tValue: %lu\n", cur_op->data.u48);
+				printf("\tValue: %llu\n", (uint64_t)cur_op->data.u48);
 				break;
 			case OPCODE_TYPE_UINT56:
-				printf("\tValue: %lu\n", cur_op->data.u56);
+				printf("\tValue: %llu\n", (uint64_t)cur_op->data.u56);
 				break;
 		}
 	}

@@ -42,134 +42,54 @@ void pu_path_to_dos(char* str, uint32_t size)
 	}
 }
 
-void pu_create_string(const char* str, const uint32_t size, PU_STRING* pustr)
+PU_PATH* pu_alloc_path()
 {
-    pu_free_string(pustr);
+    PU_PATH* path = calloc(1, sizeof(PU_PATH));
     
-    if(size != PU_PATH_NO_VALUE)
-    {
-        pustr->s = size;
-        pustr->p = (char*)calloc(size+1, 1);
-        memcpy(pustr->p, str, size);
-    }
-    else
-    {
-        pustr->s = 0;
-        pustr->p = (char*)calloc(1, 1);
-    }
+    path->type = PU_PATH_TYPE_UNK;
+    
+    path->dir = su_create_string("", 0);
+    path->name = su_create_string("", 0);
+    path->ext = su_create_string("", 0);
+    
+	path->dir->size = PU_PATH_NO_VALUE;
+	path->name->size = PU_PATH_NO_VALUE;
+	path->ext->size = PU_PATH_NO_VALUE;
+    
+    return path;
 }
 
-void pu_insert_char(const char* str, const uint32_t size,
-                      const uint32_t pos, PU_STRING* pustr)
-{
-    const uint32_t new_size = size+pustr->s;
-    char* buf = (char*)calloc(new_size+1, 1);
-    
-    if(pos == 0)
-    {
-        memcpy(&buf[0], str, size);
-        memcpy(&buf[size], pustr->p, pustr->s);
-    }
-    else if(pos > pustr->s)
-    {
-        memcpy(&buf[0], pustr->p, pustr->s);
-        memcpy(&buf[pustr->s], str, size);
-    }
-    else
-    {
-        memcpy(&buf[0], pustr->p, pos);
-        memcpy(&buf[pos], str, size);
-        memcpy(&buf[pos+size], &pustr->p[pos], pustr->s-pos);
-    }
-    
-    pu_free_string(pustr);
-    
-    pustr->p = buf;
-    pustr->s = new_size;
-}
-
-void pu_insert_string(const PU_STRING* insert, const uint32_t pos, PU_STRING* target)
-{
-    if(target->s == PU_PATH_NO_VALUE)
-    {
-        pu_create_string(insert->p, insert->s, target);
-    }
-    else
-    {
-        pu_insert_char(insert->p, insert->s, pos, target);
-    }
-}
-
-void pu_split_path(const char* file_path, uint32_t file_path_size, PU_PATH* desc)
-{
-	desc->dir.s = PU_PATH_NO_VALUE;
-	desc->name.s = PU_PATH_NO_VALUE;
-	desc->ext.s = PU_PATH_NO_VALUE;
-    
+PU_PATH* pu_split_path(const char* file_path, uint32_t file_path_size)
+{   
     /* Convert path to *nix */
-    /* TODO: Make windows not suck balls with text encoding */
-    char* path = (char*)calloc(file_path_size, 1);
-    memcpy(path, file_path, file_path_size);
-
-    pu_path_to_nix(path, file_path_size);
-
-    /* Check if it's either a file or directory */
-    if(pu_is_file(file_path)) desc->type = PU_PATH_TYPE_FILE;
-    else if(pu_is_dir(file_path)) desc->type = PU_PATH_TYPE_DIR;
-    else
-    {
-		/* File/Dir doesn't exist - assume file path */
-		desc->type = PU_PATH_TYPE_FILE;
-    }
+    SU_STRING* path_nix = su_create_string(file_path, file_path_size);
+    pu_path_to_nix(path_nix->ptr, file_path_size);
     
-    /* Find base directory, file name and extension */
-    uint32_t period = PU_PATH_NO_VALUE;
-	uint32_t slash = PU_PATH_NO_VALUE;
+    PU_PATH* desc = pu_alloc_path();
     
-    for(uint32_t i = 0; i != file_path_size; ++i)
-    {	
-        if(path[i] == '.') period = i;
-        if(path[i] == '/') slash = i;
-    }
-    
-    // The path has a dir
-    if(slash != PU_PATH_NO_VALUE)
-    {
-        desc->dir.s = slash;
-        desc->dir.p = (char*)calloc(desc->dir.s, 1);
-        memcpy(desc->dir.p, path, desc->dir.s);
-        file_path_size -= desc->dir.s + 1;
-        memcpy(&path[0], &path[desc->dir.s+1], file_path_size);
-        if(period != PU_PATH_NO_VALUE) period -= desc->dir.s + 1;
-    }
+    /* Check if it's either a file or a directory */
+    if(pu_is_file(path_nix->ptr)) desc->type = PU_PATH_TYPE_FILE;
+    else if(pu_is_dir(path_nix->ptr)) desc->type = PU_PATH_TYPE_DIR;
+    else desc->type = PU_PATH_TYPE_FILE; /* Doesn't exist, assume it's a file */
 
+    /* Split path */
+    desc->dir = pu_get_parent_dir_char(path_nix->ptr);
+    
+    /* If it's a file, separate the file name from the extension */
     if(desc->type == PU_PATH_TYPE_FILE)
     {
-        // File with an extension
-        if(period != PU_PATH_NO_VALUE)
-        {
-            desc->name.s = period;
-            desc->ext.s = file_path_size-period-1;
-            desc->name.p = (char*)calloc(desc->name.s+1, 1);
-            desc->ext.p = (char*)calloc(desc->ext.s+1, 1);
-            memcpy(desc->name.p, path, desc->name.s);
-            memcpy(desc->ext.p, &path[period+1], desc->ext.s);
-        }
-        else // File without an extension
-        {
-            desc->name.s = file_path_size;
-            desc->name.p = (char*)calloc(desc->name.s+1, 1);
-            memcpy(desc->name.p, path, desc->name.s);
-        }
+        desc->name = pu_get_name_char(path_nix->ptr);
+        desc->ext = pu_get_ext_char(path_nix->ptr);
     }
     else if(desc->type == PU_PATH_TYPE_DIR)
     {
-        desc->name.s = file_path_size;
-        desc->name.p = (char*)calloc(desc->name.s+1, 1);
-        memcpy(desc->name.p, path, desc->name.s);
+        desc->name = pu_get_basename_char(path_nix->ptr);
+        desc->ext = su_create_string("", 0);
     }
 
-    free(path);
+    su_free(path_nix);
+
+    return desc;
 }
 
 int pu_create_dir_char(const char* path)
@@ -183,23 +103,25 @@ int pu_create_dir_char(const char* path)
 
 int pu_create_dir(const PU_PATH* path)
 {
-    PU_STRING str = {0};
+    SU_STRING* str = su_create_string("", 0);
 
-    if(path->dir.s != PU_PATH_NO_VALUE)
-        pu_create_string(path->dir.p, path->dir.s, &str);
-    else
-        pu_create_string("", 0, &str);
+    if(path->dir->size != PU_PATH_NO_VALUE)
+    {
+        su_insert_string(str, 0, path->dir);
+    }
     
     if(path->type == PU_PATH_TYPE_DIR)
     {
-        if(path->dir.s != PU_PATH_NO_VALUE)
-            pu_insert_char("/", 1, -1, &str);
-        pu_insert_string(&path->name, -1, &str);
+        if(path->dir->size != PU_PATH_NO_VALUE)
+        {
+            su_insert_char(str, -1, "/", 1);
+        }
+        su_insert_string(str, -1, path->name);
     }
 
-    const int ret = pu_create_dir_char(str.p);
+    const int ret = pu_create_dir_char(str->ptr);
     
-    pu_free_string(&str);
+    su_free(str);
     
     return ret;
 }
@@ -211,78 +133,149 @@ int pu_remove_dir_char(const char* path)
 
 int pu_remove_dir(const PU_PATH* path)
 {
-    PU_STRING str = {0};
+    SU_STRING* str = su_create_string("", 0);
 
-    if(path->dir.s != PU_PATH_NO_VALUE)
-        pu_create_string(path->dir.p, path->dir.s, &str);
-    else
-        pu_create_string("", 0, &str);
+    if(path->dir->size != PU_PATH_NO_VALUE)
+    {
+        su_insert_string(str, 0, path->dir);
+    }
     
     if(path->type == PU_PATH_TYPE_DIR)
     {
-        if(path->dir.s != PU_PATH_NO_VALUE)
-            pu_insert_char("/", 1, -1, &str);
-        pu_insert_string(&path->name, -1, &str);
+        if(path->dir->size != PU_PATH_NO_VALUE)
+        {
+            su_insert_char(str, -1, "/", 1);
+        }
+        su_insert_string(str, -1, path->name);
     }
 
-    const int ret = pu_remove_dir_char(str.p);
+    const int ret = pu_remove_dir_char(str->ptr);
     
-    pu_free_string(&str);
+    su_free(str);
     
     return ret;
 }
 
-void pu_free_string(PU_STRING* str)
+PU_PATH* pu_free_path(PU_PATH* path)
 {
-	free(str->p);
-    str->p = NULL;
-	str->s = PU_PATH_NO_VALUE;
+	path->dir = su_free(path->dir);
+	path->name = su_free(path->name);
+	path->ext = su_free(path->ext);
+    
+    path->type = 0;
+    
+    free(path);
+    
+    return NULL;
 }
 
-void pu_free_path(PU_PATH* desc)
+SU_STRING* pu_path_to_string(const PU_PATH* path)
 {
-	pu_free_string(&desc->dir);
-	pu_free_string(&desc->name);
-	pu_free_string(&desc->ext);
+    SU_STRING* str = su_create_string("", 0);
     
-    desc->type = PU_PATH_TYPE_UNK;
+    if(path->type != PU_PATH_TYPE_UNK)
+    {
+        if(path->dir->size)
+        {
+            su_insert_string(str, -1, path->dir);
+        }
+        
+        if(path->name->size)
+        {
+            if(path->dir->size)
+            {
+                su_insert_char(str, -1, "/", 1);
+            }
+
+            su_insert_string(str, -1, path->name);
+        }
+        
+        if(path->ext->size)
+        {
+            if(path->dir->size && (path->name->size == PU_PATH_NO_VALUE))
+            {
+                su_insert_char(str, -1, "/", 1);
+            }
+
+            su_insert_char(str, -1, ".", 1);
+            su_insert_string(str, -1, path->ext);
+        }
+    }
+    
+    return str;
 }
 
-void pu_path_to_string(const PU_PATH* desc, PU_STRING* str)
+SU_STRING* pu_get_basename_char(const char* path)
 {
-    // PATH doesn't exist
-    if(desc->type == PU_PATH_TYPE_UNK)
+    const char* slash_nix = strrchr(path, '/');
+    const char* slash_dos = strrchr(path, '\\');
+    
+    uint32_t slash = 0;
+    
+    if(slash_nix != slash_dos)
     {
-        str->s = PU_PATH_NO_VALUE;
-        return;
+        slash = (slash_nix > slash_dos)
+                ? (slash_nix - &path[0] + 1)
+                : (slash_dos - &path[0] + 1);
     }
-    
-    str->s = 0;
-    
-    if(desc->dir.s != PU_PATH_NO_VALUE) str->s += desc->dir.s + 1;
-    if(desc->name.s != PU_PATH_NO_VALUE) str->s += desc->name.s;
-    if(desc->ext.s != PU_PATH_NO_VALUE) str->s += desc->ext.s + 1;
 
-    str->p = (char*)calloc(str->s+1, 1);
+    const uint32_t str_len = strlen(&path[slash]);
+
+    SU_STRING* str = su_create_string(&path[slash], str_len);
     
-    uint32_t it = 0;
+    return str;
+}
+
+SU_STRING* pu_get_parent_dir_char(const char* path)
+{
+    const char* slash_nix = strrchr(path, '/');
+    const char* slash_dos = strrchr(path, '\\');
     
-    if(desc->dir.s != PU_PATH_NO_VALUE)
+    char* slash = (char*)path;
+    
+    if(slash_nix != slash_dos)
     {
-        memcpy(&str->p[it], desc->dir.p, desc->dir.s);
-        it += desc->dir.s;
-        str->p[it++] = '/';
+        slash = (char*)((slash_nix > slash_dos) ? (slash_nix) : (slash_dos));
     }
     
-    if(desc->name.s != PU_PATH_NO_VALUE)
+    const uint32_t str_len = slash - &path[0];
+
+    SU_STRING* dir = su_create_string(path, str_len);
+    
+    return dir;
+}
+
+SU_STRING* pu_get_name_char(const char* path)
+{
+    SU_STRING* str = pu_get_basename_char(path);
+    
+    char* dot_ptr = strrchr(str->ptr, '.');
+    
+    if(dot_ptr)
     {
-        memcpy(&str->p[it], desc->name.p, desc->name.s);
-        it += desc->name.s;
+        dot_ptr[0] = '\0';
     }
     
-    if(desc->ext.s != PU_PATH_NO_VALUE)
-    {
-        str->p[it++] = '.';
-        memcpy(&str->p[it], desc->ext.p, desc->ext.s);
-    }
+    const uint32_t str_len = strlen(str->ptr);
+
+    SU_STRING* name = su_cut(str, 0, str_len);
+    
+    su_free(str);
+    
+    return name;
+}
+
+SU_STRING* pu_get_ext_char(const char* path)
+{
+    SU_STRING* str = pu_get_basename_char(path);
+    
+    const char* dot_ptr = strrchr(str->ptr, '.');
+    const uint32_t dot = dot_ptr ? (dot_ptr - &str->ptr[0] + 1) : str->size;
+    const uint32_t str_len = strlen(&path[dot]);
+
+    SU_STRING* ext = su_cut(str, dot, str_len);
+    
+    su_free(str);
+    
+    return ext;
 }

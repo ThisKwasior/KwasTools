@@ -4,6 +4,7 @@
 
 #include <kwaslib/core/io/file_utils.h>
 #include <kwaslib/core/io/path_utils.h>
+#include <kwaslib/core/io/string_utils.h>
 
 /*
     CRIWARE archive for audio, sometimes accompanies ACB file with metadata.
@@ -54,7 +55,7 @@ typedef struct
 AWB_FILE* awb_read_file(FU_FILE* awb, const uint32_t offset);
 AWB_FILE* awb_parse_directory(const char* dir);
 
-void awb_extract_to_folder(AWB_FILE* afs2, PU_STRING* dir);
+void awb_extract_to_folder(AWB_FILE* afs2, SU_STRING* dir);
 
 void awb_read_header(FU_FILE* awb, AWB_FILE* afs2);
 void awb_read_entries(FU_FILE* awb, AWB_FILE* afs2);

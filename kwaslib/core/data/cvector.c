@@ -12,10 +12,9 @@ CVECTOR_METADATA* cvec_create(const uint32_t elem_size)
 	if(cvec)
 	{
 		cvec->elem_size = elem_size;
-		return cvec;
 	}
 	
-	return NULL;
+    return cvec;
 }
 
 CVECTOR_METADATA* cvec_destroy(CVECTOR_METADATA* cvec)
@@ -38,7 +37,15 @@ void cvec_grow(CVECTOR_METADATA* cvec)
 		new_cap = (new_cap << 1);
 #endif
 
-	cvec_resize(cvec, new_cap);
+    const uint64_t to_alloc = new_cap*cvec->elem_size;
+    const uint64_t to_copy = cvec->size*cvec->elem_size;
+    uint8_t* new_data = (uint8_t*)calloc(to_alloc, 1);
+    
+    memcpy(new_data, cvec->data, to_copy);
+    free(cvec->data);
+    
+    cvec->data = new_data;
+    cvec->capacity = new_cap;
 }
 
 /*
@@ -47,6 +54,9 @@ void cvec_grow(CVECTOR_METADATA* cvec)
 
 void* cvec_at(CVECTOR_METADATA* cvec, const uint64_t pos)
 {
+    if(cvec == NULL)
+        return NULL;
+    
 	if(cvec_size(cvec) <= pos)
 		return NULL;
 	
@@ -211,10 +221,10 @@ void* cvec_erase(CVECTOR_METADATA* cvec, const uint64_t pos)
 
 void cvec_push_back(CVECTOR_METADATA* cvec, void* value)
 {
-	if(cvec_capacity(cvec) == 0)
+	if(cvec_empty(cvec))
 		cvec_grow(cvec);
-	
-	cvec->size += 1;
+    
+    cvec->size += 1;
 	
 	if(cvec_size(cvec) > cvec_capacity(cvec))
 		cvec_grow(cvec);
@@ -228,19 +238,19 @@ void cvec_pop_back(CVECTOR_METADATA* cvec)
 		cvec_erase(cvec, cvec_size(cvec)-1);
 }
 
-void cvec_resize(CVECTOR_METADATA* cvec, const uint64_t new_capacity)
+void cvec_resize(CVECTOR_METADATA* cvec, const uint64_t new_size)
 {
-	uint8_t* new_data = (uint8_t*)calloc(new_capacity, cvec->elem_size);
+    uint8_t* new_data = (uint8_t*)calloc(new_size, cvec->elem_size);
 	
 	if(new_data)
 	{
-		cvec->capacity = new_capacity;
-		
-		/* If you want memory leaks, here you go */
-		if(cvec_capacity(cvec) <= cvec_size(cvec))
-			cvec->size = cvec_capacity(cvec);
-		
-		memcpy(new_data, cvec->data, cvec_size(cvec)*cvec->elem_size);
+        uint64_t to_copy = cvec->size;
+		cvec->size = new_size;
+		cvec->capacity = new_size;
+        
+        if(cvec->size > new_size) to_copy = new_size;
+
+		memcpy(new_data, cvec->data, to_copy*cvec->elem_size);
 		free(cvec->data);
 		cvec->data = new_data;
 	}

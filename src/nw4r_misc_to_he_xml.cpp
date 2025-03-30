@@ -10,8 +10,8 @@
 
 #include <kwaslib/kwas_all.h>
 
-void nw4r_srt0_to_uvanim_xml(SRT0_HEADER* header, SRT0_TEX_ANIM_DATA* anim_data, PU_STRING* out);
-void nw4r_scn0_to_camanim_xml(SCN0_HEADER* header, SCN0_SECTION* camera_section, PU_STRING* out);
+void nw4r_srt0_to_uvanim_xml(SRT0_HEADER* header, SRT0_TEX_ANIM_DATA* anim_data, SU_STRING* out);
+void nw4r_scn0_to_camanim_xml(SCN0_HEADER* header, SCN0_SECTION* camera_section, SU_STRING* out);
 void nw4r_append_keyframe_set(pugi::xml_node* anim, const uint8_t type, BRRES_KEYFRAME_SET* kfs);
 
 /*
@@ -27,11 +27,10 @@ int main(int argc, char** argv)
 	
 	if(pu_is_file(argv[1]))
 	{
-		PU_PATH input_file_path = {0};
-		pu_split_path(argv[1], strlen(argv[1]), &input_file_path);
+		PU_PATH* input_file_path = pu_split_path(argv[1], strlen(argv[1]));
 		
 		/* UV Anims */
-		if(strncmp("srt0", input_file_path.ext.p, 4) == 0)
+		if(strncmp("srt0", input_file_path->ext->ptr, 4) == 0)
 		{
 			FU_FILE srt0 = {0};
 			fu_open_file(argv[1], 1, &srt0);
@@ -45,27 +44,26 @@ int main(int argc, char** argv)
 			
 			for(uint32_t i = 0; i != srt0f->header.anim_data_count; ++i)
 			{
-				pu_free_string(&input_file_path.ext);
-				pu_create_string("xml", 3, &input_file_path.ext);
+				su_remove(input_file_path->ext, 0, -1);
+				input_file_path->ext = su_create_string("xml", 3);
 				
 				/* Append material name to the file name */
 				SRT0_HEADER* header = &srt0f->header;
 				SRT0_TEX_ANIM_DATA* anim_data = &srt0f->anim_data[i];
 				
-				pu_insert_char("_", 1, -1, &input_file_path.name);
-				pu_insert_char(anim_data->material_name,
-							   anim_data->material_name_size,
-							   -1, &input_file_path.name);
+				su_insert_char(input_file_path->name, -1, "_", 1);
+				su_insert_char(input_file_path->name, -1,
+                               anim_data->material_name,
+							   anim_data->material_name_size);
 				
-				PU_STRING out_str = {0};
-				pu_path_to_string(&input_file_path, &out_str);
+				SU_STRING* out_str = pu_path_to_string(input_file_path);
 				
-				printf("Save path: %s\n", out_str.p);
+				printf("Save path: %s\n", out_str->ptr);
 				
-				nw4r_srt0_to_uvanim_xml(header, anim_data, &out_str);
+				nw4r_srt0_to_uvanim_xml(header, anim_data, out_str);
 				
-				pu_free_path(&input_file_path);
-				pu_free_string(&out_str);
+				pu_free_path(input_file_path);
+				su_free(out_str);
 			}
 			
 			srt0_free(srt0f);
@@ -73,7 +71,7 @@ int main(int argc, char** argv)
 		}
 		
 		/* Cam Anims */
-		if(strncmp("scn0", input_file_path.ext.p, 4) == 0)
+		if(strncmp("scn0", input_file_path->ext->ptr, 4) == 0)
 		{
 			FU_FILE scn0 = {0};
 			fu_open_file(argv[1], 1, &scn0);
@@ -83,35 +81,36 @@ int main(int argc, char** argv)
 			
 			scn0_print(scn0f);
 
-			pu_free_string(&input_file_path.ext);
-			pu_create_string("xml", 3, &input_file_path.ext);
+			su_free(input_file_path->ext);
+			input_file_path->ext = su_create_string("xml", 3);
 			
 			/* Append camera name to the file name */
 			SCN0_HEADER* header = &scn0f->header;
 			SCN0_SECTION* camera_section = scn0f->sections[SCN0_SECTION_CAMERA];
 			
-			pu_insert_char("_", 1, -1, &input_file_path.name);
-			pu_insert_char(camera_section->header.name,
-						   camera_section->header.name_size,
-						   -1, &input_file_path.name);
+			su_insert_char(input_file_path->name, -1, "_", 1);
+			su_insert_char(input_file_path->name, -1,
+                           camera_section->header.name,
+						   camera_section->header.name_size);
 			
-			PU_STRING out_str = {0};
-			pu_path_to_string(&input_file_path, &out_str);
+			SU_STRING* out_str = pu_path_to_string(input_file_path);
 			
-			printf("Save path: %s\n", out_str.p);
+			printf("Save path: %s\n", out_str->ptr);
 
-			nw4r_scn0_to_camanim_xml(header, camera_section, &out_str);
+			nw4r_scn0_to_camanim_xml(header, camera_section, out_str);
 			
-			pu_free_path(&input_file_path);
-			pu_free_string(&out_str);
+			pu_free_path(input_file_path);
+			su_free(out_str);
 
 			scn0_free(scn0f);
 			free(scn0f);
 		}
+        
+        pu_free_path(input_file_path);
 	}
 }
 
-void nw4r_srt0_to_uvanim_xml(SRT0_HEADER* header, SRT0_TEX_ANIM_DATA* anim_data, PU_STRING* out)
+void nw4r_srt0_to_uvanim_xml(SRT0_HEADER* header, SRT0_TEX_ANIM_DATA* anim_data, SU_STRING* out)
 {
 	pugi::xml_document doc;
 
@@ -161,10 +160,10 @@ void nw4r_srt0_to_uvanim_xml(SRT0_HEADER* header, SRT0_TEX_ANIM_DATA* anim_data,
 
 	}
 
-	doc.save_file(out->p);
+	doc.save_file(out->ptr);
 }
 
-void nw4r_scn0_to_camanim_xml(SCN0_HEADER* header, SCN0_SECTION* camera_section, PU_STRING* out)
+void nw4r_scn0_to_camanim_xml(SCN0_HEADER* header, SCN0_SECTION* camera_section, SU_STRING* out)
 {
 	pugi::xml_document doc;
 
@@ -266,7 +265,7 @@ void nw4r_scn0_to_camanim_xml(SCN0_HEADER* header, SCN0_SECTION* camera_section,
 	nw4r_append_keyframe_set(&anim, CAM_ANIM_TYPE_TWIST, &camera_section->kf_sets[SCN0_CAMERA_TWIST]);
 	nw4r_append_keyframe_set(&anim, CAM_ANIM_TYPE_FOV, &camera_section->kf_sets[SCN0_CAMERA_FOV_Y]);
 	
-	doc.save_file(out->p);
+	doc.save_file(out->ptr);
 }
 
 void nw4r_append_keyframe_set(pugi::xml_node* anim, const uint8_t type, BRRES_KEYFRAME_SET* kfs)

@@ -10,12 +10,14 @@
 #include <kwaslib/core/io/path_utils.h>
 #include <kwaslib/core/io/type_readers.h>
 #include <kwaslib/core/io/type_writers.h>
+#include <kwaslib/core/io/string_utils.h>
 
 #include <kwaslib/core/math/boundary.h>
 #include <kwaslib/core/math/half.h>
 #include <kwaslib/core/math/vec.h>
 
 #include <kwaslib/core/data/dbl_link_list.h>
+#include <kwaslib/core/data/cvector.h>
 #include <kwaslib/core/data/image/dds.h>
 #include <kwaslib/core/data/image/gtf.h>
 #include <kwaslib/core/data/image/image.h>

@@ -17,6 +17,8 @@ typedef struct
 	uint32_t elem_size; /* Size of single element */
 } CVECTOR_METADATA;
 
+typedef CVECTOR_METADATA* CVEC;
+
 /*
 	Allocates the CVECTOR_METADATA structure.
 	elem_size is here to make the overall api less
@@ -92,7 +94,7 @@ void cvec_pop_back(CVECTOR_METADATA* cvec);
 	Can lead to memory leaks as it will copy only the amount
 	of elements requested, even if the size is higher.
 */
-void cvec_resize(CVECTOR_METADATA* cvec, const uint64_t new_capacity);
+void cvec_resize(CVECTOR_METADATA* cvec, const uint64_t new_size);
 
 /*
  *	Misc

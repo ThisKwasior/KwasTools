@@ -38,9 +38,9 @@ void anim_tool_anim_to_file(ANIM_TOOL_HE_TYPES* anim_type, PU_PATH* xml_path);
 /* 
 	Unpacker
 */
-void anim_tool_anim_to_xml(ANIM_TOOL_HE_TYPES* anim_type, PU_PATH* out);
-void anim_tool_uv_to_xml(UV_ANIM_FILE* uv, PU_STRING* out);
-void anim_tool_cam_to_xml(CAM_ANIM_FILE* cam, PU_STRING* out);
+void anim_tool_anim_to_xml(ANIM_TOOL_HE_TYPES* anim_type, SU_STRING* out);
+void anim_tool_uv_to_xml(UV_ANIM_FILE* uv, SU_STRING* out);
+void anim_tool_cam_to_xml(CAM_ANIM_FILE* cam, SU_STRING* out);
 
 void anim_tool_append_kfset_xml(pugi::xml_node& anim, MIRAGE_KEYFRAME_SET* kfs, MIRAGE_KEYFRAME* keyframes);
 
@@ -81,29 +81,28 @@ int main(int argc, char** argv)
 	/* It's a file so let's process it */
 	if(pu_is_file(argv[1]))
 	{
-		PU_PATH input_file_path = {0};
-		pu_split_path(argv[1], strlen(argv[1]), &input_file_path);
+		PU_PATH* input_file_path = pu_split_path(argv[1], strlen(argv[1]));
 
 		ANIM_TOOL_HE_TYPES anim_type = {0};
 
 		/* It's an XML */
-		if(strncmp(input_file_path.ext.p, "xml", 3) == 0)
+		if(strncmp(input_file_path->ext->ptr, "xml", 3) == 0)
 		{
-			anim_tool_xml_to_anim(&anim_type, &input_file_path);
-			anim_tool_anim_to_file(&anim_type, &input_file_path);
+			anim_tool_xml_to_anim(&anim_type, input_file_path);
+			anim_tool_anim_to_file(&anim_type, input_file_path);
 		}
 		else /* Check if the file is a HE anim format */
 		{
 			FU_FILE anim = {0};
 			fu_open_file(argv[1], 1, &anim);
 
-			if(strncmp(input_file_path.ext.p, "uv-anim", 7) == 0)
+			if(strncmp(input_file_path->ext->ptr, "uv-anim", 7) == 0)
 			{
 				anim_type.ptrs.uv = uv_anim_load_file(&anim);
 				anim_type.type = ANIM_TOOL_TYPE_UV;
 				uv_anim_print_uv(anim_type.ptrs.uv);
 			}
-			else if(strncmp(input_file_path.ext.p, "cam-anim", 8) == 0)
+			else if(strncmp(input_file_path->ext->ptr, "cam-anim", 8) == 0)
 			{
 				anim_type.ptrs.cam = cam_anim_load_file(&anim);
 				anim_type.type = ANIM_TOOL_TYPE_CAM;
@@ -114,12 +113,17 @@ int main(int argc, char** argv)
 			fu_close(&anim);
 
 			/* Change the extension to xml */
-			pu_free_string(&input_file_path.ext);
-			pu_create_string("xml", 3, &input_file_path.ext);
+            su_remove(input_file_path->ext, 0, -1);
+            SU_STRING* xml_output = pu_path_to_string(input_file_path);
+            su_insert_char(xml_output, -1, ".xml", 4);
 
 			/* Save the anim to xml by type */
-			anim_tool_anim_to_xml(&anim_type, &input_file_path);
+			anim_tool_anim_to_xml(&anim_type, xml_output);
+            
+            su_free(xml_output);
 		}
+        
+        pu_free_path(input_file_path);
 	}
 
 	return 0;
@@ -142,46 +146,44 @@ void anim_tool_print_usage(char* exe_path)
 void anim_tool_anim_to_file(ANIM_TOOL_HE_TYPES* anim_type, PU_PATH* xml_path)
 {
 	/* Change the extension to anim */
-	pu_free_string(&xml_path->ext);
+	xml_path->ext = su_free(xml_path->ext);
 
 	FU_FILE* prepared = NULL;
 			
 	switch(anim_type->type)
 	{
 		case ANIM_TOOL_TYPE_UV:
-			pu_create_string("uv-anim", 7, &xml_path->ext);
+			xml_path->ext = su_create_string("uv-anim", 7);
 			prepared = uv_anim_save_to_fu_file(anim_type->ptrs.uv);
 			break;
 		case ANIM_TOOL_TYPE_CAM:
-			pu_create_string("cam-anim", 8, &xml_path->ext);
+			xml_path->ext = su_create_string("cam-anim", 8);
 			prepared = cam_anim_save_to_fu_file(anim_type->ptrs.cam);
 			break;
 	}
 
 	fu_to_file_pu(xml_path, prepared, 1);
 	fu_close(prepared);
+    free(prepared);
 }
 
 /* 
 	Unpacker
 */
-void anim_tool_anim_to_xml(ANIM_TOOL_HE_TYPES* anim_types, PU_PATH* out)
+void anim_tool_anim_to_xml(ANIM_TOOL_HE_TYPES* anim_types, SU_STRING* out)
 {
-	PU_STRING out_str = {0};
-	pu_path_to_string(out, &out_str);
-
 	switch(anim_types->type)
 	{
 		case ANIM_TOOL_TYPE_UV:
-			anim_tool_uv_to_xml(anim_types->ptrs.uv, &out_str);
+			anim_tool_uv_to_xml(anim_types->ptrs.uv, out);
 			break;
 		case ANIM_TOOL_TYPE_CAM:
-			anim_tool_cam_to_xml(anim_types->ptrs.cam, &out_str);
+			anim_tool_cam_to_xml(anim_types->ptrs.cam, out);
 			break;
 	}
 }
 
-void anim_tool_uv_to_xml(UV_ANIM_FILE* uv, PU_STRING* out)
+void anim_tool_uv_to_xml(UV_ANIM_FILE* uv, SU_STRING* out)
 {
 	pugi::xml_document doc;
 
@@ -209,10 +211,10 @@ void anim_tool_uv_to_xml(UV_ANIM_FILE* uv, PU_STRING* out)
 		}
 	}
 
-	doc.save_file(out->p);
+	doc.save_file(out->ptr);
 }
 
-void anim_tool_cam_to_xml(CAM_ANIM_FILE* cam, PU_STRING* out)
+void anim_tool_cam_to_xml(CAM_ANIM_FILE* cam, SU_STRING* out)
 {
 	pugi::xml_document doc;
 
@@ -258,7 +260,7 @@ void anim_tool_cam_to_xml(CAM_ANIM_FILE* cam, PU_STRING* out)
 		}
 	}
 
-	doc.save_file(out->p);
+	doc.save_file(out->ptr);
 }
 
 void anim_tool_append_kfset_xml(pugi::xml_node& anim, MIRAGE_KEYFRAME_SET* kfs, MIRAGE_KEYFRAME* keyframes)
@@ -291,11 +293,11 @@ uint8_t anim_tool_get_xml_type(pugi::xml_document& doc)
 
 void anim_tool_xml_to_anim(ANIM_TOOL_HE_TYPES* anim_type, PU_PATH* xml_path)
 {
-	PU_STRING xml_path_str = {0};
-	pu_path_to_string(xml_path, &xml_path_str);
+	SU_STRING* xml_path_str = pu_path_to_string(xml_path);
 
 	pugi::xml_document xml;
-	xml.load_file(xml_path_str.p);
+	xml.load_file(xml_path_str->ptr);
+    su_free(xml_path_str);
 
 	anim_type->type = anim_tool_get_xml_type(xml);
 

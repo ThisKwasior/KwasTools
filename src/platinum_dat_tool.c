@@ -74,24 +74,25 @@ int main(int argc, char** argv)
 			/* Print dat info */
 			dat_tool_print_dat(dat);
 			
-			PU_PATH dat_path = {0};
-			pu_split_path(argv[1], strlen(argv[1]), &dat_path);
+			PU_PATH* dat_path = pu_split_path(argv[1], strlen(argv[1]));
 			
 			/* I love hacking my own code */
-			pu_insert_char("_", 1, -1, &dat_path.name);
-			pu_insert_char(dat_path.ext.p, 3, -1, &dat_path.name);
-			pu_free_string(&dat_path.ext);
-			dat_path.type = PU_PATH_TYPE_DIR;
+            su_insert_char(dat_path->name, -1, "_", 1);
+            su_insert_char(dat_path->name, -1, dat_path->ext->ptr, 3);
+			su_remove(dat_path->ext, 0, -1);
+			dat_path->type = PU_PATH_TYPE_DIR;
 			
-			PU_STRING str = {0};
-			pu_path_to_string(&dat_path, &str);
-			printf("Dir path: %s\n", str.p);
+			SU_STRING* str = pu_path_to_string(dat_path);
+			printf("Dir path: %s\n", str->ptr);
 			
 			/* Saving to a folder */
-			dat_tool_extract_to_folder(dat, &dat_path);
+			dat_tool_extract_to_folder(dat, dat_path);
 			
 			/* Free the dat structure */
 			dat_free(dat);
+            
+            pu_free_path(dat_path);
+            su_free(str);
 			
 			printf("\nUnpacking done without issues (I hope)\n");
 		}
@@ -114,26 +115,26 @@ int main(int argc, char** argv)
 		FU_FILE* file = dat_save_to_fu_file(&dat, dat_tool_endian);
 		
 		/* Save generated DAT to file on disk */
-		PU_STRING output_str = {0};
-		pu_create_string(argv[1], strlen(argv[1]), &output_str);
+		SU_STRING* output_str = su_create_string(argv[1], strlen(argv[1]));
 		
 		/* converting the suffix in the folder name to the 3-letter extension */
 		if(flag_skip_ext_check)
 		{
-			pu_insert_char(".dat", 5, -1, &output_str);
+			su_insert_char(output_str, -1, ".dat", 4);
 		}
 		else
 		{
-			if(output_str.p[output_str.s-4] == '_')
+			if(output_str->ptr[output_str->size-4] == '_')
 			{
-				output_str.p[output_str.s-4] = '.';
+				output_str->ptr[output_str->size-4] = '.';
 			}
 		}
 		
 		/* Saving to the file and overwriting */
-		fu_to_file(output_str.p, file, 1);
+		fu_to_file(output_str->ptr, file, 1);
 		
 		/* Free everything */
+        su_free(output_str);
 		dat_free(&dat);
 		fu_close(file);
 		free(file);
@@ -244,28 +245,26 @@ void dat_tool_extract_to_folder(DAT_FILE* dat, PU_PATH* folder)
 	{
 		DAT_FILE_ENTRY* entry = dat_get_entry_node(dat->entries, i);
 		
-		PU_STRING temp_file_str = {0};
-		pu_path_to_string(folder, &temp_file_str);
-		pu_insert_char("/", 1, -1, &temp_file_str);
-		pu_insert_char((const char*)entry->name, strlen((const char*)entry->name),
-					   -1, &temp_file_str);
+		SU_STRING* temp_file_str = pu_path_to_string(folder);
+		su_insert_char(temp_file_str, -1, "/", 1);
+		su_insert_char(temp_file_str, -1, 
+                       (const char*)entry->name,
+                       strlen((const char*)entry->name));
 		
 		FU_FILE temp_file = {0};
 		fu_create_mem_file(&temp_file);
 		fu_write_data(&temp_file, entry->data, entry->size);
-		fu_to_file(temp_file_str.p, &temp_file, 1);
+		fu_to_file(temp_file_str->ptr, &temp_file, 1);
 		
 		fu_close(&temp_file);
-		pu_free_string(&temp_file_str);
+		su_free(temp_file_str);
 	}
 }
 
 void dat_tool_write_order_info(DAT_FILE* dat, PU_PATH* folder)
 {
-	PU_STRING temp_file_str = {0};
-	pu_path_to_string(folder, &temp_file_str);
-	pu_insert_char("/", 1, -1, &temp_file_str);
-	pu_insert_char("kwastools.info", 14, -1, &temp_file_str);
+	SU_STRING* temp_file_str = pu_path_to_string(folder);
+	su_insert_char(temp_file_str, -1, "/kwastools.info", 15);
 	
 	FU_FILE temp_file = {0};
 	fu_create_mem_file(&temp_file);
@@ -274,15 +273,15 @@ void dat_tool_write_order_info(DAT_FILE* dat, PU_PATH* folder)
 	for(uint32_t i = 0; i != dat->header.file_count; ++i)
 	{
 		DAT_FILE_ENTRY* entry = dat_get_entry_node(dat->entries, i);
-		const uint32_t name_size = strlen(entry->name);
+		const uint32_t name_size = strlen((const char*)entry->name);
 		fu_write_u32(&temp_file, name_size, FU_LITTLE_ENDIAN);
 		fu_write_data(&temp_file, entry->name, name_size);
 	}
 
-	fu_to_file(temp_file_str.p, &temp_file, 1);
+	fu_to_file(temp_file_str->ptr, &temp_file, 1);
 	
 	fu_close(&temp_file);
-	pu_free_string(&temp_file_str);
+	su_free(temp_file_str);
 }
 
 /* 
@@ -306,45 +305,43 @@ DBL_LIST_NODE* dat_tool_load_files_from_dir(const char* dir)
 			uint32_t name_size = 0;
 			uint8_t* data = NULL;
 			
-			PU_STRING file_name = {0};
-			pu_path_to_string(&dirlist.entries[i].path, &file_name);
+			SU_STRING* file_name = pu_path_to_string(dirlist.entries[i].path);
 			
-			PU_STRING file_dir_path = {0};
-			pu_path_to_string(&dirlist.path, &file_dir_path);
-			pu_insert_char("/", 1, -1, &file_dir_path);
-			pu_insert_char(file_name.p, file_name.s, -1, &file_dir_path);
+			SU_STRING* file_dir_path = pu_path_to_string(dirlist.path);
+			su_insert_char(file_dir_path, -1, "/", 1);
+			su_insert_char(file_dir_path, -1, file_name->ptr, file_name->size);
 			
-			if(strncmp("kwastools.info", file_name.p, 14) == 0)
+			if(strncmp("kwastools.info", file_name->ptr, 14) == 0)
 			{
 				printf("Loading kwastools.info\n");
-				fu_open_file(file_dir_path.p, 1, &kwasinfo);
-				pu_free_string(&file_name);
-				pu_free_string(&file_dir_path);
+				fu_open_file(file_dir_path->ptr, 1, &kwasinfo);
+				su_free(file_name);
+				su_free(file_dir_path);
 				continue;
 			}
 			
 			/* Loading the file */
 			FU_FILE dat_file = {0};
-			fu_open_file(file_dir_path.p, 1, &dat_file);
+			fu_open_file(file_dir_path->ptr, 1, &dat_file);
 
 			data = (uint8_t*)dat_file.buf;
 			size = dat_file.size;
 			
 			/* Name and extension */
-			name = (uint8_t*)file_name.p;
-			name_size = file_name.s;
+			name = (uint8_t*)file_name->ptr;
+			name_size = file_name->size;
 			
-			if(dirlist.entries[i].path.ext.s >= 3)
+			if(dirlist.entries[i].path->ext->size >= 3)
 			{
 				memcpy(&extension[0],
-					   dirlist.entries[i].path.ext.p,
+					   dirlist.entries[i].path->ext->ptr,
 					   3);
 			}
 			else
 			{
 				memcpy(&extension[0],
-					   dirlist.entries[i].path.ext.p,
-					   dirlist.entries[i].path.ext.s);
+					   dirlist.entries[i].path->ext->ptr,
+					   dirlist.entries[i].path->ext->size);
 			}
 			
 			/* Append new entry to the list */
@@ -353,8 +350,8 @@ DBL_LIST_NODE* dat_tool_load_files_from_dir(const char* dir)
 			
 			/* Cleanup */
 			fu_close(&dat_file);
-			pu_free_string(&file_name);
-			pu_free_string(&file_dir_path);
+			su_free(file_name);
+			su_free(file_dir_path);
 		}
 	}
 	
@@ -376,7 +373,7 @@ DBL_LIST_NODE* dat_tool_load_files_from_dir(const char* dir)
 			{
 				DAT_FILE_ENTRY* cur_entry = dat_get_entry_node(head, j);
 				printf("\t%s\n", cur_entry->name);
-				if(strncmp(name_buf, cur_entry->name, name_size) == 0)
+				if(strncmp((const char*)name_buf, (const char*)cur_entry->name, name_size) == 0)
 				{
 					DAT_FILE_ENTRY* new_entry = dat_entry_from_data(cur_entry->position,
 																	cur_entry->extension,

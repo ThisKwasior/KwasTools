@@ -61,9 +61,9 @@ AWB_FILE* awb_parse_directory(const char* dir)
 	{
 		if(dirlist.entries[i].type == DL_TYPE_FILE)
 		{
-			PU_STRING* full_path = dl_get_full_entry_path(&dirlist, i);
+			SU_STRING* full_path = dl_get_full_entry_path(&dirlist, i);
 			FU_FILE f = {0};
-			fu_open_file(full_path->p, 1, &f);
+			fu_open_file(full_path->ptr, 1, &f);
 			
 			afs2->entries[entries_it].id = entries_it;
 			afs2->entries[entries_it].size = f.size;
@@ -73,8 +73,7 @@ AWB_FILE* awb_parse_directory(const char* dir)
 			entries_it += 1;
 			
 			fu_close(&f);
-			pu_free_string(full_path);
-			free(full_path);
+			full_path = su_free(full_path);
 		}
 	}
 	
@@ -96,22 +95,23 @@ AWB_FILE* awb_parse_directory(const char* dir)
 	return afs2;
 }
 
-void awb_extract_to_folder(AWB_FILE* afs2, PU_STRING* dir)
+void awb_extract_to_folder(AWB_FILE* afs2, SU_STRING* dir)
 {
 	if(afs2->no_data == 1) return;
 	
-	PU_STRING file_str = {0};
-	pu_create_string(dir->p, dir->s, &file_str);
+	SU_STRING* file_str = su_create_string(dir->ptr, dir->size);
 	
-	pu_create_dir_char(file_str.p);
+	pu_create_dir_char(file_str->ptr);
 	
-	pu_insert_char("/00000.hca", 10, -1, &file_str);
+	su_insert_char(file_str, -1, "/00000.hca", 10);
 	
 	for(uint32_t i = 0; i != afs2->header.file_count; ++i)
 	{
-		sprintf(&file_str.p[file_str.s-9], "%05u.hca", i);
-		fu_buffer_to_file(file_str.p, (char*)afs2->entries[i].data, afs2->entries[i].size, 1);
+		sprintf(&file_str->ptr[file_str->size-9], "%05u.hca", i);
+		fu_buffer_to_file(file_str->ptr, (char*)afs2->entries[i].data, afs2->entries[i].size, 1);
 	}
+    
+    su_free(file_str);
 }
 
 

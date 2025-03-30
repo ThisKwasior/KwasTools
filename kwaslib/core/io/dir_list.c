@@ -9,13 +9,12 @@ void dl_parse_directory(const char* path, DL_DIR_LIST* list)
 	DIR* pdir = opendir(path);
 	const uint32_t entries_count = dl_count_entries(path);
 	
-	pu_split_path(path, strlen(path), &list->path);
+	list->path = pu_split_path(path, strlen(path));
 	list->entries = (DL_DIR_ENTRY*)calloc(entries_count, sizeof(DL_DIR_ENTRY));
 	list->size = entries_count;
 	
 	/* Needed for checking if the entry is a file or directory */
-	PU_STRING base_path = {0};
-	pu_path_to_string(&list->path, &base_path);
+	SU_STRING* base_path = pu_path_to_string(list->path);
 	
 	if(pdir)
 	{
@@ -28,14 +27,13 @@ void dl_parse_directory(const char* path, DL_DIR_LIST* list)
 			if((strncmp(pent->d_name, ".", 1) != 0)
 				&& (strncmp(pent->d_name, "..", 2) != 0))
 			{
-				pu_split_path(pent->d_name, strlen(pent->d_name), &list->entries[it].path);
+				list->entries[it].path = pu_split_path(pent->d_name, strlen(pent->d_name));
 				
-				PU_STRING file_path = {0};
-				pu_create_string(base_path.p, base_path.s, &file_path);
-				pu_insert_char("/", 1, -1, &file_path);
-				pu_insert_char(pent->d_name, strlen(pent->d_name), -1, &file_path);
+				SU_STRING* file_path = su_copy(base_path);
+				su_insert_char(file_path, -1, "/", 1);
+				su_insert_char(file_path, -1, pent->d_name, strlen(pent->d_name));
 				
-				if(pu_is_dir(file_path.p))
+				if(pu_is_dir(file_path->ptr))
 				{
 					list->entries[it].type = DL_TYPE_DIR;
 					list->dir_count += 1;
@@ -48,12 +46,12 @@ void dl_parse_directory(const char* path, DL_DIR_LIST* list)
 
 				it += 1;
 				
-				pu_free_string(&file_path);
+				su_free(file_path);
 			}
 		}
 	}
 
-	pu_free_string(&base_path);
+	su_free(base_path);
 
 	closedir(pdir);
 }
@@ -83,31 +81,27 @@ uint32_t dl_count_entries(const char* path)
 	return entries;
 }
 
-PU_STRING* dl_get_full_entry_path(DL_DIR_LIST* list, uint32_t entry_id)
+SU_STRING* dl_get_full_entry_path(DL_DIR_LIST* list, uint32_t entry_id)
 {
-	if(entry_id > list->size) return NULL;
+	if(entry_id > list->size) return su_create_string("", 0);
 	
-	PU_STRING temp_file_path = {0};
-	pu_path_to_string(&list->entries[entry_id].path, &temp_file_path);
-	
-	PU_STRING* file_dir_path = (PU_STRING*)calloc(1, sizeof(PU_STRING));
-	pu_path_to_string(&list->path, file_dir_path);
-	pu_insert_char("/", 1, -1, file_dir_path);
-	pu_insert_char(temp_file_path.p, temp_file_path.s, -1, file_dir_path);
-	
-	pu_free_string(&temp_file_path);
-	
-	return file_dir_path;
+    SU_STRING* str = pu_path_to_string(list->path);
+    su_insert_char(str, -1, "/", 1);
+    
+	SU_STRING* temp_file_name = pu_path_to_string(list->entries[entry_id].path);
+	su_insert_string(str, -1, temp_file_name);
+    su_free(temp_file_name);
+    
+	return str;
 }
 
 void dl_free_list(DL_DIR_LIST* list)
 {
-	pu_free_path(&list->path);
-	memset(&list->path, 0, sizeof(PU_PATH));
+	list->path = pu_free_path(list->path);
 	
 	for(uint32_t i = 0; i != list->size; ++i)
 	{
-		pu_free_path(&list->entries[i].path);
+		list->entries[i].path = pu_free_path(list->entries[i].path);
 	}
 	
 	free(list->entries);
@@ -117,20 +111,18 @@ void dl_free_list(DL_DIR_LIST* list)
 
 void dl_print_list(const DL_DIR_LIST* list)
 {
-	PU_STRING path = {0};
-	pu_path_to_string(&list->path, &path);
-	printf("Dir path - %*s\n", path.s, path.p);
-	pu_free_string(&path);
+	SU_STRING* path = pu_path_to_string(list->path);
+	printf("Dir path - %*s\n", path->size, path->ptr);
+    su_free(path);
 	
 	for(uint32_t i = 0; i != list->size; ++i)
 	{
-		PU_STRING str = {0};
-		pu_path_to_string(&list->entries[i].path, &str);
+		SU_STRING* str = pu_path_to_string(list->entries[i].path);
 		
 		printf("%6s %.*s\n",
 			   (list->entries[i].type == DL_TYPE_DIR ? "<DIR>" : "<FILE>"),
-			   str.s, str.p);
+			   str->size, str->ptr);
 			   
-		pu_free_string(&str);
+		su_free(str);
 	}
 }

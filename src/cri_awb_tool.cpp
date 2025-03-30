@@ -20,8 +20,8 @@ void awb_tool_print_usage(char* exe_path);
 /*
 	Unpacker
 */
-void awb_tool_to_xml(AWB_FILE* afs2, PU_STRING* out, PU_STRING* dir_out);
-void awb_tool_afs2_to_xml(AWB_FILE* afs2, pugi::xml_node* node, PU_STRING* dir_name);
+void awb_tool_to_xml(AWB_FILE* afs2, SU_STRING* out, SU_STRING* dir_out);
+void awb_tool_afs2_to_xml(AWB_FILE* afs2, pugi::xml_node* node, SU_STRING* dir_name);
 
 /*
 	Packer
@@ -43,11 +43,10 @@ int main(int argc, char** argv)
 	/* It's a file so let's process it */
 	if(pu_is_file(argv[1]))
 	{
-		PU_PATH input_file_path = {0};
-		pu_split_path(argv[1], strlen(argv[1]), &input_file_path);
+		PU_PATH* input_file_path = pu_split_path(argv[1], strlen(argv[1]));
 
 		/* It's an XML */
-		if(strncmp(input_file_path.ext.p, "xml", 3) == 0)
+		if(strncmp(input_file_path->ext->ptr, "xml", 3) == 0)
 		{
 			pugi::xml_document doc;
 			doc.load_file(argv[1]);
@@ -57,12 +56,13 @@ int main(int argc, char** argv)
 			FU_FILE* awb_fu = awb_write_file(afs2);
 
 			/* Remove XML extension */
-			pu_free_string(&input_file_path.ext);
-			PU_STRING awb_out_str = {0};
-			pu_path_to_string(&input_file_path, &awb_out_str);
+			su_remove(input_file_path->ext, 0, -1);
+			SU_STRING* awb_out_str = pu_path_to_string(input_file_path);
 
-			printf("AWB Path: %s\n", awb_out_str.p);
-			fu_buffer_to_file(awb_out_str.p, awb_fu->buf, awb_fu->size, 1);
+			printf("AWB Path: %s\n", awb_out_str->ptr);
+			fu_buffer_to_file(awb_out_str->ptr, awb_fu->buf, awb_fu->size, 1);
+            
+            awb_out_str = su_free(awb_out_str);
 		}
 		else /* Check if the file is a valid AFS2 file */
 		{
@@ -72,33 +72,36 @@ int main(int argc, char** argv)
 			awb_print(afs2);
 
 			/* Append XML extension */
-			pu_insert_char(".xml", 4, -1, &input_file_path.ext);
-			PU_STRING xml_out_str = {0};
-			pu_path_to_string(&input_file_path, &xml_out_str);
+			SU_STRING* xml_out_str = pu_path_to_string(input_file_path);
+            su_insert_char(xml_out_str, -1, ".xml", 4);
 
 			/* Prepare directory for files */
-			pu_free_string(&input_file_path.ext);
-			input_file_path.type = PU_PATH_TYPE_DIR;
-			PU_STRING dir_out_str = {0};
-			pu_path_to_string(&input_file_path, &dir_out_str);
+            su_remove(input_file_path->ext, 0, -1);
+			input_file_path->type = PU_PATH_TYPE_DIR;
+			SU_STRING* dir_out_str = pu_path_to_string(input_file_path);
 
 			char offset_str[32] = {0};
 			sprintf(offset_str, "_0x%08x", afs2->file_offset);
-			pu_insert_char(offset_str, strlen(offset_str), -1, &dir_out_str);
+			su_insert_char(dir_out_str, -1, offset_str, 11);
 
 			/* Print the paths */
-			printf("XML Path: %s\n", xml_out_str.p);
-			printf("Files dir: %s\n", dir_out_str.p);
+			printf("XML Path: %s\n", xml_out_str->ptr);
+			printf("Files dir: %s\n", dir_out_str->ptr);
 
 			/* Save the AWB to xml and extract the contents */
-			awb_tool_to_xml(afs2, &xml_out_str, &dir_out_str);
-			awb_extract_to_folder(afs2, &dir_out_str);
+			awb_tool_to_xml(afs2, xml_out_str, dir_out_str);
+			awb_extract_to_folder(afs2, dir_out_str);
 
 			/* Close the file */
 			fu_close(&awb);
 			awb_free(afs2);
 			free(afs2);
+            
+            su_free(xml_out_str);
+            su_free(dir_out_str);
 		}
+        
+        pu_free_path(input_file_path);
 	}
 	else if(pu_is_dir(argv[1])) /* It's a directory, let's create the AWB */
 	{
@@ -109,24 +112,24 @@ int main(int argc, char** argv)
 		const uint32_t dir_path_len = strlen(argv[1]);
 		const uint32_t app_off = dir_path_len - 11; /* _0x00000000 */
 
-		PU_STRING awb_path_str = {0};
+		SU_STRING* awb_path_str = NULL;
 
 		if(strncmp(&argv[1][app_off], "_0x", 3) == 0) /* Remove the suffix */
 		{
-			pu_create_string(argv[1], app_off, &awb_path_str);
+			awb_path_str = su_create_string(argv[1], app_off);
 		}
 		else
 		{
-			pu_create_string(argv[1], dir_path_len, &awb_path_str);
+			awb_path_str = su_create_string(argv[1], dir_path_len);
 		}
 
-		pu_insert_char(".awb", 4, -1, &awb_path_str);
+		su_insert_char(awb_path_str, -1, ".awb", 4);
 
-		printf("awb file path: %s\n", awb_path_str.p);
+		printf("awb file path: %s\n", awb_path_str->ptr);
 
-		fu_buffer_to_file(awb_path_str.p, awb->buf, awb->size, 1);
+		fu_buffer_to_file(awb_path_str->ptr, awb->buf, awb->size, 1);
 
-		pu_free_string(&awb_path_str);
+		su_free(awb_path_str);
 		awb_print(afs2);
 		awb_free(afs2);
 		free(afs2);
@@ -153,15 +156,15 @@ void awb_tool_print_usage(char* exe_path)
 /*
 	Unpacker
 */
-void awb_tool_to_xml(AWB_FILE* afs2, PU_STRING* xml_out, PU_STRING* dir_name)
+void awb_tool_to_xml(AWB_FILE* afs2, SU_STRING* xml_out, SU_STRING* dir_name)
 {
 	pugi::xml_document doc;
 	pugi::xml_node root = doc.root();
 	awb_tool_afs2_to_xml(afs2, &root, dir_name);
-	doc.save_file(xml_out->p);
+	doc.save_file(xml_out->ptr);
 }
 
-void awb_tool_afs2_to_xml(AWB_FILE* afs2, pugi::xml_node* node, PU_STRING* dir_name)
+void awb_tool_afs2_to_xml(AWB_FILE* afs2, pugi::xml_node* node, SU_STRING* dir_name)
 {
 	AWB_HEADER* header = &afs2->header;
 
@@ -171,16 +174,15 @@ void awb_tool_afs2_to_xml(AWB_FILE* afs2, pugi::xml_node* node, PU_STRING* dir_n
 	awb.append_attribute("id_align").set_value(header->id_align);
 	awb.append_attribute("subkey").set_value(header->subkey);
 	
-	PU_STRING file_str = {0};
-	pu_create_string(dir_name->p, dir_name->s, &file_str);
+	SU_STRING* file_str = su_create_string(dir_name->ptr, dir_name->size);
 	
 	/* Only create the directory when there's data */
 	if(afs2->no_data == 0)
-		pu_create_dir_char(file_str.p);
+		pu_create_dir_char(file_str->ptr);
 	else
 		awb.append_attribute("no_data").set_value(1);
 	
-	pu_insert_char("/00000.hca", 10, -1, &file_str);
+	su_insert_char(file_str, -1, "/00000.hca", 10);
 	
 	pugi::xml_node files = awb.append_child("files");
 	for(uint32_t i = 0; i != header->file_count; ++i)
@@ -189,14 +191,14 @@ void awb_tool_afs2_to_xml(AWB_FILE* afs2, pugi::xml_node* node, PU_STRING* dir_n
 		
 		if(afs2->no_data == 0)
 		{
-			sprintf(&file_str.p[file_str.s-9], "%05u.hca", i);
-			fu_buffer_to_file(file_str.p, (char*)afs2->entries[i].data, afs2->entries[i].size, 1);
+			sprintf(&file_str->ptr[file_str->size-9], "%05u.hca", i);
+			fu_buffer_to_file(file_str->ptr, (char*)afs2->entries[i].data, afs2->entries[i].size, 1);
 			
 			/* Changed "id" to "seq" (sequence number) because the value is not used at all,
 			   it's just for easier look up for order */
 			file.append_attribute("seq").set_value(afs2->entries[i].id);
 			
-			file.append_attribute("path").set_value(file_str.p, file_str.s);
+			file.append_attribute("path").set_value(file_str->ptr, file_str->size);
 			
 			/* No need for size if we're going to read a file anyway */
 			/* file.append_attribute("size").set_value(afs2->entries[i].size); */ 
@@ -221,11 +223,13 @@ void awb_tool_afs2_to_xml(AWB_FILE* afs2, pugi::xml_node* node, PU_STRING* dir_n
 		pugi::xml_node order = awb.append_child("order");
 		for(uint32_t i = 0; i != header->file_count; ++i)
 		{
-			sprintf(&file_str.p[file_str.s-9], "%05u.hca", i);
-			fu_buffer_to_file(file_str.p, (char*)afs2->entries[i].data, afs2->entries[i].size, 1);
+			sprintf(&file_str->ptr[file_str->size-9], "%05u.hca", i);
+			fu_buffer_to_file(file_str->ptr, (char*)afs2->entries[i].data, afs2->entries[i].size, 1);
 			order.append_child("entry").append_attribute("id").set_value(afs2->entries[i].id);
 		}
 	}
+    
+    su_free(file_str);
 }
 
 /*

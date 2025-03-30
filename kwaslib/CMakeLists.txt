@@ -10,17 +10,24 @@ set(KWASLIB_BUILD_PLATINUM True CACHE STRING "Build with Platinum Engine")
 
 set(KWASLIB_CORE_SOURCES
 	${PROJECT_SOURCE_DIR}/core/cpu/endianness.c
+	
 	${PROJECT_SOURCE_DIR}/core/crypto/crc32.c
+	
 	${PROJECT_SOURCE_DIR}/core/io/arg_parser.c
 	${PROJECT_SOURCE_DIR}/core/io/dir_list.c
 	${PROJECT_SOURCE_DIR}/core/io/file_utils.c
 	${PROJECT_SOURCE_DIR}/core/io/path_utils.c
 	${PROJECT_SOURCE_DIR}/core/io/type_readers.c
 	${PROJECT_SOURCE_DIR}/core/io/type_writers.c
+	${PROJECT_SOURCE_DIR}/core/io/string_utils.c
+    
 	${PROJECT_SOURCE_DIR}/core/math/boundary.c
 	${PROJECT_SOURCE_DIR}/core/math/half.c
 	${PROJECT_SOURCE_DIR}/core/math/vec.c
+
 	${PROJECT_SOURCE_DIR}/core/data/dbl_link_list.c
+	${PROJECT_SOURCE_DIR}/core/data/cvector.c
+
 	${PROJECT_SOURCE_DIR}/core/data/image/image.c
 	${PROJECT_SOURCE_DIR}/core/data/image/s3tc.c
 	${PROJECT_SOURCE_DIR}/core/data/image/gtf.c

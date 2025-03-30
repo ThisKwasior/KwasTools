@@ -20,12 +20,12 @@ void utf_tool_print_usage(char* exe_path);
 std::string utf_tool_vl_to_hex(uint8_t* vl, uint32_t size);
 uint8_t* utf_tool_hex_to_vl(uint8_t* hex, uint32_t size);
 
-PU_STRING work_dir_str = {0};
+SU_STRING* work_dir_str = NULL;
 
 /*
 	Unpacker
 */
-void utf_tool_to_xml(CRI_UTF_FILE* utf, PU_STRING* out);
+void utf_tool_to_xml(CRI_UTF_FILE* utf, SU_STRING* out);
 void utf_tool_table_to_xml(CRI_UTF_FILE* utf, pugi::xml_node* node);
 
 void utf_tool_acbcmd_to_xml(ACB_COMMAND* cmd, pugi::xml_node* node);
@@ -50,11 +50,10 @@ int main(int argc, char** argv)
 	/* It's a file so let's process it */
 	if(pu_is_file(argv[1]))
 	{
-		PU_PATH input_file_path = {0};
-		pu_split_path(argv[1], strlen(argv[1]), &input_file_path);
+		PU_PATH* input_file_path = pu_split_path(argv[1], strlen(argv[1]));
 
 		/* It's an XML */
-		if(strncmp(input_file_path.ext.p, "xml", 3) == 0)
+		if(strncmp(input_file_path->ext->ptr, "xml", 3) == 0)
 		{
 			pugi::xml_document doc;
 			doc.load_file(argv[1]);
@@ -64,12 +63,13 @@ int main(int argc, char** argv)
 			FU_FILE* cri = cri_utf_write_file(utf);
 
 			/* Remove XML extension */
-			pu_free_string(&input_file_path.ext);
-			PU_STRING utf_out_str = {0};
-			pu_path_to_string(&input_file_path, &utf_out_str);
+			su_remove(input_file_path->ext, 0, -1);
+			SU_STRING* utf_out_str = pu_path_to_string(input_file_path);
 
-			printf("UTF Path: %s\n", utf_out_str.p);
-			fu_buffer_to_file(utf_out_str.p, cri->buf, cri->size, 1);
+			printf("UTF Path: %s\n", utf_out_str->ptr);
+			fu_buffer_to_file(utf_out_str->ptr, cri->buf, cri->size, 1);
+            
+            utf_out_str = su_free(utf_out_str);
 		}
 		else /* Check if the file is a valid @UTF file */
 		{
@@ -81,20 +81,24 @@ int main(int argc, char** argv)
 			/* Change the path extension to xml */
 			/*pu_free_string(&input_file_path.ext);*/
 
-			pu_path_to_string(&input_file_path, &work_dir_str);
+			work_dir_str = pu_path_to_string(input_file_path);
 
-			pu_insert_char(".xml", 4, -1, &input_file_path.ext);
-			PU_STRING out_str = {0};
-			pu_path_to_string(&input_file_path, &out_str);
+			SU_STRING* out_str = su_copy(work_dir_str);
+            su_insert_char(out_str, -1, ".xml", 4);
 
 			/* Save the UTF to xml */
-			utf_tool_to_xml(utf, &out_str);
+			utf_tool_to_xml(utf, out_str);
 
 			/* Close the file */
 			fu_close(&cri);
 			cri_utf_free(utf);
 			free(utf);
+            
+            su_free(out_str);
+            su_free(work_dir_str);
 		}
+        
+        input_file_path = pu_free_path(input_file_path);
 	}
 
 	return 0;
@@ -150,12 +154,12 @@ uint8_t* utf_tool_hex_to_vl(uint8_t* hex, uint32_t size)
 /*
 	Unpacker
 */
-void utf_tool_to_xml(CRI_UTF_FILE* utf, PU_STRING* out)
+void utf_tool_to_xml(CRI_UTF_FILE* utf, SU_STRING* out)
 {
 	pugi::xml_document doc;
 	pugi::xml_node root = doc.root();
 	utf_tool_table_to_xml(utf, &root);
-	doc.save_file(out->p);
+	doc.save_file(out->ptr);
 }
 
 void utf_tool_table_to_xml(CRI_UTF_FILE* utf, pugi::xml_node* node)
@@ -195,12 +199,12 @@ void utf_tool_table_to_xml(CRI_UTF_FILE* utf, pugi::xml_node* node)
 			}
 			else if(record->awb) /* internal AWB */
 			{
-				PU_STRING dir = {0};
-				pu_create_string(work_dir_str.p, work_dir_str.s, &dir);
+				SU_STRING* dir = su_create_string(work_dir_str->ptr, work_dir_str->size);
 				char offset_str[32] = {0};
 				sprintf(offset_str, "_0x%08x", record->awb->file_offset);
-				pu_insert_char(offset_str, strlen(offset_str), -1, &dir);
-				awb_tool_afs2_to_xml(record->awb, &row, &dir);
+				su_insert_char(dir, -1, offset_str, strlen(offset_str));
+				awb_tool_afs2_to_xml(record->awb, &row, dir);
+                dir = su_free(dir);
 			}
 			else if(record->acbcmd) // ACB command 
 			{

@@ -58,12 +58,11 @@ uint8_t fu_open_file(const char* path, const uint8_t to_memory, FU_FILE* f)
 
 uint8_t fu_open_file_pu(PU_PATH* path, const uint8_t to_memory, FU_FILE* f)
 {
-	PU_STRING str = {0};
-	pu_path_to_string(path, &str);
+	SU_STRING* str = pu_path_to_string(path);
 	
-	const uint8_t retval = fu_open_file((const char*)str.p, to_memory, f);
+	const uint8_t retval = fu_open_file((const char*)str->ptr, to_memory, f);
 	
-	pu_free_string(&str);
+	su_free(str);
 	
 	return retval;
 }
@@ -96,12 +95,11 @@ uint64_t fu_get_file_size(const char* path)
 
 uint64_t fu_get_file_size_pu(PU_PATH* path)
 {
-	PU_STRING str = {0};
-	pu_path_to_string(path, &str);
+	SU_STRING* str = pu_path_to_string(path);
 
-	const uint64_t size = fu_get_file_size((const char*)str.p);
+	const uint64_t size = fu_get_file_size((const char*)str->ptr);
 
-	pu_free_string(&str);
+	su_free(str);
 	
 	return size;
 }
@@ -319,12 +317,11 @@ uint8_t fu_buffer_to_file(const char* path, const char* buffer, const uint64_t s
 
 uint8_t fu_buffer_to_file_pu(PU_PATH* path, const char* buffer, const uint64_t size, const uint8_t overwrite)
 {
-	PU_STRING str = {0};
-	pu_path_to_string(path, &str);
+	SU_STRING* str = pu_path_to_string(path);
 	
-	const uint8_t retval = fu_buffer_to_file((const char*)str.p, buffer, size, overwrite);
+	const uint8_t retval = fu_buffer_to_file((const char*)str->ptr, buffer, size, overwrite);
 	
-	pu_free_string(&str);
+	su_free(str);
 	
 	return retval;
 }
