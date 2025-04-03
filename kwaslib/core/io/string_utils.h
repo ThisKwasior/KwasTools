@@ -2,6 +2,10 @@
 
 #include <stdint.h>
 
+#define SU_STRINGS_MATCH        0
+#define SU_ERROR_STR_NO_MATCH   1
+#define SU_ERROR_LEN_NO_MATCH   2
+
 typedef struct
 {
 	char* ptr;
@@ -45,3 +49,17 @@ void su_remove(SU_STRING* sustr, const uint32_t pos, uint32_t len);
 	Makes a copy of a portion of an SU_STRING
 */
 SU_STRING* su_cut(SU_STRING* sustr, const uint32_t pos, uint32_t len);
+
+/*
+    Compares strings.
+    
+    Returns:
+        0 - Strings are the same
+        1 - Strings differ in contents
+        2 - Strings differ in size
+*/
+const uint8_t su_cmp_char(const char* s1, const uint64_t s1s,
+                          const char* s2, const uint64_t s2s);
+                        
+const uint8_t su_cmp_string(SU_STRING* s1, SU_STRING* s2);
+const uint8_t su_cmp_string_char(SU_STRING* s1, const char* s2, const uint64_t s2s);

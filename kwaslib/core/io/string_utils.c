@@ -72,10 +72,14 @@ SU_STRING* su_copy(SU_STRING* sustr)
 void su_remove(SU_STRING* sustr, const uint32_t pos, uint32_t len)
 {
     if(pos >= sustr->size)
+    {
         return;
+    }
     
     if(len >= sustr->size)
+    {
         len = sustr->size;
+    }
     
     SU_STRING* new_str = su_create_string("", 0);
     
@@ -98,7 +102,9 @@ SU_STRING* su_cut(SU_STRING* sustr, const uint32_t pos, uint32_t len)
     SU_STRING* new_str = su_create_string("", 0);
     
     if(pos >= sustr->size)
+    {
         return new_str;
+    }
     
     const uint32_t rem_bytes = sustr->size-pos;
     const uint32_t new_size = (rem_bytes <= len) ? rem_bytes : len;
@@ -106,4 +112,30 @@ SU_STRING* su_cut(SU_STRING* sustr, const uint32_t pos, uint32_t len)
     su_insert_char(new_str, -1, &sustr->ptr[pos], new_size);
     
     return new_str;
+}
+
+const uint8_t su_cmp_char(const char* s1, const uint64_t s1s,
+                          const char* s2, const uint64_t s2s)
+{
+    if(s1s != s2s)
+    {
+        return SU_ERROR_LEN_NO_MATCH;
+    }
+    
+    if(strncmp(s1, s2, s1s) != 0)
+    {
+        return SU_ERROR_STR_NO_MATCH;
+    }
+    
+    return SU_STRINGS_MATCH;
+}
+
+const uint8_t su_cmp_string(SU_STRING* s1, SU_STRING* s2)
+{
+    return su_cmp_char(s1->ptr, s1->size, s2->ptr, s2->size);
+}
+
+const uint8_t su_cmp_string_char(SU_STRING* s1, const char* s2, const uint64_t s2s)
+{
+    return su_cmp_char(s1->ptr, s1->size, s2, s2s);
 }
