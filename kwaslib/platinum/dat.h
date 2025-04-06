@@ -4,123 +4,87 @@
 
 #include <kwaslib/core/io/file_utils.h>
 #include <kwaslib/core/io/dir_list.h>
-#include <kwaslib/core/data/dbl_link_list.h>
+#include <kwaslib/core/data/cvector.h>
 
 /* 
-	Code here has been "borrowed" from NierDocs and xxk-i.
-	Thank you very much!
-	https://github.com/ArthurHeitmann/NierDocs/blob/master/tools/datRepacker/datRepacker.py
-	https://github.com/xxk-i/DATrepacker
+    Code here has been "borrowed" from NierDocs and xxk-i.
+    Thank you very much!
+    https://github.com/ArthurHeitmann/NierDocs/blob/master/tools/datRepacker/datRepacker.py
+    https://github.com/xxk-i/DATrepacker
 */
 
-#define DAT_MAGIC				(const char*)"DAT\0"
-#define DAT_DEFAULT_BLOCK_SIZE	2048
+#define DAT_MAGIC                   (const char*)"DAT\0"
+#define DAT_DEFAULT_BLOCK_SIZE      16
 
-typedef struct
-{
-	uint8_t magic[4];				/* {'D','A','T',0} */
-	uint32_t file_count;			/* Amount of files in the container */
-	uint32_t positions_offset;
-	uint32_t extensions_offset;
-	uint32_t names_offset;
-	uint32_t sizes_offset;
-	uint32_t hashes_offset;
-	uint32_t unk1C;					/* Zero */
-} DAT_HEADER;
+typedef struct DAT_HEADER DAT_HEADER;
+typedef struct DAT_FILE_ENTRY DAT_FILE_ENTRY;
+typedef struct DAT_FILE DAT_FILE;
 
-typedef struct
-{
-	uint32_t position;				/* Position in the file */
-	uint32_t size;					/* File size */
-	uint8_t extension[4];			/* File extension */
-	uint8_t* name;					/* File name, NULL terminated */
-	uint8_t* data;					/* File data */
-} DAT_FILE_ENTRY;
+#include "dat_hashtable.h"
 
-typedef struct
+struct DAT_HEADER
 {
-	uint32_t hash;
-	uint32_t pos;
-	uint32_t index;
-} DAT_HASH;
+    uint8_t magic[4];               /* {'D','A','T',0} */
+    uint32_t file_count;            /* Amount of files in the container */
+    uint32_t positions_offset;
+    uint32_t extensions_offset;
+    uint32_t names_offset;
+    uint32_t sizes_offset;
+    uint32_t hashtable_offset;
+    uint32_t unk1C;                 /* Zero */
+};
 
-typedef struct
+struct DAT_FILE_ENTRY
 {
-	uint32_t prehash_shift;
-	uint32_t bucket_offset; /* Constant 0x10 */
-	uint32_t hashes_offset;
-	uint32_t indices_offset;
-	
-	uint16_t* bucket;
-	uint32_t bucket_size;
-	
-	uint32_t* order;
-	
-	DAT_HASH* hashes;
-} DAT_HASHES;
+    uint32_t position;              /* Position in the file */
+    uint8_t extension[4];           /* File extension */
+    SU_STRING* name;                /* File name */
+    uint32_t size;                  /* File size */
+    uint8_t* data;                  /* File data */
+};
 
-typedef struct
+struct DAT_FILE
 {
-	DAT_HEADER header;				/* Fixed-length header */
-	
-	uint32_t entry_name_size;		/* Size for file names
-									   First value in names section */
-									   
-	DBL_LIST_NODE* entries;			/* File entries in doubly linked list */
-	
-	DAT_HASHES hashes;				/* Section pointed to by header.hashes_offset */
-} DAT_FILE;
+    DAT_HEADER header;              /* Fixed-length header */
+    
+    uint32_t entry_name_size;       /* Size for file names
+                                       First value in names section */
+                         
+    CVEC entries;
+    DAT_HASHTABLE* hashtable;
+};
 
 /*
-	Functions
+    Implementation
 */
 
-DAT_FILE* dat_parse(FU_FILE* file, const uint8_t fu_endian);
-FU_FILE* dat_save_to_fu_file(DAT_FILE* dat, const uint8_t fu_endian);
+DAT_FILE* dat_parse_file(FU_FILE* file);
+FU_FILE* dat_to_fu_file(DAT_FILE* dat, const uint32_t block_size, const uint8_t endian);
 
-/* 
-	Updates fields in the structure -
-	header, entry_name_size and hashes based on entries list.
-	
-	Everything is calculated based on entries
-	to make things simpler for data manipulation in code.
-	
-	The only thing not needed in each entry is the position;
-	it's gonna get updated too since we don't know the position
-	beforehand due to alignment.
-	You can set it to 0 when calling `dat_entry_from_data()`.
+void dat_update(DAT_FILE* dat, const uint32_t block_size);
+
+void dat_append_entry(CVEC entries,
+                      const char* extension,
+                      const char* name,
+                      const uint32_t size,
+                      const uint8_t* data);
+
+DAT_FILE* dat_alloc_dat();
+DAT_FILE* dat_destroy(DAT_FILE* dat);
+
+DAT_FILE_ENTRY* dat_get_entry_by_id(CVEC entries, const uint64_t id);
+
+/*
+    Check is simple, we read the file_count as little endian.
+    If the value:
+        - is greater or equal to 16777216, we can say it's BE
+        - if it's less, then it's LE
+    
+    Check should work because hashtable, and by extension DAT itself,
+    can only support up to 65535 files.
+        
+    Returns endianness as defined in file_utils.h
 */
-void dat_update(DAT_FILE* dat, const uint32_t alignment);
+uint8_t dat_check_endian(const uint32_t file_count);
 
-DAT_FILE_ENTRY* dat_entry_from_data(const uint32_t position,
-									const uint8_t* extension,
-									const uint32_t name_size,
-									const uint8_t* name,
-									const uint32_t size,
-									const uint8_t* data);
-
-DAT_HEADER dat_generate_header(DBL_LIST_NODE* entries,
-							   DAT_HASHES* hashes,
-							   const uint32_t entry_name_size);
-							   
-DAT_HASHES dat_generate_hashes(DBL_LIST_NODE* entries);
-
-void dat_generate_positions(DAT_HEADER* header, DAT_HASHES* hashes,
-							DBL_LIST_NODE* entries, const uint32_t alignment);
-
-DBL_LIST_NODE* dat_append_entry(DBL_LIST_NODE* entries, DAT_FILE_ENTRY* entry);
-DAT_FILE_ENTRY* dat_get_entry_node(DBL_LIST_NODE* entries, const uint64_t pos);
-
-/* Doesn't free the struct itself */							
-void dat_free_entry(DAT_FILE_ENTRY* entry);
-void dat_free_hashes(DAT_HASHES* hashes);
-
-/* Doesn't free the DAT itself */	
-void dat_free(DAT_FILE* dat);
-
-/* Helper */
-const uint8_t dat_bit_length(const uint64_t value);
-const uint8_t dat_calc_prehash_shift(const uint32_t file_count);
-const uint8_t dat_calc_bucket_size(const uint8_t prehash_shift);
-const uint32_t dat_get_max_name_size(DBL_LIST_NODE* entries);
-const uint32_t dat_calc_hash_from_name(const uint8_t* name, const uint64_t length);
+const uint32_t dat_max_name_len(CVEC entries);
