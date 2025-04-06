@@ -55,10 +55,14 @@ void cvec_grow(CVECTOR_METADATA* cvec)
 void* cvec_at(CVECTOR_METADATA* cvec, const uint64_t pos)
 {
     if(cvec == NULL)
+    {
         return NULL;
+    }
     
 	if(cvec_size(cvec) <= pos)
+    {
 		return NULL;
+    }
 	
 	return (void*)&cvec->data[cvec->elem_size*pos];
 }
