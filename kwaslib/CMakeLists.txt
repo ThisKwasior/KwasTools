@@ -32,6 +32,11 @@ set(KWASLIB_CORE_SOURCES
 	${PROJECT_SOURCE_DIR}/core/data/image/s3tc.c
 	${PROJECT_SOURCE_DIR}/core/data/image/gtf.c
 	${PROJECT_SOURCE_DIR}/core/data/image/x360_texture.c
+    
+	${PROJECT_SOURCE_DIR}/core/data/text/sexml.c
+	${PROJECT_SOURCE_DIR}/core/data/text/sexml_exporter.c
+	${PROJECT_SOURCE_DIR}/core/data/text/sexml_io.c
+	${PROJECT_SOURCE_DIR}/core/data/text/sexml_parser.c
 	)
 	
 set(KWASLIB_CRI_SOURCES
@@ -55,6 +60,7 @@ set(KWASLIB_NW4R_SOURCES
 	
 set(KWASLIB_PLATINUM_SOURCES
 	${PROJECT_SOURCE_DIR}/platinum/dat.c
+	${PROJECT_SOURCE_DIR}/platinum/dat_hashtable.c
 	${PROJECT_SOURCE_DIR}/platinum/wmb4.c
 	${PROJECT_SOURCE_DIR}/platinum/wtb.c
 	)

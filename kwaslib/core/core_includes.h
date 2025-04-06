@@ -25,3 +25,5 @@
 #include <kwaslib/core/data/image/s3tc.h>
 #include <kwaslib/core/data/image/x360_texture.h>
 #include <kwaslib/core/data/image/x360_enum.h>
+
+#include <kwaslib/core/data/text/sexml.h>
