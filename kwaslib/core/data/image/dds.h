@@ -1,236 +1,133 @@
 #pragma once
 
+/*
+    https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
+*/
+
 #include <stdint.h>
 
-/*
-	https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-pguide#dds-file-layout
-*/
-
-typedef enum
+typedef union
 {
-	DXGI_FORMAT_UNKNOWN = 0,
-	DXGI_FORMAT_R32G32B32A32_TYPELESS = 1,
-	DXGI_FORMAT_R32G32B32A32_FLOAT = 2,
-	DXGI_FORMAT_R32G32B32A32_UINT = 3,
-	DXGI_FORMAT_R32G32B32A32_SINT = 4,
-	DXGI_FORMAT_R32G32B32_TYPELESS = 5,
-	DXGI_FORMAT_R32G32B32_FLOAT = 6,
-	DXGI_FORMAT_R32G32B32_UINT = 7,
-	DXGI_FORMAT_R32G32B32_SINT = 8,
-	DXGI_FORMAT_R16G16B16A16_TYPELESS = 9,
-	DXGI_FORMAT_R16G16B16A16_FLOAT = 10,
-	DXGI_FORMAT_R16G16B16A16_UNORM = 11,
-	DXGI_FORMAT_R16G16B16A16_UINT = 12,
-	DXGI_FORMAT_R16G16B16A16_SNORM = 13,
-	DXGI_FORMAT_R16G16B16A16_SINT = 14,
-	DXGI_FORMAT_R32G32_TYPELESS = 15,
-	DXGI_FORMAT_R32G32_FLOAT = 16,
-	DXGI_FORMAT_R32G32_UINT = 17,
-	DXGI_FORMAT_R32G32_SINT = 18,
-	DXGI_FORMAT_R32G8X24_TYPELESS = 19,
-	DXGI_FORMAT_D32_FLOAT_S8X24_UINT = 20,
-	DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS = 21,
-	DXGI_FORMAT_X32_TYPELESS_G8X24_UINT = 22,
-	DXGI_FORMAT_R10G10B10A2_TYPELESS = 23,
-	DXGI_FORMAT_R10G10B10A2_UNORM = 24,
-	DXGI_FORMAT_R10G10B10A2_UINT = 25,
-	DXGI_FORMAT_R11G11B10_FLOAT = 26,
-	DXGI_FORMAT_R8G8B8A8_TYPELESS = 27,
-	DXGI_FORMAT_R8G8B8A8_UNORM = 28,
-	DXGI_FORMAT_R8G8B8A8_UNORM_SRGB = 29,
-	DXGI_FORMAT_R8G8B8A8_UINT = 30,
-	DXGI_FORMAT_R8G8B8A8_SNORM = 31,
-	DXGI_FORMAT_R8G8B8A8_SINT = 32,
-	DXGI_FORMAT_R16G16_TYPELESS = 33,
-	DXGI_FORMAT_R16G16_FLOAT = 34,
-	DXGI_FORMAT_R16G16_UNORM = 35,
-	DXGI_FORMAT_R16G16_UINT = 36,
-	DXGI_FORMAT_R16G16_SNORM = 37,
-	DXGI_FORMAT_R16G16_SINT = 38,
-	DXGI_FORMAT_R32_TYPELESS = 39,
-	DXGI_FORMAT_D32_FLOAT = 40,
-	DXGI_FORMAT_R32_FLOAT = 41,
-	DXGI_FORMAT_R32_UINT = 42,
-	DXGI_FORMAT_R32_SINT = 43,
-	DXGI_FORMAT_R24G8_TYPELESS = 44,
-	DXGI_FORMAT_D24_UNORM_S8_UINT = 45,
-	DXGI_FORMAT_R24_UNORM_X8_TYPELESS = 46,
-	DXGI_FORMAT_X24_TYPELESS_G8_UINT = 47,
-	DXGI_FORMAT_R8G8_TYPELESS = 48,
-	DXGI_FORMAT_R8G8_UNORM = 49,
-	DXGI_FORMAT_R8G8_UINT = 50,
-	DXGI_FORMAT_R8G8_SNORM = 51,
-	DXGI_FORMAT_R8G8_SINT = 52,
-	DXGI_FORMAT_R16_TYPELESS = 53,
-	DXGI_FORMAT_R16_FLOAT = 54,
-	DXGI_FORMAT_D16_UNORM = 55,
-	DXGI_FORMAT_R16_UNORM = 56,
-	DXGI_FORMAT_R16_UINT = 57,
-	DXGI_FORMAT_R16_SNORM = 58,
-	DXGI_FORMAT_R16_SINT = 59,
-	DXGI_FORMAT_R8_TYPELESS = 60,
-	DXGI_FORMAT_R8_UNORM = 61,
-	DXGI_FORMAT_R8_UINT = 62,
-	DXGI_FORMAT_R8_SNORM = 63,
-	DXGI_FORMAT_R8_SINT = 64,
-	DXGI_FORMAT_A8_UNORM = 65,
-	DXGI_FORMAT_R1_UNORM = 66,
-	DXGI_FORMAT_R9G9B9E5_SHAREDEXP = 67,
-	DXGI_FORMAT_R8G8_B8G8_UNORM = 68,
-	DXGI_FORMAT_G8R8_G8B8_UNORM = 69,
-	DXGI_FORMAT_BC1_TYPELESS = 70,
-	DXGI_FORMAT_BC1_UNORM = 71,
-	DXGI_FORMAT_BC1_UNORM_SRGB = 72,
-	DXGI_FORMAT_BC2_TYPELESS = 73,
-	DXGI_FORMAT_BC2_UNORM = 74,
-	DXGI_FORMAT_BC2_UNORM_SRGB = 75,
-	DXGI_FORMAT_BC3_TYPELESS = 76,
-	DXGI_FORMAT_BC3_UNORM = 77,
-	DXGI_FORMAT_BC3_UNORM_SRGB = 78,
-	DXGI_FORMAT_BC4_TYPELESS = 79,
-	DXGI_FORMAT_BC4_UNORM = 80,
-	DXGI_FORMAT_BC4_SNORM = 81,
-	DXGI_FORMAT_BC5_TYPELESS = 82,
-	DXGI_FORMAT_BC5_UNORM = 83,
-	DXGI_FORMAT_BC5_SNORM = 84,
-	DXGI_FORMAT_B5G6R5_UNORM = 85,
-	DXGI_FORMAT_B5G5R5A1_UNORM = 86,
-	DXGI_FORMAT_B8G8R8A8_UNORM = 87,
-	DXGI_FORMAT_B8G8R8X8_UNORM = 88,
-	DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM = 89,
-	DXGI_FORMAT_B8G8R8A8_TYPELESS = 90,
-	DXGI_FORMAT_B8G8R8A8_UNORM_SRGB = 91,
-	DXGI_FORMAT_B8G8R8X8_TYPELESS = 92,
-	DXGI_FORMAT_B8G8R8X8_UNORM_SRGB = 93,
-	DXGI_FORMAT_BC6H_TYPELESS = 94,
-	DXGI_FORMAT_BC6H_UF16 = 95,
-	DXGI_FORMAT_BC6H_SF16 = 96,
-	DXGI_FORMAT_BC7_TYPELESS = 97,
-	DXGI_FORMAT_BC7_UNORM = 98,
-	DXGI_FORMAT_BC7_UNORM_SRGB = 99,
-	DXGI_FORMAT_AYUV = 100,
-	DXGI_FORMAT_Y410 = 101,
-	DXGI_FORMAT_Y416 = 102,
-	DXGI_FORMAT_NV12 = 103,
-	DXGI_FORMAT_P010 = 104,
-	DXGI_FORMAT_P016 = 105,
-	DXGI_FORMAT_420_OPAQUE = 106,
-	DXGI_FORMAT_YUY2 = 107,
-	DXGI_FORMAT_Y210 = 108,
-	DXGI_FORMAT_Y216 = 109,
-	DXGI_FORMAT_NV11 = 110,
-	DXGI_FORMAT_AI44 = 111,
-	DXGI_FORMAT_IA44 = 112,
-	DXGI_FORMAT_P8 = 113,
-	DXGI_FORMAT_A8P8 = 114,
-	DXGI_FORMAT_B4G4R4A4_UNORM = 115,
-	DXGI_FORMAT_P208 = 130,
-	DXGI_FORMAT_V208 = 131,
-	DXGI_FORMAT_V408 = 132,
-	DXGI_FORMAT_SAMPLER_FEEDBACK_MIN_MIP_OPAQUE,
-	DXGI_FORMAT_SAMPLER_FEEDBACK_MIP_REGION_USED_OPAQUE,
-	DXGI_FORMAT_FORCE_UINT = 0xffffffff
-} DXGI_FORMAT;
-
-typedef enum
-{
-  D3D10_RESOURCE_DIMENSION_UNKNOWN = 0,
-  D3D10_RESOURCE_DIMENSION_BUFFER = 1,
-  D3D10_RESOURCE_DIMENSION_TEXTURE1D = 2,
-  D3D10_RESOURCE_DIMENSION_TEXTURE2D = 3,
-  D3D10_RESOURCE_DIMENSION_TEXTURE3D = 4
-} D3D10_RES_DIMENSION;
-
-typedef struct
-{
-	uint8_t unknown : 1;
-	uint8_t straight : 1;
-	uint8_t premultiplied : 1;
-	uint8_t opaque : 1;
-	uint8_t custom : 1;
-	uint8_t u1 : 3;
-	uint8_t u2[3];
-} DDS_ALPHA_MODE;
-
-/*
-	.caps, .height, .width and .pixelformat must always be 1.
-*/
-typedef struct
-{
-    uint8_t caps : 1;			/* Required in every DDS */
-    uint8_t height : 1;			/* Required in every DDS */
-    uint8_t width : 1;			/* Required in every DDS */
-    uint8_t pitch : 1;			/* Required when pitch is provided for an uncompressed texture */
-    uint8_t u1:4;
-    uint8_t u2:4;
-    uint8_t pixelformat : 1;	/* Required in every DDS */
-    uint8_t u3:3;
-    uint8_t u4:1;
-    uint8_t mipmapcount : 1;	/* Required in a mipmapped texture */
-    uint8_t u5:1;
-    uint8_t linearsize : 1;		/* Required when pitch is provided for a compressed texture */
-    uint8_t u6:3;
-    uint8_t depth : 1;			/* Required in a depth texture */
-} DDS_FLAGS;
-
-typedef struct
-{
-    uint8_t alphapixels : 1;
-    uint8_t alpha : 1;
-    uint8_t fourcc : 1;
-    uint8_t u1 : 5;
-    uint8_t u2 : 4;
-    uint8_t rgb : 1;
-    uint8_t u3 : 3;
-    uint8_t u4 : 1;
-    uint8_t yuv : 1;
-    uint8_t u5 : 1;
-    uint8_t luminance : 1;
-    uint8_t u6 : 4;
-    uint8_t u7;
+    struct
+    {
+        uint32_t alphapixels : 1;   /* Contains alpha. dwRGBAlphaBitMask has data */
+        uint32_t alpha : 1;         /* Used in older DDS files. Alpha only raw data. dwRGBBitCount/dwABitMask has data */
+        uint32_t fourcc : 1;        /* Compressed RGB data. dwFourCC has data */
+        uint32_t unused_1 : 3;
+        uint32_t rgb : 1;           /* Uncompressed RGB data. dwRGBBitCount and masks have valid data */
+        uint32_t unused_2 : 2;
+        uint32_t yuv : 1;           /* YUV uncompressed data (dwRGBBitCount contains the YUV bit count; 
+                                       dwRBitMask contains the Y mask, dwGBitMask contains the U mask,
+                                       dwBBitMask contains the V mask) */
+        uint32_t unused_3 : 7;
+        uint32_t luminance : 1;     /* Single channel color uncompressed data
+                                       (dwRGBBitCount contains the luminance channel bit count;
+                                       dwRBitMask contains the channel mask).
+                                       Can be combined with DDPF_ALPHAPIXELS for a two channel DDS file. */
+        uint32_t unused_4 : 14;
+    } data;
+    
+    uint32_t buf;
 } DDS_PIXELFORMAT_FLAGS;
 
 typedef struct
 {
-	uint32_t size;					/* Size of the structure. 32 bytes. */
-	DDS_PIXELFORMAT_FLAGS flags;
-	uint8_t  fourcc[4]; 			/* DXT1, DXT2, DXT3, DXT4, DXT5 or DX10 */
-	uint32_t rgb_bit_count;
-	uint32_t red_mask;
-	uint32_t green_mask;
-	uint32_t blue_mask;
-	uint32_t alpha_mask;
+    uint32_t size;
+    DDS_PIXELFORMAT_FLAGS flags;
+    uint8_t fourcc[4];
+    uint32_t rgb_bit_count;
+    uint32_t r_bitmask;
+    uint32_t g_bitmask;
+    uint32_t b_bitmask;
+    uint32_t a_bitmask;
 } DDS_PIXELFORMAT;
+
+typedef union
+{
+    struct
+    {
+        uint32_t unused_1 : 3;
+        uint32_t complex : 1;   /* Optional; must be used on any file that contains more than one surface
+                                   (a mipmap, a cubic environment map, or mipmapped volume texture). */
+        uint32_t unused_2 : 8;
+        uint32_t texture : 1;   /* Required */
+        uint32_t unused_3 : 9;
+        uint32_t mipmap : 1;    /* Optional; should be used for a mipmap. */
+        uint32_t unused_4 : 9;
+    } data;
+    
+    uint32_t buf;
+} DDS_CAPS;
+
+typedef union
+{
+    struct
+    {
+        uint32_t unused_1 : 9;
+        uint32_t cubemap : 1;
+        uint32_t cubemap_positivex : 1;
+        uint32_t cubemap_negativex : 1;
+        uint32_t cubemap_positivey : 1;
+        uint32_t cubemap_negativey : 1;
+        uint32_t cubemap_positivez : 1;
+        uint32_t cubemap_negativez : 1;
+        uint32_t unused_2 : 5;
+        uint32_t volume : 1;
+    } data;
+    
+    uint32_t buf;
+} DDS_CAPS2;
+
+typedef union
+{
+    struct
+    {
+        uint32_t caps : 1;          /* Required */
+        uint32_t height : 1;        /* Required */
+        uint32_t width : 1;         /* Required */
+        uint32_t pitch : 1;         /* Required when pitch is provided for an uncompressed texture */
+        uint32_t unused_1 : 8;
+        uint32_t pixelformat : 1;   /* Required */
+        uint32_t unused_2 : 4;
+        uint32_t mipmapcount : 1;   /* Required in a mipmapped texture */
+        uint32_t unused_3 : 1;
+        uint32_t linearsize : 1;    /* Required when pitch is provided for a compressed texture. */
+        uint32_t unused_4 : 3;
+        uint32_t depth : 1;         /* Required in a depth texture */
+        uint32_t unused_5 : 8;
+    } data;
+    
+    uint32_t buf;
+} DDS_HEADER_FLAGS;
 
 typedef struct
 {
-	uint32_t size;		/* Size of the header. Must me 124 bytes. */
-	DDS_FLAGS flags;
-	uint32_t height;
-	uint32_t width;
-	uint32_t pitch_or_linear_size;
-	uint32_t depth;
-	uint32_t mipmap_count;
-	uint32_t reserved[11];
-	DDS_PIXELFORMAT pf;
-	uint32_t caps;
-	uint32_t caps2;
-	uint32_t caps3;
-	uint32_t caps4;
-	uint32_t reserved2;
+    uint32_t size;                  /* Size of structure. Has to be 124. */
+    DDS_HEADER_FLAGS flags;         /* Flags to indicate which members contain valid data. */
+    uint32_t height;                /* Height in pixels */
+    uint32_t width;                 /* Width in pixels */
+    uint32_t pitch_or_linear_size;  /* The pitch or number of bytes per scan line in an uncompressed texture */
+    uint32_t depth;                 /* Depth of a volume texture (in pixels), otherwise unused. */
+    uint32_t mipmap_count;          /* Number of mipmap levels, otherwise unused. */
+    uint32_t reserved[11];          /* Unused */
+    DDS_PIXELFORMAT pf;             /* Pixel format */
+    DDS_CAPS caps;                  /* Specifies the complexity of the surfaces stored. */
+    DDS_CAPS2 caps2;                /* Additional detail about the surfaces stored. */
+    uint32_t caps3;                 /* Unused */
+    uint32_t caps4;                 /* Unused */
+    uint32_t reserved2;             /* Unused */
 } DDS_HEADER;
 
 typedef struct
 {
-	DXGI_FORMAT dxgi_format;
-	D3D10_RES_DIMENSION res_dimension;
-	uint32_t misc_flag;
-	uint32_t array_size;
-	uint32_t misc_flag2;
-} DDS_HEADER_DXT10;
-
-typedef struct
-{
-	uint8_t magic[4];
-	DDS_HEADER header;
+    uint8_t magic[4];
+    DDS_HEADER header;
 } DDS_FILE;
+
+/*
+    Implementation
+*/
+
+DDS_FILE* dds_header_from_data(const char* data);
+void dds_read_header(DDS_FILE* dds, const char* data);
+void dds_print_info(DDS_FILE* dds);

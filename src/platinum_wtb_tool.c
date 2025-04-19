@@ -1,325 +1,574 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <kwaslib/core/io/arg_parser.h>
-#include <kwaslib/core/io/path_utils.h>
-#include <kwaslib/core/io/file_utils.h>
-#include <kwaslib/core/io/string_utils.h>
-#include <kwaslib/core/io/dir_list.h>
-#include <kwaslib/core/cpu/endianness.h>
-#include <kwaslib/core/data/image/image.h>
-#include <kwaslib/core/data/image/gtf.h>
-#include <kwaslib/platinum/wtb.h>
-
+#include <stdint.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <kwaslib/ext/stb_image_write.h>
+
+#include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/io/arg_parser.h>
+#include <kwaslib/core/io/path_utils.h>
+#include <kwaslib/core/io/dir_list.h>
+#include <kwaslib/core/data/text/sexml.h>
+#include <kwaslib/core/data/image/image.h>
+#include <kwaslib/core/data/image/gtf.h>
+#include <kwaslib/platinum/wtb.h>
 
 /*
 	Arguments
 */
 const AP_ARG_DESC arg_list[] =
 {
-	{"--skip_ext_check", AP_TYPE_NOV}
+	{"--skip_ext_check", AP_TYPE_NOV},
+	{"--wtb", AP_TYPE_NOV},
+	{"--wta", AP_TYPE_NOV}
 };
-const uint32_t arg_list_size = 1;
+const uint32_t arg_list_size = 3;
 
 AP_VALUE_NODE* arg_node = NULL;
 
-/* Flags */
-uint8_t flag_skip_ext_check = 0;
+/*
+    Function declarations
+*/
 
+/* Common */
+void wtb_tool_print_usage(const char* exe_name);
 void wtb_tool_parse_arguments(int argc, char** argv);
 
-/*
-	Common
-*/
-void wtb_tool_print_usage(char* program_name);
-void wtb_tool_print_wtb(WTB_FILE* wtb);
+/* Unpacking */
+void wtb_tool_to_dir(const char* dir_path, WTB_FILE* wtb);
+SU_STRING* wtb_tool_ext_by_data(const uint8_t* data);
 
-/* 
-	Unpacker
-*/
-void wtb_tool_extract_to_folder(WTB_FILE* wtb, PU_PATH* folder);
-
-/* 
-	Packer
-*/
-WTB_FILE* wtb_tool_parse_directory(const char* dir);
+/* Packing */
+SEXML_ELEMENT* wtb_tool_check_kwasinfo(const char* dir_path);
+WTB_FILE* wtb_tool_kwasinfo_to_wtb(const char* dir_path, SEXML_ELEMENT* xml);
+WTB_FILE* wtb_tool_dir_to_wtb(const char* dir_path);
+void wtb_tool_to_wtb(SU_STRING* wtb_path_str, WTB_FILE* wtb);
+void wtb_tool_to_wta_wtp(SU_STRING* wta_path_str, WTB_FILE* wtb);
 
 /*
-	Entry point
+    Globals
+*/
+
+/*
+    Flags
+*/
+uint8_t flag_skip_ext_check = 0;
+uint8_t flag_wtb = 0;
+uint8_t flag_wta = 0;
+
+/*
+    Entry point
 */
 int main(int argc, char** argv)
 {
-	if(argc == 1)
-	{
-		wtb_tool_print_usage(argv[0]);
-		return 0;
-	}
-	
-	/* It's a file so let's process WTB */
-	if(pu_is_file(argv[1]))
-	{
-		FU_FILE file_wtb = {0};
-		fu_open_file(argv[1], 1, &file_wtb);
-		
-		WTB_FILE* wtb = wtb_parse_wtb(&file_wtb);
-		
-		fu_close(&file_wtb);
-		
-		if(wtb == NULL)
-		{
-			printf("Couldn't process the WTB file.\n");
-		}
-		else
-		{
-			/*printf("Amount of DDS files: %u\n", wtb->header.tex_count);*/
-			
-			wtb_tool_print_wtb(wtb);
-			
-			/* Directory name */
-			PU_PATH* wtb_path = pu_split_path(argv[1], strlen(argv[1]));
-			su_remove(wtb_path->ext, 0, -1);
-			wtb_path->type = PU_PATH_TYPE_DIR;
-			su_insert_char(wtb_path->name, -1, "_wtb", 4);
-			
-			SU_STRING* str = pu_path_to_string(wtb_path);
-			printf("Dir path: %s\n", str->ptr);
-			
-			/* Save to a directory */
-			wtb_tool_extract_to_folder(wtb, wtb_path);
-			
-			/* Free all of it */
-			wtb_free(wtb);
-            pu_free_path(wtb_path);
-            su_free(str);
-			
-			printf("\nUnpacking done without issues (I hope)\n");
-		}
-	}
-	else if(pu_is_dir(argv[1])) /* It's a directory so let's create WTB file */
-	{
-		/* Create WTB from a directory of files */
-		WTB_FILE* wtb = wtb_tool_parse_directory(argv[1]);
-		
-		if(wtb == NULL)
-		{
-			printf("Couldn't process the directory.\n");
-		}
-		else
-		{
-			FU_FILE fwtb = {0};
-			wtb_save_wtb_to_fu_file(wtb, &fwtb);
-			
-			uint32_t arg1_len = strlen(argv[1]);
-			
-			/* Change the directory path length to skip the suffix */
-			if(flag_skip_ext_check == 0 && argv[1][arg1_len-4] == '_')
-			{
-				arg1_len -= 4;
-			}
-			
-			/* Save generated WTB to file on disk */
-			SU_STRING* output_str_wtb = su_create_string(argv[1], arg1_len);
-			su_insert_char(output_str_wtb, -1, ".wtb", 5);
-			
-			fu_to_file(output_str_wtb->ptr, &fwtb, 1);
-			
-			su_free(output_str_wtb);
-			
-			wtb_free(wtb);
-			
-			fu_close(&fwtb);
-			
-			printf("\nPacking done without issues (I hope)\n");
-		}
-	}
-	else /* Everything failed oops */
-	{
-		printf("Couldn't do anything.\n");
-	}
-	
-	return 0;
+    /* No arguments, print usage */
+    if(argc == 1)
+    {
+        wtb_tool_print_usage(argv[0]);
+        return 0;
+    }
+    
+    wtb_tool_parse_arguments(argc, argv);
+    
+    if(pu_is_dir(argv[1])) /* It's a directory */
+    {
+        printf("Packing files.\n");
+        
+        /* Looking for kwasinfo.xml */
+        SEXML_ELEMENT* wtb_xml = wtb_tool_check_kwasinfo(argv[1]);
+        WTB_FILE* wtb_file = NULL; 
+        
+        if(wtb_xml) /* XML exists and is valid */
+        {
+            printf("kwasinfo.xml found\n");
+            wtb_file = wtb_tool_kwasinfo_to_wtb(argv[1], wtb_xml);
+        }
+        else
+        {
+            printf("Could not find valid kwasinfo.xml\n"
+                   "Repacked file might not work properly.\n");
+                   
+            wtb_file = wtb_tool_dir_to_wtb(argv[1]);
+        }
+        
+        /*
+            Preparing the output path for a file.
+            WTA+WTP have a forced extension, but we need to check for `_wta` and `_wtp`.
+            WTB export is the default, but we can get an extension from suffix.
+        */
+        uint8_t is_wta = 0;
+        uint32_t arg1_len = strlen(argv[1]);
+
+        /* Checking flags */
+        if(flag_skip_ext_check == 0) /* Get the extension */
+        {
+            if(argv[1][arg1_len-4] == '_')
+            {
+                argv[1][arg1_len-4] = '.';
+            }
+        }
+        
+        if(flag_wta)
+        {
+            is_wta = 1;
+        }
+        
+        if(flag_wtb)
+        {
+            is_wta = 0;
+        }
+        
+        PU_PATH* dir_path = pu_split_path(argv[1], arg1_len);
+        
+        if(dir_path->ext->size == PU_PATH_NO_VALUE)
+        {
+            if(is_wta) dir_path->ext = su_create_string("wta", 3);
+            else dir_path->ext = su_create_string("wtb", 3);
+        }
+        
+        if((su_cmp_string_char(dir_path->ext, "wta", 3) == 0)
+        || (su_cmp_string_char(dir_path->ext, "wtp", 3) == 0))
+        {
+            is_wta = 1;
+            dir_path->ext->ptr[2] = 'a';
+            
+            if(flag_wtb)
+            {
+                is_wta = 0;
+                dir_path->ext->ptr[2] = 'b';
+            }
+        }
+        else
+        {
+            is_wta = 0;
+            
+            if(flag_wta)
+            {
+                is_wta = 1;
+                dir_path->ext->ptr[0] = 'w';
+                dir_path->ext->ptr[1] = 't';
+                dir_path->ext->ptr[2] = 'a';
+            }
+        }
+        
+        /* Output string, .wta for wta, any other for wtb */
+        SU_STRING* dir_path_str = pu_path_to_string(dir_path);
+        printf("Output file: %*s\n", dir_path_str->size, dir_path_str->ptr);
+        
+        if(is_wta) /* Export the WTA+WTP */
+        {
+            wtb_tool_to_wta_wtp(dir_path_str, wtb_file);
+        }
+        else /* Export the WTB */
+        {
+            wtb_tool_to_wtb(dir_path_str, wtb_file);
+        }
+        
+        dir_path = pu_free_path(dir_path);
+        dir_path_str = su_free(dir_path_str);
+    }
+    else if(pu_is_file(argv[1])) /* Could be a WTB or WTA+WTP */
+    {
+        printf("Extracting files.\n");
+        
+        FU_FILE fwtb = {0};
+        FU_FILE fwta = {0};
+        FU_FILE fwtp = {0};
+        
+        uint8_t wtb_arg_it = 0;
+        uint8_t wta_arg_it = 0;
+        const uint32_t ext_pos_arg1 = strlen(argv[1])-4;
+        
+        if(strncmp(&argv[1][ext_pos_arg1], ".wtb", 4) == 0)
+        {
+            wtb_arg_it = 1;
+            fu_open_file(argv[1], 1, &fwtb);
+        }
+        else if(strncmp(&argv[1][ext_pos_arg1], ".wta", 4) == 0)
+        {
+            wta_arg_it = 1;
+            fu_open_file(argv[1], 1, &fwta);
+        }
+        else if(strncmp(&argv[1][ext_pos_arg1], ".wtp", 4) == 0)
+        {
+            fu_open_file(argv[1], 1, &fwtp);
+        }
+        
+        if(pu_is_file(argv[2])) /* Second file exists */
+        {
+            const uint32_t ext_pos_arg2 = strlen(argv[2])-4;
+            
+            if(strncmp(&argv[2][ext_pos_arg2], ".wtb", 4) == 0)
+            {
+                wtb_arg_it = 2;
+                fu_open_file(argv[2], 1, &fwtb);
+            }
+            else if(strncmp(&argv[2][ext_pos_arg2], ".wta", 4) == 0)
+            {
+                wta_arg_it = 2;
+                fu_open_file(argv[2], 1, &fwta);
+            }
+            else if(strncmp(&argv[2][ext_pos_arg2], ".wtp", 4) == 0)
+            {
+                fu_open_file(argv[2], 1, &fwtp);
+            }
+        }
+        
+        WTB_FILE* wtb = NULL;
+        
+        if(fwtb.size)
+        {
+            wtb = wtb_parse_wtb(&fwtb);
+            wtb_tool_to_dir(argv[wtb_arg_it], wtb);
+        }
+        else if(fwta.size && fwtp.size)
+        {
+            wtb = wtb_parse_wta_wtp(&fwta, &fwtp);
+            wtb_tool_to_dir(argv[wta_arg_it], wtb);
+        }
+        else
+        {
+            printf("No clue what happened.\n"
+                   "Are you sure you are trying to unpack wtb/wta+wtp?\n");
+
+            return 0;
+        }
+        
+        fu_close(&fwtb);
+        fu_close(&fwta);
+        fu_close(&fwtp);
+    }
+    else /* Everything failed, print usage again */
+    {
+        wtb_tool_print_usage(argv[0]);
+    }
+    
+    return 0;
 }
 
 /*
-	Common
+    Functions
 */
+
+/* Common */
+
+void wtb_tool_print_usage(const char* exe_name)
+{
+	printf("Usage:\n");
+	printf("\tTo unpack:\t%s <WTB/WTA+WTP file>\n", exe_name);
+	printf("\tTo pack:\t%s <directory with DDS files/kwasinfo.xml> <options>\n", exe_name);
+	printf("\n");
+	printf("Options:\n");
+	printf("\tPacking:\n");
+	printf("\t\t%24s\t%s\n", "--skip_ext_check", "Don't get a file type from directory suffix");
+	printf("\t\t%24s\t%s\n", "--wtb", "Force the creation of standalone WTB file (default)");
+	printf("\t\t%24s\t%s\n", "--wta", "Force the creation of WTA and WTP files");
+	printf("\n");
+	printf("DDS filenames in the unpacked directory are the texture IDs in decimal.\n");
+	printf("Only change them if you know what you are doing.\n");
+}
+
 void wtb_tool_parse_arguments(int argc, char** argv)
 {
 	arg_node = ap_parse_argv(argv, argc, arg_list, arg_list_size);
 
 	AP_VALUE_NODE* arg_skip_ext_check = ap_get_node_by_arg(arg_node, "--skip_ext_check");
+	AP_VALUE_NODE* arg_wtb = ap_get_node_by_arg(arg_node, "--wtb");
+	AP_VALUE_NODE* arg_wta = ap_get_node_by_arg(arg_node, "--wta");
 
-	if(arg_skip_ext_check != NULL)
+	if(arg_skip_ext_check)
 	{
 		flag_skip_ext_check = 1;
 	}
+
+    if(arg_wtb)
+    {
+        flag_wtb = 1;
+        flag_wta = 0;
+    }
+    
+    if(arg_wta)
+    {
+        flag_wtb = 0;
+        flag_wta = 1;
+    }
 }
 
-void wtb_tool_print_usage(char* program_name)
-{
-	printf("Usage:\n");
-	printf("\tTo unpack: %s file.wtb\n", program_name);
-	printf("\tTo pack: %s <directory with DDS files>\n", program_name);
-	printf("\n");
-	printf("Options:\n");
-	printf("\tPacking:\n");
-	printf("\t\t%24s\t%s\n", "--skip_ext_check", "Do not remove the extension from the folder suffix");
-	printf("\n");
-	printf("DDS filenames in the unpacked directory are the texture IDs in decimal format.\n");
-	printf("Only change them if you know what you are doing.\n");
-}
 
-void wtb_tool_print_wtb(WTB_FILE* wtb)
+/* Unpacking */
+
+void wtb_tool_to_dir(const char* dir_path, WTB_FILE* wtb)
 {
-	printf("Platform: %s\n", wtb->platform == 1 ? "PC" : "X360/PS3");
-	printf("Texture count: %u\n", wtb->header.tex_count);
-	printf("Texture offset array: %x\n", wtb->header.tex_offset_array_offset);
-	printf("Size offset array: %x\n", wtb->header.tex_size_offset);
-	printf("Flags offset array: %x\n", wtb->header.flag_array_offset);
-	printf("Texture ID offset array: %x\n", wtb->header.tex_id_array_offset);
-	printf("Texture info offset array: %x\n\n", wtb->header.xpr_info_offset);
-	
-	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
-	{
-        WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
+    SU_STRING* out_str = su_create_string(dir_path, strlen(dir_path));
+    
+    out_str->ptr[out_str->size-4] = '_';
+    pu_create_dir_char(out_str->ptr);
+    
+    /* kwasinfo.xml */
+    SU_STRING* kwasinfo_xml = su_copy(out_str);
+    su_insert_char(kwasinfo_xml, -1, "/kwasinfo.xml", 13);
+    SEXML_ELEMENT* xml = sexml_create_root("PlatinumWTB");
+    
+    for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
+    {
+        WTB_ENTRY* entry = wtb_get_entry_by_id(wtb->entries, i);
         
-		printf("Texture [%u/%u]\n", i+1, wtb->header.tex_count);
-		printf("\tOffset %u\n", entry->offset);
-		printf("\tSize %u\n", entry->size);
-		printf("\tID %u/%x\n", entry->id, entry->id);
-		printf("\tFlags: %02x0000%02x\n", *(const uint8_t*)&entry->flags.b0,
-                                          *(const uint8_t*)&entry->flags.b3);
-		printf("\t\talways2_0 - %u\n", entry->flags.b0.always2_0);
-		printf("\t\tcomplex   - %u\n", entry->flags.b0.complex);
-		printf("\t\tcubemap   - %u\n", entry->flags.b3.cubemap);
-		printf("\t\talways2_1 - %u\n", entry->flags.b3.always2_1);
-		printf("\t\talpha     - %u\n", entry->flags.b3.alpha);
-	}
-}
-
-/* 
-	Unpacker
-*/
-void wtb_tool_extract_to_folder(WTB_FILE* wtb, PU_PATH* folder)
-{
-	pu_create_dir(folder);
-	
-	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
-	{
-        WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
+        char id_buf[11] = {0};
+        const uint8_t id_buf_size = sprintf(&id_buf[0], "%u", entry->id);
         
-		/* Get the id as a string */
-		char id_str[11] = {0};
-		sprintf(&id_str[0], "%u", entry->id);
-		const uint32_t len = strlen(&id_str[0]);
-		
-		/*  Construct the path */
-		SU_STRING* temp_file_str = pu_path_to_string(folder);
-		su_insert_char(temp_file_str, -1, "/", 1);
-		su_insert_char(temp_file_str, -1, id_str, len);
+        SU_STRING* file_name = su_create_string(&id_buf[0], id_buf_size);
 
-		FU_FILE temp_file = {0};
-		fu_create_mem_file(&temp_file);
-		fu_write_data(&temp_file, entry->data, entry->size);
-		fu_seek(&temp_file, 0, FU_SEEK_SET);
-		
-		if(wtb->platform == WTB_PLATFORM_BE)
-		{
-			su_insert_char(temp_file_str, -1, ".png", 4);
-			
+        SU_STRING* full_file_name = su_copy(out_str);
+        su_insert_char(full_file_name, -1, "/", 1);
+        
+        /* Convert any X360/PS3 texture to PNG */
+        if(wtb->platform == WTB_PLATFORM_BE)
+        {
 			IMAGE* img = NULL;
-			uint64_t img_size = 0;
-			uint8_t* img_data = NULL;
-			
+
 			if(wtb->header.xpr_info_offset) /* X360 */
 			{
-				img = x360_texture_to_image(entry->x360,
-                                            (uint8_t*)temp_file.buf,
-                                            temp_file.size);
+				img = x360_texture_to_image(entry->x360, &entry->data[0], entry->size);
 			}
 			else /* PS3 */
 			{
+                FU_FILE temp_file = {0};
+                fu_create_mem_file(&temp_file);
+                fu_write_data(&temp_file, entry->data, entry->size);
+                fu_seek(&temp_file, 0, FU_SEEK_SET);
+                
 				GTF_FILE gtf = gtf_read_file(&temp_file);
 				img = gtf_to_image(&gtf);
+                
+                fu_close(&temp_file);
 			}
-			
-			img_data = img_to_raw_data(img, &img_size);
-			
-			stbi_write_png(temp_file_str->ptr,
+            
+            uint64_t img_size = 0;
+            uint8_t* img_data = img_to_raw_data(img, &img_size);
+            
+            su_insert_char(file_name, -1, ".png", 4);
+            su_insert_string(full_file_name, -1, file_name);
+            
+			stbi_write_png(full_file_name->ptr,
                            img->width, img->height,
                            img->bpp, img_data,
                            img->width*img->bpp);
-			
-			free(img_data);
-			img_free_image(img);
-		}
-		else
-		{
-            if(strncmp((const char*)&entry->data[6], "JFIF", 4) == 0)
-            {
-                su_insert_char(temp_file_str, -1, ".jpg", 4);
-            }
-            else if(strncmp((const char*)&entry->data[6], "Exif", 4) == 0)
-            {
-                su_insert_char(temp_file_str, -1, ".jpg", 4);
-            }
-            else if(strncmp((const char*)&entry->data[1], "PNG", 3) == 0)
-            {
-                su_insert_char(temp_file_str, -1, ".png", 4);
-            }
-            else 
-            {
-                su_insert_char(temp_file_str, -1, ".dds", 4);
-            }
             
-			fu_to_file(temp_file_str->ptr, &temp_file, 1);
-		}
-		
-		//printf("Path: %s\n", temp_file_str.p);
-		
-		fu_close(&temp_file);
-		su_free(temp_file_str);
-	}
+            free(img_data);
+			img_free_image(img);
+        }
+        else
+        {
+            /* Extension by type */
+            SU_STRING* file_ext = wtb_tool_ext_by_data(&entry->data[0]);
+            su_insert_string(file_name, -1, file_ext);
+            su_insert_string(full_file_name, -1, file_name);
+            su_free(file_ext);
+            
+            FILE* fout = fopen(full_file_name->ptr, "wb");
+            fwrite(entry->data, entry->size, 1, fout);
+            fclose(fout);
+        }
+        
+        SEXML_ELEMENT* xml_file = sexml_append_element(xml, "file");
+        sexml_append_attribute(xml_file, "path", file_name->ptr);
+        sexml_append_attribute_bool(xml_file, "atlas", entry->flags.data.atlas);
+        
+        printf("File name: %s\n", file_name->ptr);
+        printf("File size: %u\n", entry->size);
+        printf("File id: %u\n", entry->id);
+        printf("Flags:\n");
+        printf("\tnoncomplex - %u\n", entry->flags.data.noncomplex);
+        printf("\talways_set - %u\n", entry->flags.data.always_set);
+        printf("\talphaonly - %u\n", entry->flags.data.alphaonly);
+        printf("\tdxt1a - %u\n", entry->flags.data.dxt1a);
+        printf("\tatlas - %u\n", entry->flags.data.atlas);
+        printf("\tcubemap - %u\n", entry->flags.data.cubemap);
+        printf("\n");
+        
+        su_free(file_name);
+        su_free(full_file_name);
+    }
+    
+    sexml_save_to_file_formatted(kwasinfo_xml->ptr, xml, 4);
+    xml = sexml_destroy(xml);
 }
 
-/* 
-	Packer
-*/
-WTB_FILE* wtb_tool_parse_directory(const char* dir)
+SU_STRING* wtb_tool_ext_by_data(const uint8_t* data)
 {
+    SU_STRING* ext = NULL;
+
+    if((strncmp((const char*)&data[0], "II*\0", 4) == 0)
+        || (strncmp((const char*)&data[0], "MM\0*", 4) == 0)) /* TIFF */
+    {
+        ext = su_create_string(".tif", 4);
+    }
+    else if(strncmp((const char*)&data[0], "‰PNG", 4) == 0)   /* PNG */
+    {
+        ext = su_create_string(".png", 4);
+    }
+    else if(strncmp((const char*)&data[6], "JFIF", 4) == 0)  /* JPEG */
+    {
+        ext = su_create_string(".jpg", 4);
+    }
+    else if(strncmp((const char*)&data[0], "DDS ", 4) == 0)  /* DDS */
+    {
+        ext = su_create_string(".dds", 4);
+    }
+    else /* Unknown file */
+    {
+        ext = su_create_string(".bin", 4);
+    }
+    
+    return ext;
+}
+
+/* Packing */
+
+SEXML_ELEMENT* wtb_tool_check_kwasinfo(const char* dir_path)
+{
+    SEXML_ELEMENT* root = NULL;
+    SU_STRING* str_kwasinfo_xml = su_create_string(dir_path, strlen(dir_path));
+    su_insert_char(str_kwasinfo_xml, -1, "/kwasinfo.xml", 13); 
+
+    if(pu_is_file(str_kwasinfo_xml->ptr))
+    {
+        root = sexml_load_from_file(str_kwasinfo_xml->ptr);
+        
+        if(su_cmp_string_char(root->name, "PlatinumWTB", 11) != 0)
+        {
+            printf("kwasinfo.xml is not valid PlatinumWTB\n"
+                   "Got %*s\n", root->name->size, root->name->ptr);
+            root = sexml_destroy(root);
+        }
+    }
+    
+    str_kwasinfo_xml = su_free(str_kwasinfo_xml);
+
+    return root;
+}
+
+WTB_FILE* wtb_tool_kwasinfo_to_wtb(const char* dir_path, SEXML_ELEMENT* xml)
+{
+    SU_STRING* dir_str = su_create_string(dir_path, strlen(dir_path));
+    WTB_FILE* wtb = wtb_alloc_wtb();
+    
+    const uint64_t file_count = sexml_get_child_count(xml, "file");
+    printf("File count: %llu\n", file_count);
+    
+    for(uint32_t i = 0; i != file_count; ++i)
+    {
+        SEXML_ELEMENT* file = sexml_get_element_by_id(xml, i);
+        SEXML_ATTRIBUTE* path = sexml_get_attribute_by_name(file, "path");
+        SEXML_ATTRIBUTE* atlas_attr = sexml_get_attribute_by_name(file, "atlas");
+        const uint8_t atlas_value = atlas_attr ? sexml_get_attribute_bool(atlas_attr) : 0;
+        
+        if(path == NULL)
+        {
+            printf("Malformed file entry at index %u\n", i);
+            continue;
+        }
+        
+        /* Getting the entry ID */
+        PU_PATH* file_path = pu_split_path(path->value->ptr, path->value->size);
+        uint32_t entry_id = 0;
+        sscanf(file_path->name->ptr, "%u", &entry_id);
+        file_path = pu_free_path(file_path);
+        
+        /* Reading the file contents */
+        SU_STRING* file_path_str = su_copy(dir_str);
+        su_insert_char(file_path_str, -1, "/", 1);
+        su_insert_string(file_path_str, -1, path->value);
+        
+        FU_FILE file_data = {0};
+        fu_open_file(file_path_str->ptr, 1, &file_data);
+        
+        /* Appending new entry to WTB file */
+        wtb_append_entry(wtb->entries, file_data.size, entry_id, (uint8_t*)file_data.buf);
+        WTB_ENTRY* new_entry = wtb_get_entry_by_id(wtb->entries, i);
+        wtb_set_entry_flags(new_entry, atlas_value);
+        
+        /* Cleanup */
+        fu_close(&file_data);
+        file_path_str = su_free(file_path_str);
+    }
+    
+    dir_str = su_free(dir_str);
+    
+    wtb_update(wtb, 0);
+    return wtb;
+}
+
+WTB_FILE* wtb_tool_dir_to_wtb(const char* dir_path)
+{
+    SU_STRING* dir_str = su_create_string(dir_path, strlen(dir_path));
+    WTB_FILE* wtb = wtb_alloc_wtb();
+    
     DL_DIR_LIST dirlist = {0};
-    dl_parse_directory(dir, &dirlist);
+    dl_parse_directory(dir_path, &dirlist);
     
-    WTB_FILE* wtb = wtb_alloc_empty_wtb();
-    cvec_resize(wtb->entries, dirlist.file_count);
-    
-    uint32_t entry_it = 0;
+    uint32_t dds_it = 0;
     for(uint32_t i = 0; i != dirlist.size; ++i)
     {
         if(dirlist.entries[i].type == DL_TYPE_FILE)
         {
-            WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, entry_it);
-            SU_STRING* path = dl_get_full_entry_path(&dirlist, i);
+            SU_STRING* file_path_str = dl_get_full_entry_path(&dirlist, i);
             
-            FU_FILE temp_file = {0};
-            fu_open_file(path->ptr, 1, &temp_file);
-        
-            entry->size = temp_file.size;
-            sscanf(dirlist.entries[i].path->name->ptr, "%u", &entry->id);
-
-            entry->data = (uint8_t*)calloc(1, entry->size);
-            memcpy(entry->data, temp_file.buf, entry->size);
-        
-            su_free(path);
-            fu_close(&temp_file);
+            /* Getting the entry ID */
+            uint32_t entry_id = 0;
+            sscanf(dirlist.entries[i].path->name->ptr, "%u", &entry_id);
             
-            entry_it += 1;
+            /* Reading the file contents */
+            FU_FILE file_data = {0};
+            fu_open_file(file_path_str->ptr, 1, &file_data);
+            
+            /* Appending new entry to WTB file */
+            wtb_append_entry(wtb->entries, file_data.size, entry_id, (uint8_t*)file_data.buf);
+            WTB_ENTRY* new_entry = wtb_get_entry_by_id(wtb->entries, dds_it);
+            wtb_set_entry_flags(new_entry, 0);
+            
+            /* Cleanup */
+            fu_close(&file_data);
+            file_path_str = su_free(file_path_str);
+            
+            dds_it += 1;
         }
     }
     
+    dir_str = su_free(dir_str);
+    
+    wtb_update(wtb, 0);
     return wtb;
+}
+
+void wtb_tool_to_wtb(SU_STRING* wtb_path_str, WTB_FILE* wtb)
+{
+    wtb_update(wtb, 0);
+    
+    FU_FILE* fuwta = wtb_header_to_fu_file(wtb);
+    FU_FILE* fuwtp = wtb_data_to_fu_file(wtb);
+    
+    fu_seek(fuwtp, 0, FU_SEEK_SET);
+    fu_write_data(fuwtp, (const uint8_t*)&fuwta->buf[0], fuwta->size);
+    
+    fu_to_file(wtb_path_str->ptr, fuwtp, 1);
+    
+    fu_close(fuwta);
+    fu_close(fuwtp);
+}
+
+void wtb_tool_to_wta_wtp(SU_STRING* wta_path_str, WTB_FILE* wtb)
+{
+    wtb_update(wtb, 1);
+    
+    FU_FILE* fuwta = wtb_header_to_fu_file(wtb);
+    FU_FILE* fuwtp = wtb_data_to_fu_file(wtb);
+    
+    fu_to_file(wta_path_str->ptr, fuwta, 1);
+    
+    wta_path_str->ptr[wta_path_str->size-1] = 'p';
+    fu_to_file(wta_path_str->ptr, fuwtp, 1);
+    
+    fu_close(fuwta);
+    fu_close(fuwtp);
 }

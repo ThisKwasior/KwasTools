@@ -28,6 +28,7 @@ set(KWASLIB_CORE_SOURCES
 	${PROJECT_SOURCE_DIR}/core/data/dbl_link_list.c
 	${PROJECT_SOURCE_DIR}/core/data/cvector.c
 
+	${PROJECT_SOURCE_DIR}/core/data/image/dds.c
 	${PROJECT_SOURCE_DIR}/core/data/image/image.c
 	${PROJECT_SOURCE_DIR}/core/data/image/s3tc.c
 	${PROJECT_SOURCE_DIR}/core/data/image/gtf.c

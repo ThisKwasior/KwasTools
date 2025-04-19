@@ -1,8 +1,9 @@
 Each folder contains code for different purposes.
 
 List:
- * core		-   Common helper utilities and general purpose code
- * cri		-   CRIWARE
- * he		-   Hedgehog Engine 1 and 2
- * platinum	-   Platinum Games Engine (MGRR)
- * nw4r		-	NintendoWare for Revolution 
+ * core         -   Common helper utilities and general purpose code
+ * ext          -   external, header-only libraries
+ * cri          -   CRIWARE
+ * he           -   Hedgehog Engine 1 and 2
+ * platinum     -   Platinum Games Engine (MGRR)
+ * nw4r         -   NintendoWare for Revolution 

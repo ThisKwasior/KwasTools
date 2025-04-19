@@ -3,10 +3,189 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <kwaslib/core/io/dir_list.h>
+#include <kwaslib/core/io/type_readers.h>
 #include <kwaslib/core/math/boundary.h>
+#include <kwaslib/core/data/image/dds.h>
 
-WTB_FILE* wtb_alloc_empty_wtb()
+WTB_FILE* wtb_parse_wta_wtp(FU_FILE* fwta, FU_FILE* fwtp)
+{
+    WTB_FILE* wtb = wtb_alloc_wtb();
+    
+    if(wtb == NULL)
+    {
+        printf("Could not allocate WTB structure\n");
+        return NULL;
+    }
+    
+    wtb_read_header(fwta, wtb);
+    
+    if(wtb->platform == WTB_PLATFORM_INVALID)
+    {
+        printf("File is not a valid WTB.\n");
+        wtb = wtb_free(wtb);
+        return NULL;
+    }
+    
+    wtb_read_image_data(fwtp, wtb);
+    
+    return wtb;
+}
+
+WTB_FILE* wtb_parse_wtb(FU_FILE* fwtb)
+{
+    return wtb_parse_wta_wtp(fwtb, fwtb);
+}
+
+FU_FILE* wtb_header_to_fu_file(WTB_FILE* wtb)
+{
+    FU_FILE* fwta = fu_alloc_file();
+    fu_create_mem_file(fwta);
+    
+    if(wtb->platform == WTB_PLATFORM_LE)
+    {
+        fu_write_data(fwta, (const uint8_t*)WTB_MAGIC_LE, 4);
+    }
+    if(wtb->platform == WTB_PLATFORM_BE)
+    {
+        fu_write_data(fwta, (const uint8_t*)WTB_MAGIC_BE, 4);
+    }
+    
+    fu_write_u32(fwta, wtb->header.version, wtb->platform);
+    fu_write_u32(fwta, wtb->header.tex_count, wtb->platform);
+    fu_write_u32(fwta, wtb->header.positions_offset, wtb->platform);
+    fu_write_u32(fwta, wtb->header.sizes_offset, wtb->platform);
+    fu_write_u32(fwta, wtb->header.flags_offset, wtb->platform);
+    fu_write_u32(fwta, wtb->header.ids_offset, wtb->platform);
+    fu_write_u32(fwta, wtb->header.xpr_info_offset, wtb->platform);
+    
+    fu_check_buf_rem(fwta, wtb->header.positions_offset);
+    fu_check_buf_rem(fwta, wtb->header.sizes_offset);
+    fu_check_buf_rem(fwta, wtb->header.flags_offset);
+    fu_check_buf_rem(fwta, wtb->header.ids_offset);
+    
+    for(uint32_t i = 0; i != cvec_size(wtb->entries); ++i)
+    {
+        WTB_ENTRY* entry = wtb_get_entry_by_id(wtb->entries, i);
+        
+        if(wtb->header.positions_offset)
+        {
+            const uint64_t cur_pos = wtb->header.positions_offset + i*4;
+            fu_seek(fwta, cur_pos, FU_SEEK_SET);
+            fu_write_u32(fwta, entry->position, wtb->platform);
+        }
+
+        if(wtb->header.sizes_offset)
+        {
+            const uint64_t cur_pos = wtb->header.sizes_offset + i*4;
+            fu_seek(fwta, cur_pos, FU_SEEK_SET);
+            fu_write_u32(fwta, entry->size, wtb->platform);
+        }
+
+        if(wtb->header.flags_offset)
+        {
+            const uint64_t cur_pos = wtb->header.flags_offset + i*4;
+            fu_seek(fwta, cur_pos, FU_SEEK_SET);
+            fu_write_u32(fwta, entry->flags.buf, wtb->platform);
+        }
+        
+        if(wtb->header.ids_offset)
+        {
+            const uint64_t cur_pos = wtb->header.ids_offset + i*4;
+            fu_seek(fwta, cur_pos, FU_SEEK_SET);
+            fu_write_u32(fwta, entry->id, wtb->platform);
+        }
+    }
+    
+    fu_seek(fwta, 0, FU_SEEK_END);
+    const uint64_t bound = bound_calc_leftover(WTB_SECTION_ALIGNMENT, fu_tell(fwta));
+    fu_add_to_buf_size(fwta, bound);
+    
+    return fwta;
+}
+
+FU_FILE* wtb_data_to_fu_file(WTB_FILE* wtb)
+{
+    FU_FILE* fwtp = fu_alloc_file();
+    fu_create_mem_file(fwtp);
+    
+    WTB_ENTRY* last_entry = cvec_back(wtb->entries);
+    fu_check_buf_rem(fwtp, last_entry->position);
+    
+    for(uint32_t i = 0; i != cvec_size(wtb->entries); ++i)
+    {
+        WTB_ENTRY* entry = wtb_get_entry_by_id(wtb->entries, i);
+        fu_seek(fwtp, entry->position, FU_SEEK_SET);
+        fu_write_data(fwtp, entry->data, entry->size);
+    }
+    
+    fu_seek(fwtp, 0, FU_SEEK_END);
+    const uint64_t bound = bound_calc_leftover(WTB_BLOCK_SIZE, fu_tell(fwtp));
+    fu_add_to_buf_size(fwtp, bound);
+    
+    return fwtp;
+}
+
+void wtb_update(WTB_FILE* wtb, const uint8_t wtp)
+{
+    if(wtb->platform == WTB_PLATFORM_LE)
+    {
+        memcpy(&wtb->header.magic[0], WTB_MAGIC_LE, 4);
+    }
+    else if(wtb->platform == WTB_PLATFORM_BE)
+    {
+        memcpy(&wtb->header.magic[0], WTB_MAGIC_BE, 4);
+    }
+    else /* What are you doing */
+    {
+        printf("How is the platform %u???\n", wtb->platform);
+        return;
+    }
+    
+    wtb->header.version = 1;
+    wtb->header.tex_count = cvec_size(wtb->entries);
+    
+    uint32_t cur_pos = 0x20;
+    wtb->header.positions_offset = cur_pos;
+    
+    cur_pos += wtb->header.tex_count*4;
+    cur_pos += bound_calc_leftover(WTB_SECTION_ALIGNMENT, cur_pos);
+    wtb->header.sizes_offset = cur_pos;
+    
+    cur_pos += wtb->header.tex_count*4;
+    cur_pos += bound_calc_leftover(WTB_SECTION_ALIGNMENT, cur_pos);
+    wtb->header.flags_offset = cur_pos;
+    
+    cur_pos += wtb->header.tex_count*4;
+    cur_pos += bound_calc_leftover(WTB_SECTION_ALIGNMENT, cur_pos);
+    wtb->header.ids_offset = cur_pos;
+    
+    if(wtb->platform == WTB_PLATFORM_BE)
+    {
+        cur_pos += wtb->header.tex_count*4;
+        cur_pos += bound_calc_leftover(WTB_SECTION_ALIGNMENT, cur_pos);
+        wtb->header.xpr_info_offset = cur_pos;
+        cur_pos += wtb->header.tex_count*sizeof(D3DBaseTexture);
+    }
+
+    if(wtp == 1)
+    {
+        cur_pos = 0;
+    }
+    else
+    {
+        cur_pos += bound_calc_leftover(WTB_BLOCK_SIZE, cur_pos); 
+    }
+    
+    for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
+    {
+        WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
+        entry->position = cur_pos;
+        cur_pos += entry->size;
+        cur_pos += bound_calc_leftover(WTB_BLOCK_SIZE, cur_pos); 
+    }
+}
+
+WTB_FILE* wtb_alloc_wtb()
 {
     WTB_FILE* wtb = (WTB_FILE*)calloc(1, sizeof(WTB_FILE));
     wtb->entries = cvec_create(sizeof(WTB_ENTRY));
@@ -16,295 +195,188 @@ WTB_FILE* wtb_alloc_empty_wtb()
 
 WTB_FILE* wtb_free(WTB_FILE* wtb)
 {
-	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
-	{
+    for(uint32_t i = 0; i != cvec_size(wtb->entries); ++i)
+    {
         WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
-		if(entry->data) free(entry->data);
-	}
-	
-	wtb->entries = cvec_destroy(wtb->entries);
-	free(wtb);
+        if(entry->data)
+        {
+            free(entry->data);
+        }
+    }
+    
+    wtb->entries = cvec_destroy(wtb->entries);
+    free(wtb);
     
     return NULL;
 }
 
-WTB_FILE* wtb_parse_wta_wtp(FU_FILE* fwta, FU_FILE* fwtp)
+void wtb_read_header(FU_FILE* fwtb, WTB_FILE* wtb)
 {
-	WTB_FILE* wtb = (WTB_FILE*)calloc(1, sizeof(WTB_FILE));
+    fu_read_data(fwtb, &wtb->header.magic[0], 4, NULL);
     
-	if(wtb == NULL)
-	{
-		printf("Could not allocate wtb file structure\n");
-		return NULL;
-	}
-	
-	/* Reading the header */
-	const uint8_t valid = wtb_read_header(fwta, wtb);
-	if(valid == 0) 
+    if(strncmp((const char*)&wtb->header.magic[0], WTB_MAGIC_LE, 4) == 0)
     {
-        free(wtb);
-        return NULL;
+        wtb->platform = WTB_PLATFORM_LE;
     }
-	
-    wtb->entries = cvec_create(sizeof(WTB_ENTRY));
+    else if(strncmp((const char*)&wtb->header.magic[0], WTB_MAGIC_BE, 4) == 0)
+    {
+        wtb->platform = WTB_PLATFORM_BE;
+    }
+    else /* Invalid file */
+    {
+        wtb->platform = WTB_PLATFORM_INVALID;
+        return;
+    }
+  
+    /* Header */
+    wtb->header.version = fu_read_u32(fwtb, NULL, wtb->platform);
+    wtb->header.tex_count = fu_read_u32(fwtb, NULL, wtb->platform);
+    wtb->header.positions_offset = fu_read_u32(fwtb, NULL, wtb->platform);
+    wtb->header.sizes_offset = fu_read_u32(fwtb, NULL, wtb->platform);
+    wtb->header.flags_offset = fu_read_u32(fwtb, NULL, wtb->platform);
+    wtb->header.ids_offset = fu_read_u32(fwtb, NULL, wtb->platform);
+    wtb->header.xpr_info_offset = fu_read_u32(fwtb, NULL, wtb->platform);
+    
     cvec_resize(wtb->entries, wtb->header.tex_count);
     
-	/* Load entries */
-	wtb_populate_entries(fwta, wtb);
-	wtb_load_texture_data(fwtp, wtb);
-	
-	return wtb;
-}
-
-WTB_FILE* wtb_parse_wtb(FU_FILE* fwtb)
-{
-	return wtb_parse_wta_wtp(fwtb, fwtb);
-}
-
-uint8_t wtb_read_header(FU_FILE* file, WTB_FILE* wtb)
-{
-	fu_read_data(file, (uint8_t*)&wtb->header.magic[0], 4, NULL);
-	
-	/* 0 means it matches */
-	const uint8_t is_little = strncmp(WTB_MAGIC_LE, (const char*)&wtb->header.magic[0], 4);
-	const uint8_t is_big = strncmp(WTB_MAGIC_BE, (const char*)&wtb->header.magic[0], 4);
-
-	if(is_little && is_big == 0) wtb->platform = WTB_PLATFORM_BE;
-	else if(is_little == 0 && is_big) wtb->platform = WTB_PLATFORM_LE;
-
-	if(wtb->platform == 0)
-	{
-		printf("File is not a valid WTB file\n");
-		return 0;
-	}
-	
-	wtb->header.unknown04 = fu_read_u32(file, NULL, wtb->platform);
-	wtb->header.tex_count = fu_read_u32(file, NULL, wtb->platform);
-	wtb->header.tex_offset_array_offset = fu_read_u32(file, NULL, wtb->platform);
-	wtb->header.tex_size_offset = fu_read_u32(file, NULL, wtb->platform);
-	wtb->header.flag_array_offset = fu_read_u32(file, NULL, wtb->platform);
-	wtb->header.tex_id_array_offset = fu_read_u32(file, NULL, wtb->platform);
-	wtb->header.xpr_info_offset = fu_read_u32(file, NULL, wtb->platform);
-	
-	return 1;
-}
-
-void wtb_populate_entries(FU_FILE* file, WTB_FILE* wtb)
-{
-	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
-	{
-        WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
-        
-		/* Offsets */
-		fu_seek(file, wtb->header.tex_offset_array_offset+(i*4), FU_SEEK_SET);
-		entry->offset = fu_read_u32(file, NULL, wtb->platform);
-		
-		/* Sizes */
-		fu_seek(file, wtb->header.tex_size_offset+(i*4), FU_SEEK_SET);
-		entry->size = fu_read_u32(file, NULL, wtb->platform);
-		
-		/* Flags */
-		fu_seek(file, wtb->header.flag_array_offset+(i*4), FU_SEEK_SET);
-        const uint8_t b0 = fu_read_u8(file, NULL);
-        entry->flags.b12 = fu_read_u16(file, NULL, wtb->platform);
-        const uint8_t b3 = fu_read_u8(file, NULL);
-        memcpy(&entry->flags.b0, &b0, 1);
-        memcpy(&entry->flags.b3, &b3, 1);
-        
-		/* Ids */
-		fu_seek(file, wtb->header.tex_id_array_offset+(i*4), FU_SEEK_SET);
-		entry->id = fu_read_u32(file, NULL, wtb->platform);
-		
-		/* XBOX 360 info */
-		if(wtb->platform == WTB_PLATFORM_BE && wtb->header.xpr_info_offset)
-		{
-			D3DBaseTexture* xb = &entry->x360;
-			uint32_t* xb_dword = (uint32_t*)xb;
-			fu_seek(file, wtb->header.xpr_info_offset+(i*sizeof(D3DBaseTexture)), FU_SEEK_SET);
-			
-			for(uint32_t i = 0; i != (sizeof(D3DBaseTexture)/sizeof(uint32_t)); ++i)
-			{
-				xb_dword[i] = fu_read_u32(file, NULL, FU_BIG_ENDIAN);
-			}
-		}
-	}
-}
-
-void wtb_load_texture_data(FU_FILE* file, WTB_FILE* wtb)
-{
-	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
-	{
-        WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
-		entry->data = (uint8_t*)calloc(1, entry->size);
-        fu_seek(file, entry->offset, FU_SEEK_SET);
-        fu_read_data(file, entry->data, entry->size, NULL);
-	}
-}
-
-void wtb_update_on_export(WTB_FILE* wtb, const uint8_t external_data)
-{
-    WTB_HEADER* h = &wtb->header;
-    
-    /* Header */
-    
-    if(wtb->platform == WTB_PLATFORM_LE)
-        memcpy(&h->magic[0], WTB_MAGIC_LE, 4);
-    else if(wtb->platform == WTB_PLATFORM_BE)
-        memcpy(&h->magic[0], WTB_MAGIC_BE, 4);
-    
-    h->unknown04 = 1;
-    h->tex_count = cvec_size(wtb->entries);
-    h->tex_offset_array_offset = 0x20;
-    
-    uint32_t section_size = h->tex_count * 4;
-    section_size += bound_calc_leftover(WTB_SECTION_ALIGNMENT, section_size);
-
-    h->tex_size_offset = h->tex_offset_array_offset + section_size;
-    h->flag_array_offset = h->tex_size_offset + section_size;
-    h->tex_id_array_offset = h->flag_array_offset + section_size;
-  
-    /* Entries */
-    
-    uint32_t data_offset = 0;
-    
-    if(external_data)
-    {
-         data_offset = h->tex_id_array_offset + section_size;
-         data_offset += bound_calc_leftover(WTB_BLOCK_SIZE, data_offset);
-    }
-    
-    for(uint32_t i = 0; i != h->tex_count; ++i)
-    {
-        WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
-        entry->offset = data_offset;
-        
-        data_offset += entry->size;
-        data_offset += bound_calc_leftover(WTB_BLOCK_SIZE, data_offset);;
-    }
-    
-    wtb_set_flags_from_dds(wtb);
-}
-
-void wtb_write_wta_fu(WTB_FILE* wtb, FU_FILE* fwta)
-{
-    /* Header and offsets to data */
-    WTB_HEADER* h = &wtb->header;
-    
-    fu_write_data(fwta, &wtb->header.magic[0], 4);
-    fu_write_u32(fwta, h->unknown04, wtb->platform);
-    fu_write_u32(fwta, h->tex_count, wtb->platform);
-    fu_write_u32(fwta, h->tex_offset_array_offset, wtb->platform);
-    fu_write_u32(fwta, h->tex_size_offset, wtb->platform);
-    fu_write_u32(fwta, h->flag_array_offset, wtb->platform);
-    fu_write_u32(fwta, h->tex_id_array_offset, wtb->platform);
-    fu_write_u32(fwta, h->xpr_info_offset, wtb->platform);
-    
-    /* Offsets */
-    if(h->tex_offset_array_offset)
-    {
-        fu_change_buf_size(fwta, h->tex_offset_array_offset);
-        fu_seek(fwta, h->tex_offset_array_offset, SEEK_SET);
-        for(uint32_t i = 0; i != h->tex_count; ++i)
-        {
-            WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
-            fu_write_u32(fwta, entry->offset, wtb->platform);
-        }
-    }
-    
-    if(h->tex_size_offset)
-    {
-        fu_change_buf_size(fwta, h->tex_size_offset);
-        fu_seek(fwta, h->tex_size_offset, SEEK_SET);
-        for(uint32_t i = 0; i != h->tex_count; ++i)
-        {
-            WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
-            fu_write_u32(fwta, entry->size, wtb->platform);
-        }
-    }
-    
-    if(h->flag_array_offset)
-    {
-        fu_change_buf_size(fwta, h->flag_array_offset);
-        fu_seek(fwta, h->flag_array_offset, SEEK_SET);
-        for(uint32_t i = 0; i != h->tex_count; ++i)
-        {
-            WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
-            const uint8_t flags_b0 = *(const uint8_t*)&entry->flags.b0;
-            const uint8_t flags_b3 = *(const uint8_t*)&entry->flags.b3;
-
-            fu_write_u8(fwta, flags_b0);
-            fu_write_u8(fwta, 0);
-            fu_write_u8(fwta, 0);
-            fu_write_u8(fwta, flags_b3);
-        }
-    }
-    
-    if(h->tex_id_array_offset)
-    {
-        fu_change_buf_size(fwta, h->tex_id_array_offset);
-        fu_seek(fwta, h->tex_id_array_offset, SEEK_SET);
-        for(uint32_t i = 0; i != h->tex_count; ++i)
-        {
-            WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
-            fu_write_u32(fwta, entry->id, wtb->platform);
-        }
-    }
-    
-    const uint32_t leftover = bound_calc_leftover(WTB_SECTION_ALIGNMENT, h->tex_count*4);
-    fu_add_to_buf_size(fwta, leftover);
-    
-    fu_seek(fwta, 0, FU_SEEK_END);
-}
-
-void wtb_write_wtp_fu(WTB_FILE* wtb, FU_FILE* fwtp)
-{
-	for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
-	{
-        WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
-        fu_change_buf_size(fwtp, entry->offset);
-        fu_seek(fwtp, 0, FU_SEEK_END);
-		fu_write_data(fwtp, entry->data, entry->size);
-		fu_add_to_buf_size(fwtp, bound_calc_leftover(WTB_BLOCK_SIZE, fu_tell(fwtp)));
-	}
-    
-    fu_seek(fwtp, 0, FU_SEEK_END);
-}
-
-void wtb_save_wtb_to_fu_file(WTB_FILE* wtb, FU_FILE* fwtb)
-{
-	fu_create_mem_file(fwtb);
-    
-    wtb_update_on_export(wtb, 1);
-	
-    wtb_write_wta_fu(wtb, fwtb);
-    wtb_write_wtp_fu(wtb, fwtb);
-}
-
-void wtb_save_wta_wtp_to_fu_files(WTB_FILE* wtb, FU_FILE* fwta, FU_FILE* fwtp)
-{
-	fu_create_mem_file(fwta);
-	fu_create_mem_file(fwtp);
-	
-    wtb_update_on_export(wtb, 0);
-
-    wtb_write_wta_fu(wtb, fwta);
-    wtb_write_wtp_fu(wtb, fwtp);
-}
-
-void wtb_set_flags_from_dds(WTB_FILE* wtb)
-{
     for(uint32_t i = 0; i != wtb->header.tex_count; ++i)
     {
-        WTB_ENTRY* entry = (WTB_ENTRY*)cvec_at(wtb->entries, i);
+        WTB_ENTRY* entry = wtb_get_entry_by_id(wtb->entries, i);
         
-        const uint8_t complex_byte = entry->data[0x6C];
-        const uint8_t alpha_byte = entry->data[0x50];
-        const uint8_t cubemap_byte = entry->data[0x71];
+        if(wtb->header.positions_offset)
+        {
+            const uint64_t cur_pos = wtb->header.positions_offset + i*4;
+            fu_seek(fwtb, cur_pos, FU_SEEK_SET);
+            entry->position = fu_read_u32(fwtb, NULL, wtb->platform);
+        }
+      
+        if(wtb->header.sizes_offset)
+        {
+            const uint64_t cur_pos = wtb->header.sizes_offset + i*4;
+            fu_seek(fwtb, cur_pos, FU_SEEK_SET);
+            entry->size = fu_read_u32(fwtb, NULL, wtb->platform);
+        }
         
-        entry->flags.b0.complex = ((complex_byte&0x8)>>3) ? 0 : 1;
-        entry->flags.b0.always2_0 = 1;
-        entry->flags.b3.alpha = ((alpha_byte&0x2)>>1);
-        entry->flags.b3.always2_1 = 1;
-        entry->flags.b3.cubemap = ((cubemap_byte&0x2)>>1);
+        if(wtb->header.flags_offset)
+        {
+            const uint64_t cur_pos = wtb->header.flags_offset + i*4;
+            fu_seek(fwtb, cur_pos, FU_SEEK_SET);
+            entry->flags.buf = fu_read_u32(fwtb, NULL, wtb->platform);
+        }
+        
+        if(wtb->header.ids_offset)
+        {
+            const uint64_t cur_pos = wtb->header.ids_offset + i*4;
+            fu_seek(fwtb, cur_pos, FU_SEEK_SET);
+            entry->id = fu_read_u32(fwtb, NULL, wtb->platform);
+        }
+        
+        if(wtb->header.xpr_info_offset && (wtb->platform == WTB_PLATFORM_BE))
+        {
+            const uint64_t cur_pos = wtb->header.xpr_info_offset + (i*sizeof(D3DBaseTexture));
+            fu_seek(fwtb, cur_pos, FU_SEEK_SET);
+            
+            D3DBaseTexture* xb = &entry->x360;
+            uint32_t* xb_dword = (uint32_t*)xb;
+            
+            for(uint32_t i = 0; i != (sizeof(D3DBaseTexture)/sizeof(uint32_t)); ++i)
+            {
+                xb_dword[i] = fu_read_u32(fwtb, NULL, FU_BIG_ENDIAN);
+            }
+        }
+    }
+}
+
+void wtb_read_image_data(FU_FILE* fwtb, WTB_FILE* wtb)
+{
+    for(uint32_t i = 0; i != cvec_size(wtb->entries); ++i)
+    {
+        WTB_ENTRY* entry = wtb_get_entry_by_id(wtb->entries, i);
+        
+        if(entry)
+        {
+            fu_seek(fwtb, entry->position, SEEK_SET);
+            entry->data = (uint8_t*)calloc(1, entry->size);
+            fu_read_data(fwtb, entry->data, entry->size, NULL);
+        }
+    }
+}
+
+void wtb_append_entry(CVEC entries,
+                      const uint32_t size,
+                      const uint32_t id,
+                      const uint8_t* data)
+{
+    WTB_ENTRY entry = {0};
+    entry.size = size;
+    entry.id = id;
+    entry.data = (uint8_t*)calloc(1, size);
+    memcpy(entry.data, data, size);
+    cvec_push_back(entries, &entry);
+}
+
+WTB_ENTRY* wtb_get_entry_by_id(CVEC entries, const uint64_t id)
+{
+    return (WTB_ENTRY*)cvec_at(entries, id);
+}
+
+void wtb_set_entry_flags(WTB_ENTRY* entry, const uint8_t atlas)
+{
+    /* Checks for non-DDS */
+    if((strncmp((const char*)&entry->data[0], "II*\0", 4) == 0)      /* TIFF */
+        || (strncmp((const char*)&entry->data[0], "MM\0*", 4) == 0)  /* Also TIFF */
+        || (strncmp((const char*)&entry->data[0], "‰PNG", 4) == 0)   /* PNG */
+        || (strncmp((const char*)&entry->data[6], "JFIF", 4) == 0))  /* JPEG */
+    {
+        entry->flags.data.noncomplex = 1;
+        entry->flags.data.always_set = 1;
+        entry->flags.data.atlas = atlas;
+        return;
+    }
+    
+    DDS_FILE dds = {0};
+    dds_read_header(&dds, (const char*)&entry->data[0]);
+    
+    entry->flags.data.noncomplex = dds.header.caps.data.complex ? 0 : 1;
+    entry->flags.data.always_set = 1;
+    entry->flags.data.alphaonly = dds.header.pf.flags.data.alpha;
+    entry->flags.data.atlas = atlas;
+    entry->flags.data.cubemap = dds.header.caps2.data.cubemap;
+    
+    /*
+        Checking for DXT1A.
+    */
+    if(strncmp((const char*)&dds.header.pf.fourcc[0], "DXT1", 4) == 0)
+    {
+        for(uint32_t i = 0x80; i < entry->size; i+=8)
+        {
+            const uint16_t c1 = tr_read_u16le((uint8_t*)&entry->data[i]);
+            const uint16_t c2 = tr_read_u16le((uint8_t*)&entry->data[i+2]);
+            const uint32_t px = tr_read_u32le((uint8_t*)&entry->data[i+4]);
+            
+            /*
+                color1 <= color2
+                It's how we know it's a DXT1A texture
+            */
+            if(c1 <= c2)
+            {
+                /*
+                    Here we check if the colors in the
+                    4x4 block are even using the transparency,
+                    which is the value 3
+                */
+                for(uint8_t j = 0; j != 32; j+=2)
+                {
+                    const uint8_t code = (px>>j)&0x3;
+                    
+                    /* Pixel is black (transparent) */
+                    if(code == 3)
+                    {
+                        entry->flags.data.dxt1a = 1;
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
