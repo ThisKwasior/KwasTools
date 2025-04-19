@@ -42,8 +42,7 @@ After compiling, all tools and libraries are located in `KwasTools/bin`.
 
 ### Platinum Games
 * `platinum_dat_tool` - DAT unpacker/packer with experimental support for Big Endian archives (X360/PS3)
-* `platinum_wta_wtp_tool` - WTA/WTP unpacker/packer with WIP X360/PS3 texture conversion to PNG
-* `platinum_wtb_tool` - WTB unpacker/packer with WIP X360/PS3 texture conversion to PNG
+* `platinum_wtb_tool` - WTB/WTA+WTP unpacker/packer with WIP X360/PS3 texture conversion to PNG
 * `platinum_misc_dat2dds2dat` - (At the moment not usable) WIP WTA/WTP/WTB unpacker/packer directly from DAT/DTT
 
 ## Addons
