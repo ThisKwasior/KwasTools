@@ -1,9 +1,11 @@
 #pragma once
 
 /*
-    mat-anim - Transforms the material on top of its transformations.
+    pt-anim - texture swapping on the fly.
     
     One version known - v2
+    
+    Has an additional section, that being names of textures.
 */
 
 #include <stdint.h>
@@ -12,7 +14,7 @@
 #include <kwaslib/core/io/file_utils.h>
 #include <kwaslib/core/io/string_utils.h>
 
-#define MAT_ANIM_HEADER_SIZE    (6*4)
+#define PT_ANIM_HEADER_SIZE     (8*4)
 
 typedef struct
 {
@@ -22,14 +24,17 @@ typedef struct
 	uint32_t keyframes_size;
 	uint32_t string_table_offset;
 	uint32_t string_table_size;
-} MAT_ANIM_HEADER;
+	uint32_t texture_table_offset;
+	uint32_t texture_table_size;
+} PT_ANIM_HEADER;
 
 typedef struct
 {
 	uint32_t material_name_offset;
+	uint32_t texture_name_offset;
 	uint32_t anim_count;
 	CVEC anim_offsets;  /* array of uint32_t */
-} MAT_ANIM_METADATA;
+} PT_ANIM_METADATA;
 
 typedef struct
 {
@@ -40,16 +45,19 @@ typedef struct
 	uint32_t keyframe_set_count;
     
 	CVEC keyframe_sets; /* Array of MIRAGE_KEYFRAME_SET */
-} MAT_ANIM_ENTRY;
+	/* CVEC texture_length; */ /* Array of uint32_t */
+	/* CVEC texture_start; */ /* Array of uint32_t */
+} PT_ANIM_ENTRY;
 
 typedef struct
 {
-    MAT_ANIM_HEADER header;
-    MAT_ANIM_METADATA metadata;
-    CVEC entries; /* Array of MAT_ANIM_ENTRY */
+    PT_ANIM_HEADER header;
+    PT_ANIM_METADATA metadata;
+    CVEC entries; /* Array of PT_ANIM_ENTRY */
     CVEC keyframes; /* Array of MIRAGE_KEYFRAME */
     SU_STRING* string_table;
-} MAT_ANIM_FILE;
+    SU_STRING* texture_table;
+} PT_ANIM_FILE;
 
 /*
     Implementation
@@ -58,23 +66,23 @@ typedef struct
 /*
     Allocates and initializes all fields to default values.
     
-    Returns a pointer to MAT_ANIM_FILE
+    Returns a pointer to PT_ANIM_FILE
 */
-MAT_ANIM_FILE* mat_anim_alloc();
+PT_ANIM_FILE* pt_anim_alloc();
 
 /*
-    Loads the mat-anim data from a data buffer.
+    Loads the pt-anim data from a data buffer.
     
     Returns a pointer to a populated structure, otherwise NULL.
 */
-MAT_ANIM_FILE* mat_anim_load_from_data(const uint8_t* data);
+PT_ANIM_FILE* pt_anim_load_from_data(const uint8_t* data);
 
 /*
-    Exports an MAT_ANIM_FILE to FU_FILE ready to be saved.
+    Exports an PT_ANIM_FILE to FU_FILE ready to be saved.
     
-    Returns FU_FILE pointer with exported mat anim data.
+    Returns FU_FILE pointer with exported pt anim data.
 */
-FU_FILE* mat_anim_export_to_fu(MAT_ANIM_FILE* mat);
+FU_FILE* pt_anim_export_to_fu(PT_ANIM_FILE* pt);
 
 /*
     Updates structures for export.
@@ -83,21 +91,21 @@ FU_FILE* mat_anim_export_to_fu(MAT_ANIM_FILE* mat);
     Overwrites anim_count and recalculates anim_offsets according to entries vector.
     Aligns string_table to 4 bytes for export.
 */
-void mat_anim_update(MAT_ANIM_FILE* mat);
+void pt_anim_update(PT_ANIM_FILE* pt);
 
 /*
-    Frees all of the contents of the mat anim.
+    Frees all of the contents of the pt anim.
     
     Returns NULL.
 */
-MAT_ANIM_FILE* mat_anim_free(MAT_ANIM_FILE* mat);
+PT_ANIM_FILE* pt_anim_free(PT_ANIM_FILE* pt);
 
 /*
-    Returns a pointer to mat anim entry structure by id.
+    Returns a pointer to pt anim entry structure by id.
 */
-MAT_ANIM_ENTRY* mat_anim_get_entry_by_id(CVEC entries, const uint32_t id);
+PT_ANIM_ENTRY* pt_anim_get_entry_by_id(CVEC entries, const uint32_t id);
 
 /*
     Returns a vector with offsets for offset table in mirage file.
 */
-CVEC mat_anim_calc_offsets(MAT_ANIM_FILE* mat);
+CVEC pt_anim_calc_offsets(PT_ANIM_FILE* pt);

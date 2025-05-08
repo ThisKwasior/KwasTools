@@ -1,67 +1,106 @@
 #pragma once
 
+/*
+    vis-anim - controls visibility of mesh.
+    
+    Only seen one version - v1
+*/
+
 #include <stdint.h>
 
-#include "mirage.h"
+#include <kwaslib/core/data/cvector.h>
+#include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/io/string_utils.h>
 
-#define VIS_ANIM_METADATA_FIXED_SIZE		12
-#define VIS_ANIM_METADATA_OFFSETS_OFFSET	(MIRAGE_INFO_SIZE+VIS_ANIM_METADATA_FIXED_SIZE)
-#define VIS_ANIM_ENTRY_FIXED_SIZE			20
+#define VIS_ANIM_HEADER_SIZE     (6*4)
 
-#define VIS_ANIM_TYPE_UNK0	0
+#define VIS_ANIM_TYPE_VISIBILITY    0
 
 typedef struct
 {
-	uint32_t material_name_offset;
-	uint32_t texture_name_offset;
+	uint32_t metadata_offset;
+	uint32_t metadata_size;
+	uint32_t keyframes_offset;
+	uint32_t keyframes_size;
+	uint32_t string_table_offset;
+	uint32_t string_table_size;
+} VIS_ANIM_HEADER;
+
+typedef struct
+{
+	uint32_t model_name_offset;
+	uint32_t unk_name_offset;
 	uint32_t anim_count;
-	uint32_t* anim_offsets;
-	
-	/* Pointers in string_table */
-	const char* material_name;
-	const char* texture_name;
+	CVEC anim_offsets;  /* array of uint32_t */
 } VIS_ANIM_METADATA;
 
 typedef struct
 {
-	uint32_t name_offset;
-	float frame_rate;
-	float start_frame;
-	float end_frame;
+    uint32_t name_offset;
+    float frame_rate;
+    float start_frame;
+    float end_frame;
 	uint32_t keyframe_set_count;
-	MIRAGE_KEYFRAME_SET* keyframe_sets;
-	
-	/* Pointer in string_table */
-	const char* name;
+    
+	CVEC keyframe_sets; /* Array of MIRAGE_KEYFRAME_SET */
 } VIS_ANIM_ENTRY;
 
 typedef struct
 {
-	MIRAGE_HEADER header;
-	MIRAGE_INFO info;
-	VIS_ANIM_METADATA metadata;
-	VIS_ANIM_ENTRY* entries;
-	MIRAGE_KEYFRAME* keyframes;
-	char* string_table;
-	MIRAGE_FOOTER footer;
+    VIS_ANIM_HEADER header;
+    VIS_ANIM_METADATA metadata;
+    CVEC entries; /* Array of VIS_ANIM_ENTRY */
+    CVEC keyframes; /* Array of MIRAGE_KEYFRAME */
+    SU_STRING* string_table;
 } VIS_ANIM_FILE;
 
 /*
-	Functions
+    Implementation
 */
 
-VIS_ANIM_FILE* vis_anim_load_file(FU_FILE* file);
+/*
+    Allocates and initializes all fields to default values.
+    
+    Returns a pointer to VIS_ANIM_FILE
+*/
+VIS_ANIM_FILE* vis_anim_alloc();
 
-FU_FILE* vis_anim_save_to_fu_file(VIS_ANIM_FILE* file);
+/*
+    Loads the vis-anim data from a data buffer.
+    
+    Returns a pointer to a populated structure, otherwise NULL.
+*/
+VIS_ANIM_FILE* vis_anim_load_from_data(const uint8_t* data);
 
-void vis_anim_load_metadata(FU_FILE* file, VIS_ANIM_FILE* vis);
-void vis_anim_load_entries(FU_FILE* file, VIS_ANIM_FILE* vis);
+/*
+    Exports an VIS_ANIM_FILE to FU_FILE ready to be saved.
+    
+    Returns FU_FILE pointer with exported vis anim data.
+*/
+FU_FILE* vis_anim_export_to_fu(VIS_ANIM_FILE* vis);
 
-void vis_anim_write_metadata(FU_FILE* file, VIS_ANIM_FILE* vis);
-void vis_anim_write_entries(FU_FILE* file, VIS_ANIM_FILE* vis);
+/*
+    Updates structures for export.
+    
+    Overwrites all fields in the header.
+    Overwrites anim_count and recalculates anim_offsets according to entries vector.
+    Aligns string_table to 4 bytes for export.
+*/
+void vis_anim_update(VIS_ANIM_FILE* vis);
 
-/* Print functions */
-void vis_anim_print_metadata(VIS_ANIM_FILE* vis);
-void vis_anim_print_entries(VIS_ANIM_FILE* vis);
+/*
+    Frees all of the contents of the vis anim.
+    
+    Returns NULL.
+*/
+VIS_ANIM_FILE* vis_anim_free(VIS_ANIM_FILE* vis);
 
-void vis_anim_print_mat(VIS_ANIM_FILE* vis);
+/*
+    Returns a pointer to vis anim entry structure by id.
+*/
+VIS_ANIM_ENTRY* vis_anim_get_entry_by_id(CVEC entries, const uint32_t id);
+
+/*
+    Returns a vector with offsets for offset table in mirage file.
+*/
+CVEC vis_anim_calc_offsets(VIS_ANIM_FILE* vis);

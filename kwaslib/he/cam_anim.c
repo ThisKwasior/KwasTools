@@ -2,299 +2,298 @@
 
 #include <stdlib.h>
 
-static const char* CAM_ANIM_KF_SET_TYPES[] =
-{
-	"CAM_POS_X",
-	"CAM_POS_Z",
-	"CAM_POS_Y",
-	"CAM_ROT_X",
-	"CAM_ROT_Z",
-	"CAM_ROT_Y",
-	"AIM_POS_X",
-	"AIM_POS_Z",
-	"AIM_POS_Y",
-	"TWIST",
-	"Z_NEAR",
-	"Z_FAR",
-	"Z_FOV",
-	"ASPECT_RATIO",
-};
+#include <kwaslib/core/io/type_readers.h>
 
-CAM_ANIM_FILE* cam_anim_load_file(FU_FILE* file)
-{
-	CAM_ANIM_FILE* cam = (CAM_ANIM_FILE*)calloc(1, sizeof(CAM_ANIM_FILE));
-	
-	mirage_read_header(file, &cam->header);
-	mirage_read_info(file, &cam->info);
-	cam->keyframes = mirage_read_keyframes(file, &cam->info); 
-	cam->string_table = mirage_read_string_table(file, &cam->info); 
-	mirage_read_footer(file, &cam->header, &cam->footer);
+#include "mirage.h"
 
-	cam_anim_load_metadata(file, cam);
-	cam_anim_load_entries(file, cam);
-	
-	return cam;
+CAM_ANIM_FILE* cam_anim_alloc()
+{
+    CAM_ANIM_FILE* cam = (CAM_ANIM_FILE*)calloc(1, sizeof(CAM_ANIM_FILE));
+    
+    if(cam)
+    {
+        cam->metadata.anim_offsets = cvec_create(sizeof(uint32_t));
+        cam->entries = cvec_create(sizeof(CAM_ANIM_ENTRY));
+        cam->keyframes = cvec_create(sizeof(MIRAGE_KEYFRAME));
+        cam->string_table = su_create_string("", 0);
+    }
+    
+    return cam;
 }
 
-FU_FILE* cam_anim_save_to_fu_file(CAM_ANIM_FILE* cam)
+CAM_ANIM_FILE* cam_anim_load_from_data(const uint8_t* data)
 {
-	FU_FILE* cam_file = (FU_FILE*)calloc(1, sizeof(FU_FILE));
-	printf("create mem file: %u\n", fu_create_mem_file(cam_file));
-	
-	fu_change_buf_size(cam_file, cam->header.file_size);
-	
-	/* Mirage header */
-	mirage_write_header(cam_file, &cam->header);
-	
-	/* Mirage info */
-	mirage_write_info(cam_file, &cam->info);
-	
-	/* UV metadata */
-	cam_anim_write_metadata(cam_file, cam);
-	
-	/* UV entries */
-	cam_anim_write_entries(cam_file, cam);
-	
-	/* Keyframes */
-	mirage_write_keyframes(cam_file, &cam->info, cam->keyframes);
-	
-	/* String table */
-	mirage_write_string_table(cam_file, &cam->info, cam->string_table);
-	
-	/* Mirage footer */
-	mirage_write_footer(cam_file, &cam->header, &cam->footer);
-	
-	return cam_file;
+    CAM_ANIM_FILE* cam = cam_anim_alloc();
+    CAM_ANIM_HEADER* h = &cam->header;
+    CAM_ANIM_METADATA* m = &cam->metadata;
+    
+    if(cam)
+    {
+        /* Header */
+        h->metadata_offset = tr_read_u32be(&data[0]);
+        h->metadata_size = tr_read_u32be(&data[4]);
+        h->keyframes_offset = tr_read_u32be(&data[8]);
+        h->keyframes_size = tr_read_u32be(&data[12]);
+        h->string_table_offset = tr_read_u32be(&data[16]);
+        h->string_table_size = tr_read_u32be(&data[20]);
+        
+        /* Metadata */
+        const uint8_t* metadata_ptr = &data[h->metadata_offset];
+        
+        m->anim_count = tr_read_u32be(&metadata_ptr[0]);
+        metadata_ptr += 4;
+        
+        m->anim_offsets = cvec_create(sizeof(uint32_t));
+        
+        if(m->anim_offsets)
+        {
+            cvec_resize(m->anim_offsets, m->anim_count);
+            
+            for(uint32_t i = 0; i != m->anim_count; ++i)
+            {
+                uint32_t* cur_offset = (uint32_t*)cvec_at(m->anim_offsets, i);
+                *cur_offset = tr_read_u32be(metadata_ptr);
+                metadata_ptr += 4;
+            }
+        }
+        
+        /* Entries */
+        cvec_resize(cam->entries, m->anim_count);
+        
+        for(uint32_t i = 0; i != m->anim_count; ++i)
+        {
+            const uint32_t offset = *(uint32_t*)cvec_at(m->anim_offsets, i);
+            const uint8_t* entry_ptr = &data[offset];
+            CAM_ANIM_ENTRY* entry = cam_anim_get_entry_by_id(cam->entries, i);
+
+            entry->name_offset = tr_read_u32be(&entry_ptr[0]);
+            entry->rot_or_aim = tr_read_u8(&entry_ptr[4]);
+            entry->flag2 = tr_read_u8(&entry_ptr[5]);
+            entry->flag3 = tr_read_u8(&entry_ptr[6]);
+            entry->flag4 = tr_read_u8(&entry_ptr[7]);
+            entry->frame_rate = tr_read_f32be(&entry_ptr[8]);
+            entry->start_frame = tr_read_f32be(&entry_ptr[12]);
+            entry->end_frame = tr_read_f32be(&entry_ptr[16]);
+            entry->keyframe_set_count = tr_read_u32be(&entry_ptr[20]);
+            entry->cam_pos_x = tr_read_f32be(&entry_ptr[24]);
+            entry->cam_pos_z = tr_read_f32be(&entry_ptr[28]);
+            entry->cam_pos_y = tr_read_f32be(&entry_ptr[32]);
+            entry->cam_rot_x = tr_read_f32be(&entry_ptr[36]);
+            entry->cam_rot_z = tr_read_f32be(&entry_ptr[40]);
+            entry->cam_rot_y = tr_read_f32be(&entry_ptr[44]);
+            entry->aim_pos_x = tr_read_f32be(&entry_ptr[48]);
+            entry->aim_pos_z = tr_read_f32be(&entry_ptr[52]);
+            entry->aim_pos_y = tr_read_f32be(&entry_ptr[56]);
+            entry->twist = tr_read_f32be(&entry_ptr[60]);
+            entry->z_near = tr_read_f32be(&entry_ptr[64]);
+            entry->z_far = tr_read_f32be(&entry_ptr[68]);
+            entry->fov = tr_read_f32be(&entry_ptr[72]);
+            entry->aspect_ratio = tr_read_f32be(&entry_ptr[76]);
+            
+            entry_ptr += 80;
+            entry->keyframe_sets = cvec_create(sizeof(MIRAGE_KEYFRAME_SET));
+            mirage_read_keyframe_sets_from_data(entry_ptr,
+                                                entry->keyframe_set_count,
+                                                entry->keyframe_sets);
+        }
+        
+        /* Keyframes */
+        const uint8_t* keyframes_ptr = &data[h->keyframes_offset];
+        mirage_read_keyframes_from_data(keyframes_ptr, h->keyframes_size, cam->keyframes);
+        
+        /* String table */
+        const char* strtable_ptr = (const char*)&data[h->string_table_offset];
+        su_insert_char(cam->string_table, 0, strtable_ptr, h->string_table_size);
+    }
+    
+    return cam;
 }
 
-void cam_anim_free_uv_file(CAM_ANIM_FILE* cam)
+FU_FILE* cam_anim_export_to_fu(CAM_ANIM_FILE* cam)
 {
-	for(uint32_t i = 0; i != cam->metadata.anim_count; ++i)
-	{
-		free(cam->entries[i].keyframe_sets);
-	}
-	
-	if(cam->entries) free(cam->entries);
-	if(cam->keyframes) free(cam->keyframes);
-	if(cam->string_table) free(cam->string_table);
+    CAM_ANIM_HEADER* h = &cam->header;
+    CAM_ANIM_METADATA* m = &cam->metadata;
+    
+    cam_anim_update(cam);
+    
+    FU_FILE* data_fu = fu_alloc_file();
+    fu_create_mem_file(data_fu);
+    fu_change_buf_size(data_fu, CAM_ANIM_HEADER_SIZE
+                            + h->metadata_size
+                            + h->keyframes_size
+                            + h->string_table_size);
+                            
+    /* Writing header */
+    fu_seek(data_fu, 0, FU_SEEK_SET);
+    fu_write_u32(data_fu, h->metadata_offset, FU_BIG_ENDIAN);
+    fu_write_u32(data_fu, h->metadata_size, FU_BIG_ENDIAN);
+    fu_write_u32(data_fu, h->keyframes_offset, FU_BIG_ENDIAN);
+    fu_write_u32(data_fu, h->keyframes_size, FU_BIG_ENDIAN);
+    fu_write_u32(data_fu, h->string_table_offset, FU_BIG_ENDIAN);
+    fu_write_u32(data_fu, h->string_table_size, FU_BIG_ENDIAN);
+    
+    /* Writing metadata */
+    fu_seek(data_fu, h->metadata_offset, FU_SEEK_SET);
+    fu_write_u32(data_fu, m->anim_count, FU_BIG_ENDIAN);
+    
+    /* Anim offsets */
+    for(uint32_t i = 0; i != cvec_size(m->anim_offsets); ++i)
+    {
+        const uint32_t offset = *(uint32_t*)cvec_at(m->anim_offsets, i);
+        fu_write_u32(data_fu, offset, FU_BIG_ENDIAN);
+    }
+    
+    /* Anim entries */
+    for(uint32_t i = 0; i != cvec_size(cam->entries); ++i)
+    {
+        const uint32_t offset = *(uint32_t*)cvec_at(m->anim_offsets, i);
+        CAM_ANIM_ENTRY* entry = cam_anim_get_entry_by_id(cam->entries, i);
+        fu_seek(data_fu, offset, FU_SEEK_SET);
+        fu_write_u32(data_fu, entry->name_offset, FU_BIG_ENDIAN);
+        fu_write_u8(data_fu, entry->rot_or_aim);
+        fu_write_u8(data_fu, entry->flag2);
+        fu_write_u8(data_fu, entry->flag3);
+        fu_write_u8(data_fu, entry->flag4);
+        fu_write_f32(data_fu, entry->frame_rate, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->start_frame, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->end_frame, FU_BIG_ENDIAN);
+        fu_write_u32(data_fu, entry->keyframe_set_count, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->cam_pos_x, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->cam_pos_z, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->cam_pos_y, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->cam_rot_x, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->cam_rot_z, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->cam_rot_y, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->aim_pos_x, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->aim_pos_z, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->aim_pos_y, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->twist, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->z_near, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->z_far, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->fov, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, entry->aspect_ratio, FU_BIG_ENDIAN);
+        
+        /* Keyframe sets */
+        for(uint32_t j = 0; j != cvec_size(entry->keyframe_sets); ++j)
+        {
+            MIRAGE_KEYFRAME_SET* kfs = mirage_get_kfs_by_id(entry->keyframe_sets, j);
+            fu_write_u8(data_fu, kfs->type);
+            fu_write_u8(data_fu, kfs->flag2);
+            fu_write_u8(data_fu, kfs->interpolation);
+            fu_write_u8(data_fu, kfs->flag4);
+            fu_write_u32(data_fu, kfs->length, FU_BIG_ENDIAN);
+            fu_write_u32(data_fu, kfs->start, FU_BIG_ENDIAN);
+        }
+    }
+    
+    /* Writing keyframes */
+    fu_seek(data_fu, h->keyframes_offset, FU_SEEK_SET);
+    
+    for(uint32_t i = 0; i != cvec_size(cam->keyframes); ++i)
+    {
+        MIRAGE_KEYFRAME* kf = mirage_get_kf_by_id(cam->keyframes, i);
+        fu_write_f32(data_fu, kf->index, FU_BIG_ENDIAN);
+        fu_write_f32(data_fu, kf->value, FU_BIG_ENDIAN);
+    }
+    
+    /* Writing string table */
+    fu_seek(data_fu, h->string_table_offset, FU_SEEK_SET);
+    fu_write_data(data_fu, (const uint8_t*)cam->string_table->ptr,
+                  h->string_table_size);
+    
+    return data_fu;
 }
 
-void cam_anim_load_metadata(FU_FILE* file, CAM_ANIM_FILE* cam)
+void cam_anim_update(CAM_ANIM_FILE* cam)
 {
-	uint8_t status = 0;
-	
-	fu_seek(file, MIRAGE_HEADER_SIZE + cam->info.metadata_offset, FU_SEEK_SET);
+    CAM_ANIM_HEADER* h = &cam->header;
+    CAM_ANIM_METADATA* m = &cam->metadata;
+    CVEC entry_sizes = cvec_create(sizeof(uint32_t));
+    
+    /* Metadata */
+    m->anim_count = cvec_size(cam->entries);
 
-	cam->metadata.anim_count = fu_read_u32(file, &status, FU_BIG_ENDIAN);
-	cam->metadata.anim_offsets = (uint32_t*)calloc(sizeof(uint32_t), cam->metadata.anim_count);
-	
-	for(uint32_t i = 0; i != cam->metadata.anim_count; ++i)
-	{
-		cam->metadata.anim_offsets[i] = fu_read_u32(file, &status, FU_BIG_ENDIAN);
-	}
+    h->metadata_offset = 0x18; /* Constant */
+    h->metadata_size = 4; /* Fixed metadata fields */
+    h->metadata_size += m->anim_count*4; /* Anim offsets, calculated later */
+    
+    for(uint32_t i = 0; i != cvec_size(cam->entries); ++i)
+    {
+        CAM_ANIM_ENTRY* entry = cam_anim_get_entry_by_id(cam->entries, i);
+        uint32_t entry_size = 20*4 + entry->keyframe_set_count*MIRAGE_KEYFRAME_SET_SIZE;
+        h->metadata_size += entry_size;
+        cvec_push_back(entry_sizes, &entry_size);
+    }
+    
+    /* Anim offsets */
+    cvec_resize(m->anim_offsets, m->anim_count);
+
+    /* anim offsets array starts at const offset */
+    uint32_t anim_it = 0x1C + m->anim_count*4;
+    
+    for(uint32_t i = 0; i != m->anim_count; ++i)
+    {
+        uint32_t* offset = (uint32_t*)cvec_at(m->anim_offsets, i);
+        const uint32_t cur_entry_size = *(uint32_t*)cvec_at(entry_sizes, i);
+        *offset = anim_it;
+        anim_it += cur_entry_size;
+    }
+    
+    /* Keyframes */
+    h->keyframes_offset = h->metadata_offset + h->metadata_size;
+    h->keyframes_size = cvec_size(cam->keyframes) * MIRAGE_KEYFRAME_SIZE;
+
+    /* String table */
+    mirage_pad_str_table(cam->string_table, 4);
+    h->string_table_offset = h->keyframes_offset + h->keyframes_size;
+    h->string_table_size = cam->string_table->size;
+    
+    /* Cleanup */
+    entry_sizes = cvec_destroy(entry_sizes);
 }
 
-void cam_anim_write_metadata(FU_FILE* file, CAM_ANIM_FILE* cam)
+CAM_ANIM_FILE* cam_anim_free(CAM_ANIM_FILE* cam)
 {
-	fu_seek(file, MIRAGE_HEADER_SIZE + cam->info.metadata_offset, FU_SEEK_SET);
-	
-	fu_write_u32(file, cam->metadata.anim_count, FU_BIG_ENDIAN);
-	
-	for(uint32_t i = 0; i != cam->metadata.anim_count; ++i)
-	{
-		fu_write_u32(file, cam->metadata.anim_offsets[i], FU_BIG_ENDIAN);
-	}
+    if(cam)
+    {
+        for(uint32_t i = 0; i != cvec_size(cam->entries); ++i)
+        {
+            CAM_ANIM_ENTRY* entry = cam_anim_get_entry_by_id(cam->entries, i);
+            entry->keyframe_sets = cvec_destroy(entry->keyframe_sets);
+        }
+        
+        cam->metadata.anim_offsets = cvec_destroy(cam->metadata.anim_offsets);
+        cam->entries = cvec_destroy(cam->entries);
+        cam->keyframes = cvec_destroy(cam->keyframes);
+        cam->string_table = su_free(cam->string_table);
+        free(cam);
+    }
+    
+    return NULL;
 }
 
-void cam_anim_write_entries(FU_FILE* file, CAM_ANIM_FILE* cam)
+CAM_ANIM_ENTRY* cam_anim_get_entry_by_id(CVEC entries, const uint32_t id)
 {
-	for(uint32_t i = 0; i != cam->metadata.anim_count; ++i)
-	{
-		fu_seek(file, MIRAGE_HEADER_SIZE + cam->metadata.anim_offsets[i], FU_SEEK_SET);
-		
-		CAM_ANIM_ENTRY* ce = &cam->entries[i];
-		
-		fu_write_u32(file, ce->name_offset, FU_BIG_ENDIAN);
-		fu_write_u8(file, ce->rot_or_aim);
-		fu_write_u8(file, ce->flag2);
-		fu_write_u8(file, ce->flag3);
-		fu_write_u8(file, ce->flag4);
-		fu_write_f32(file, ce->frame_rate, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->start_frame, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->end_frame, FU_BIG_ENDIAN);
-		fu_write_u32(file, ce->keyframe_set_count, FU_BIG_ENDIAN);
-
-		fu_write_f32(file, ce->cam_position.x, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->cam_position.z, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->cam_position.y, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->cam_rotation.x, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->cam_rotation.z, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->cam_rotation.y, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->aim_position.x, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->aim_position.z, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->aim_position.y, FU_BIG_ENDIAN);
-
-		fu_write_f32(file, ce->twist, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->z_near, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->z_far, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->fov, FU_BIG_ENDIAN);
-		fu_write_f32(file, ce->aspect_ratio, FU_BIG_ENDIAN);
-		
-		for(uint32_t j = 0; j != ce->keyframe_set_count; ++j)
-		{
-			MIRAGE_KEYFRAME_SET* kfs = &ce->keyframe_sets[j];
-			
-			fu_write_u8(file, kfs->type);
-			fu_write_u8(file, kfs->flag2);
-			fu_write_u8(file, kfs->interpolation);
-			fu_write_u8(file, kfs->flag4);
-			fu_write_u32(file, kfs->length, FU_BIG_ENDIAN);
-			fu_write_u32(file, kfs->start, FU_BIG_ENDIAN);
-		}
-	}
+    return (CAM_ANIM_ENTRY*)cvec_at(entries, id);
 }
 
-void cam_anim_load_entries(FU_FILE* file, CAM_ANIM_FILE* cam)
+CVEC cam_anim_calc_offsets(CAM_ANIM_FILE* cam)
 {
-	uint8_t status = 0;
-	
-	cam->entries = (CAM_ANIM_ENTRY*)calloc(cam->metadata.anim_count, sizeof(CAM_ANIM_ENTRY));
-	
-	/* Entries */
-	for(uint32_t i = 0; i != cam->metadata.anim_count; ++i)
-	{
-		CAM_ANIM_ENTRY* entry = &cam->entries[i];
-		
-		entry->name_offset = fu_read_u32(file, &status, FU_BIG_ENDIAN);
-		entry->rot_or_aim = fu_read_u8(file, &status);
-		entry->flag2 = fu_read_u8(file, &status);
-		entry->flag3 = fu_read_u8(file, &status);
-		entry->flag4 = fu_read_u8(file, &status);
-		entry->frame_rate = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->start_frame = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->end_frame = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->keyframe_set_count = fu_read_u32(file, &status, FU_BIG_ENDIAN);
-
-		entry->cam_position.x = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->cam_position.z = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->cam_position.y = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->cam_rotation.x = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->cam_rotation.z = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->cam_rotation.y = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->aim_position.x = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->aim_position.z = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->aim_position.y = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-
-		entry->twist = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->z_near = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->z_far = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->fov = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		entry->aspect_ratio = fu_read_f32(file, &status, FU_BIG_ENDIAN);
-		
-		entry->keyframe_sets = (MIRAGE_KEYFRAME_SET*)calloc(entry->keyframe_set_count,
-															  sizeof(MIRAGE_KEYFRAME_SET));
-												
-		/* Keyframe sets */
-		for(uint32_t j = 0; j != entry->keyframe_set_count; ++j)
-		{
-			MIRAGE_KEYFRAME_SET* set = &entry->keyframe_sets[j];
-			
-			set->type = fu_read_u8(file, &status);
-			set->flag2 = fu_read_u8(file, &status);
-			set->interpolation = fu_read_u8(file, &status);
-			set->flag4 = fu_read_u8(file, &status);
-			set->length = fu_read_u32(file, &status, FU_BIG_ENDIAN);
-			set->start = fu_read_u32(file, &status, FU_BIG_ENDIAN);
-		}
-		
-		entry->name = &cam->string_table[entry->name_offset];
-	}
-}
-
-/*
-	Print functions
-*/
-void cam_anim_print_metadata(CAM_ANIM_FILE* cam)
-{
-	printf("====Metadata\n");
-
-	printf("\tAnim count: %u\n", cam->metadata.anim_count);
-	
-	for(uint32_t j = 0; j != cam->metadata.anim_count; ++j)
-	{
-		printf("\t\tAnim offset[%u]: %08x\n", j, cam->metadata.anim_offsets[j]);
-	}
-}
-
-void cam_anim_print_entries(CAM_ANIM_FILE* cam)
-{
-	printf("====Entries\n");
-	
-	for(uint32_t i = 0; i != cam->metadata.anim_count; ++i)
-	{
-		printf("\tEntry[%u/%u]\n", i+1, cam->metadata.anim_count);
-		printf("\t\tName offset: 0x%x | %s\n", cam->entries[i].name_offset,
-											   cam->entries[i].name);
-		printf("\t\tRotation or Aim: %u\n", cam->entries[i].rot_or_aim);
-		printf("\t\tFlag2: %u\n", cam->entries[i].flag2);
-		printf("\t\tFlag3: %u\n", cam->entries[i].flag3);
-		printf("\t\tFlag4: %u\n", cam->entries[i].flag4);
-		printf("\t\tFrame rate: %f\n", cam->entries[i].frame_rate);
-		printf("\t\tStart frame: %f\n", cam->entries[i].start_frame);
-		printf("\t\tEnd frame: %f\n", cam->entries[i].end_frame);
-		printf("\t\tKeyframe set count: %u\n", cam->entries[i].keyframe_set_count);
-
-		printf("\t\tCam pos: (%f,%f,%f)\n", cam->entries[i].cam_position.x,
-											cam->entries[i].cam_position.z,
-											cam->entries[i].cam_position.y);
-		printf("\t\tCam rot: (%f,%f,%f)\n", cam->entries[i].cam_rotation.x,
-											cam->entries[i].cam_rotation.z,
-											cam->entries[i].cam_rotation.y);
-		printf("\t\tAim pos: (%f,%f,%f)\n", cam->entries[i].aim_position.x,
-											cam->entries[i].aim_position.z,
-											cam->entries[i].aim_position.y);
-
-		printf("\t\tAim z rot: %f\n", cam->entries[i].twist);
-		printf("\t\tZ near: %f\n", cam->entries[i].z_near);
-		printf("\t\tZ far: %f\n", cam->entries[i].z_far);
-		printf("\t\tFOV: %f\n", cam->entries[i].fov);
-		printf("\t\tAspect ratio: %f\n", cam->entries[i].aspect_ratio);
-		
-		for(uint32_t j = 0; j != cam->entries[i].keyframe_set_count; ++j)
-		{
-			MIRAGE_KEYFRAME_SET* kfs = &cam->entries[i].keyframe_sets[j];
-			printf("\t\t\tKeyframe set[%u]\n", j);
-			printf("\t\t\t\tType: %u (%s)\n", kfs->type, CAM_ANIM_KF_SET_TYPES[kfs->type]);
-			printf("\t\t\t\tFlag2: %u\n", kfs->flag2);
-			printf("\t\t\t\tInterpolation: %u\n", kfs->interpolation);
-			printf("\t\t\t\tFlag4: %u\n", kfs->flag4);
-			printf("\t\t\t\tLength: %u\n", kfs->length);
-			printf("\t\t\t\tStart: %u\n", kfs->start);
-		}
-	}
-}
-
-void cam_anim_print_cam(CAM_ANIM_FILE* cam)
-{
-	/* Header */
-	mirage_print_header(&cam->header);
-
-	/* Info */
-	mirage_print_info(&cam->info);
-	
-	/* String table */	
-	mirage_print_string_table(&cam->info, cam->string_table);
-	
-	/* Mirage offsets */
-	mirage_print_offsets(&cam->footer);
-	
-	/* UV Metadata */
-	cam_anim_print_metadata(cam);
-	
-	/* UV Entries */
-	cam_anim_print_entries(cam);
-	
-	/* Keyframes */
-	/* mirage_print_keyframes(&uv->info, uv->keyframes); */
-	
+    CVEC offsets = cvec_create(sizeof(uint32_t));
+    
+    /* First six values are always there: 0, 4, 8, 12, 16, 20 */
+    const uint32_t offset_count = 6 + cvec_size(cam->entries);
+    
+    /*
+        In cam-anim, metadata only has the count and offsets.
+        For some reason, anim count is being treated as an offset,
+        and the last actual offset is left out of the offset table.
+    */
+    for(uint32_t i = 0; i != offset_count; ++i)
+    {
+        uint32_t temp = 4*i;
+        cvec_push_back(offsets, &temp);
+    }
+    
+    return offsets;
 }

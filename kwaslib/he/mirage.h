@@ -1,86 +1,103 @@
 #pragma once
 
-#include <stdint.h>
-
-#include <kwaslib/core/io/file_utils.h>
-#include <kwaslib/core/io/path_utils.h>
-
-#define MIRAGE_HEADER_SIZE			24
-#define MIRAGE_INFO_SIZE			24
-#define MIRAGE_KEYFRAME_SIZE		8
-#define MIRAGE_INFO_OFFSET_CNT		6
-#define MIRAGE_KEYFRAME_SET_SIZE	12
-
 /*
 	BIGGGG thanks to @ik-01 for the help with
-	anim formats and working together on cam-anim format
+	anim formats and working together on cam-anim format.
+    
+    Special thanks to @blueskythlikesclouds as well
 */
 
 /*
 	Files are in big endian on all platforms.
-	Sections are padded to 4 bytes apparently.
+	Sections are aligned to 4 bytes.
+    
+    Data could be anything - anims, material, etc.
+    
+    Offset table points to pointers in data section.
+    For *-anim files, offsets are bogus and aren't used by games.
+    
+    File name is just a NULL terminated string
+    at the end of the file, also aligned and padded to 4 bytes.
 */
+
+/*
+    Implementation here i wanted to keep as straight-forward as possible.
+    
+    It doesn't care what's inside the data section,
+    it requires that you fill the data_version, data_size, data buffer, offset_table and, optionally, file name string.
+    
+    Then call mirage_update() and all remaining 
+    header fields will be neatly updated.
+*/
+
+#include <stdint.h>
+
+#include <kwaslib/core/io/file_utils.h>
+#include <kwaslib/core/data/cvector.h>
+#include <kwaslib/core/io/string_utils.h>
+
+#include "mirage_keyframe.h"
+#include "mirage_string_table.h"
+
+#define MIRAGE_HEADER_SIZE  0x18
 
 typedef struct
 {
-	uint32_t file_size;
-	uint32_t root_node_type;
-	uint32_t root_node_size;
-	uint32_t root_node_offset;
-	uint32_t footer_offset;
-	uint32_t file_end_offset;
+    uint32_t file_size;
+    uint32_t data_version; /* Version of the structure in data section. Important for uv-anim for example. */
+    uint32_t data_size;
+    uint32_t data_offset;
+    uint32_t offset_table_offset;
+    uint32_t file_name_offset; /* At the end of file */
 } MIRAGE_HEADER;
 
 typedef struct
 {
-	uint32_t metadata_offset;
-	uint32_t metadata_size;
-	uint32_t keyframes_offset;
-	uint32_t keyframes_size;
-	uint32_t string_table_offset;
-	uint32_t string_table_size;
-} MIRAGE_INFO;
-
-typedef struct
-{
-	float index; /* What were you cooking, Sonic Team */
-	float value;
-} MIRAGE_KEYFRAME;
-
-typedef struct
-{
-	uint32_t offset_count;
-	uint32_t* offsets;
-} MIRAGE_FOOTER;
-
-typedef struct
-{
-	uint8_t type;
-	uint8_t flag2;
-	uint8_t interpolation;
-	uint8_t flag4;
-	uint32_t length;
-	uint32_t start;
-} MIRAGE_KEYFRAME_SET;
+    MIRAGE_HEADER header;
+    uint8_t* data;
+    CVEC offset_table;
+    SU_STRING* file_name;
+} MIRAGE_FILE;
 
 /*
-	Functions
+    Implementation
 */
-void mirage_read_header(FU_FILE* mirage, MIRAGE_HEADER* header);
-void mirage_read_info(FU_FILE* mirage, MIRAGE_INFO* info);
-MIRAGE_KEYFRAME* mirage_read_keyframes(FU_FILE* mirage, MIRAGE_INFO* info);
-char* mirage_read_string_table(FU_FILE* mirage, MIRAGE_INFO* info);
-void mirage_read_footer(FU_FILE* mirage, MIRAGE_HEADER* header, MIRAGE_FOOTER* footer);
 
-void mirage_write_header(FU_FILE* mirage, MIRAGE_HEADER* header);
-void mirage_write_info(FU_FILE* mirage, MIRAGE_INFO* info);
-void mirage_write_keyframes(FU_FILE* mirage, MIRAGE_INFO* info, MIRAGE_KEYFRAME* keyframes);
-void mirage_write_string_table(FU_FILE* mirage, MIRAGE_INFO* info, char* string_table);
-void mirage_write_footer(FU_FILE* mirage, MIRAGE_HEADER* header, MIRAGE_FOOTER* footer);
+/*
+    Allocates and initializes all fields to default values.
+    
+    Returns a pointer to MIRAGE_FILE
+*/
+MIRAGE_FILE* mirage_alloc();
 
-/* Print functions */
-void mirage_print_header(MIRAGE_HEADER* header);
-void mirage_print_info(MIRAGE_INFO* info);
-void mirage_print_keyframes(MIRAGE_INFO* info, MIRAGE_KEYFRAME* keyframes);
-void mirage_print_string_table(MIRAGE_INFO* info, char* string_table);
-void mirage_print_offsets(MIRAGE_FOOTER* footer);
+/*
+    Loads the file from a data buffer.
+    
+    Returns a pointer to a populated structure, otherwise NULL.
+*/
+MIRAGE_FILE* mirage_load_from_data(const uint8_t* data);
+
+/*
+    Exports a MIRAGE_FILE to FU_FILE ready to be saved.
+    
+    Returns FU_FILE pointer with exported mirage file.
+*/
+FU_FILE* mirage_export_to_fu(MIRAGE_FILE* mirage);
+
+/*
+    Updates header offsets and file size
+    based on contents of the MIRAGE_FILE.
+*/
+void mirage_update(MIRAGE_FILE* mirage);
+
+/*
+    Replaces the data section in the MIRAGE_FILE.
+*/
+void mirage_set_data(MIRAGE_FILE* mirage, const uint8_t* data, const uint32_t size);
+
+/*
+    Frees all contents of the structure and the structure itself.
+    
+    Returns NULL.
+*/
+MIRAGE_FILE* mirage_free(MIRAGE_FILE* mirage);

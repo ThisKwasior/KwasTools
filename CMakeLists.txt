@@ -27,7 +27,7 @@ set(KWASTOOLS_PROGRAMS
 	${PROJECT_SOURCE_DIR}/src/cri_awb_tool.cpp
 	
 	#${PROJECT_SOURCE_DIR}/src/pcmodeltool.cpp
-	${PROJECT_SOURCE_DIR}/src/he_anim_tool.cpp
+	${PROJECT_SOURCE_DIR}/src/he_anim_tool.c
 	
 	${PROJECT_SOURCE_DIR}/src/nw4r_misc_to_he_xml.cpp
 

@@ -49,8 +49,14 @@ set(KWASLIB_CRI_SOURCES
 set(KWASLIB_HE_SOURCES
 	${PROJECT_SOURCE_DIR}/he/BINA.c
 	${PROJECT_SOURCE_DIR}/he/mirage.c
-	${PROJECT_SOURCE_DIR}/he/uv_anim.c
+	${PROJECT_SOURCE_DIR}/he/mirage_keyframe.c
+	${PROJECT_SOURCE_DIR}/he/mirage_string_table.c
 	${PROJECT_SOURCE_DIR}/he/cam_anim.c
+	${PROJECT_SOURCE_DIR}/he/mat_anim.c
+	${PROJECT_SOURCE_DIR}/he/morph_anim.c
+	${PROJECT_SOURCE_DIR}/he/pt_anim.c
+	${PROJECT_SOURCE_DIR}/he/uv_anim.c
+	${PROJECT_SOURCE_DIR}/he/vis_anim.c
 	)
 	
 set(KWASLIB_NW4R_SOURCES
