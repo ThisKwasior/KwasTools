@@ -10,3 +10,4 @@
 #include <kwaslib/he/pt_anim.h>
 #include <kwaslib/he/uv_anim.h>
 #include <kwaslib/he/vis_anim.h>
+#include <kwaslib/he/lit_anim.h>

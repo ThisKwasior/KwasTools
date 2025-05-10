@@ -12,6 +12,7 @@
 #include <kwaslib/he/morph_anim.h>
 #include <kwaslib/he/pt_anim.h>
 #include <kwaslib/he/mat_anim.h>
+#include <kwaslib/he/lit_anim.h>
 
 /*
     Defines
@@ -24,6 +25,7 @@
 #define ANIM_TOOL_MORPH     4
 #define ANIM_TOOL_PT        5
 #define ANIM_TOOL_MAT       6
+#define ANIM_TOOL_LIT       7
 
 /*
     Unpacker
@@ -45,6 +47,7 @@ SEXML_ELEMENT* anim_tool_vis_to_xml(MIRAGE_FILE* mirage, VIS_ANIM_FILE* vis);
 SEXML_ELEMENT* anim_tool_morph_to_xml(MIRAGE_FILE* mirage, MORPH_ANIM_FILE* morph);
 SEXML_ELEMENT* anim_tool_pt_to_xml(MIRAGE_FILE* mirage, PT_ANIM_FILE* pt);
 SEXML_ELEMENT* anim_tool_mat_to_xml(MIRAGE_FILE* mirage, MAT_ANIM_FILE* mat);
+SEXML_ELEMENT* anim_tool_lit_to_xml(MIRAGE_FILE* mirage, LIT_ANIM_FILE* lit);
 
 /*
     Appends an XML node with keyframe set to the XML animation node.
@@ -72,6 +75,7 @@ FU_FILE* anim_tool_xml_to_vis(SEXML_ELEMENT* xml);
 FU_FILE* anim_tool_xml_to_morph(SEXML_ELEMENT* xml);
 FU_FILE* anim_tool_xml_to_pt(SEXML_ELEMENT* xml);
 FU_FILE* anim_tool_xml_to_mat(SEXML_ELEMENT* xml);
+FU_FILE* anim_tool_xml_to_lit(SEXML_ELEMENT* xml);
 
 /*
     Reads keyframe set and its keyframes from XML node.
@@ -150,6 +154,11 @@ int main(int argc, char** argv)
             printf("Processing mat-anim\n");
             out_xml = anim_tool_anim_to_xml(argv[1], ANIM_TOOL_MAT);
         }
+        else if(su_cmp_string_char(file_path->ext, "lit-anim", 8) == 0)
+        {
+            printf("Processing lit-anim\n");
+            out_xml = anim_tool_anim_to_xml(argv[1], ANIM_TOOL_LIT);
+        }
         
         /* Everything failed */
         if((out_xml == NULL) && (out_anim == NULL))
@@ -184,6 +193,9 @@ int main(int argc, char** argv)
                     break;
                 case ANIM_TOOL_MAT:
                     su_insert_char(file_path_str, -1, ".mat-anim", 9);
+                    break;
+                case ANIM_TOOL_LIT:
+                    su_insert_char(file_path_str, -1, ".lit-anim", 9);
                     break;
             }
             
@@ -255,6 +267,11 @@ SEXML_ELEMENT* anim_tool_anim_to_xml(const char* file_path, const uint8_t anim_t
             xml = anim_tool_mat_to_xml(mirage, mat);
             mat = mat_anim_free(mat);
             break;
+        case ANIM_TOOL_LIT:
+            LIT_ANIM_FILE* lit = lit_anim_load_from_data(mirage->data);
+            xml = anim_tool_lit_to_xml(mirage, lit);
+            lit = lit_anim_free(lit);
+            break;
     }
 
     /* Cleanup */
@@ -286,9 +303,9 @@ SEXML_ELEMENT* anim_tool_uv_to_xml(MIRAGE_FILE* mirage, UV_ANIM_FILE* uv)
         /* Animation params */
         const char* anim_name = mirage_get_ptr_in_table(uv->string_table, entry->name_offset);
         sexml_append_attribute(anim, "name", anim_name);
-        sexml_append_attribute_uint(anim, "frame_rate", entry->frame_rate);
-        sexml_append_attribute_uint(anim, "start_frame", entry->start_frame);
-        sexml_append_attribute_uint(anim, "end_frame", entry->end_frame);
+        sexml_append_attribute_double(anim, "frame_rate", entry->frame_rate, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "start_frame", entry->start_frame, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "end_frame", entry->end_frame, ANIM_TOOL_DBLP);
         
         /* Keyframe sets */
         for(uint32_t j = 0; j != entry->keyframe_set_count; ++j)
@@ -371,9 +388,9 @@ SEXML_ELEMENT* anim_tool_vis_to_xml(MIRAGE_FILE* mirage, VIS_ANIM_FILE* vis)
         /* Animation params */
         const char* anim_name = mirage_get_ptr_in_table(vis->string_table, entry->name_offset);
         sexml_append_attribute(anim, "name", anim_name);
-        sexml_append_attribute_uint(anim, "frame_rate", entry->frame_rate);
-        sexml_append_attribute_uint(anim, "start_frame", entry->start_frame);
-        sexml_append_attribute_uint(anim, "end_frame", entry->end_frame);
+        sexml_append_attribute_double(anim, "frame_rate", entry->frame_rate, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "start_frame", entry->start_frame, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "end_frame", entry->end_frame, ANIM_TOOL_DBLP);
         
         /* Keyframe sets */
         for(uint32_t j = 0; j != entry->keyframe_set_count; ++j)
@@ -401,9 +418,9 @@ SEXML_ELEMENT* anim_tool_morph_to_xml(MIRAGE_FILE* mirage, MORPH_ANIM_FILE* morp
         /* Animation params */
         const char* anim_name = mirage_get_ptr_in_table(morph->string_table, entry->name_offset);
         sexml_append_attribute(anim, "name", anim_name);
-        sexml_append_attribute_uint(anim, "frame_rate", entry->frame_rate);
-        sexml_append_attribute_uint(anim, "start_frame", entry->start_frame);
-        sexml_append_attribute_uint(anim, "end_frame", entry->end_frame);
+        sexml_append_attribute_double(anim, "frame_rate", entry->frame_rate, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "start_frame", entry->start_frame, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "end_frame", entry->end_frame, ANIM_TOOL_DBLP);
         
         /* Keyframe sets */
         for(uint32_t j = 0; j != entry->keyframe_set_count; ++j)
@@ -440,9 +457,9 @@ SEXML_ELEMENT* anim_tool_pt_to_xml(MIRAGE_FILE* mirage, PT_ANIM_FILE* pt)
         /* Animation params */
         const char* anim_name = mirage_get_ptr_in_table(pt->string_table, entry->name_offset);
         sexml_append_attribute(anim, "name", anim_name);
-        sexml_append_attribute_uint(anim, "frame_rate", entry->frame_rate);
-        sexml_append_attribute_uint(anim, "start_frame", entry->start_frame);
-        sexml_append_attribute_uint(anim, "end_frame", entry->end_frame);
+        sexml_append_attribute_double(anim, "frame_rate", entry->frame_rate, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "start_frame", entry->start_frame, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "end_frame", entry->end_frame, ANIM_TOOL_DBLP);
         
         /* Keyframe sets */
         for(uint32_t j = 0; j != entry->keyframe_set_count; ++j)
@@ -496,15 +513,84 @@ SEXML_ELEMENT* anim_tool_mat_to_xml(MIRAGE_FILE* mirage, MAT_ANIM_FILE* mat)
         /* Animation params */
         const char* anim_name = mirage_get_ptr_in_table(mat->string_table, entry->name_offset);
         sexml_append_attribute(anim, "name", anim_name);
-        sexml_append_attribute_uint(anim, "frame_rate", entry->frame_rate);
-        sexml_append_attribute_uint(anim, "start_frame", entry->start_frame);
-        sexml_append_attribute_uint(anim, "end_frame", entry->end_frame);
+        sexml_append_attribute_double(anim, "frame_rate", entry->frame_rate, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "start_frame", entry->start_frame, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "end_frame", entry->end_frame, ANIM_TOOL_DBLP);
         
         /* Keyframe sets */
         for(uint32_t j = 0; j != entry->keyframe_set_count; ++j)
         {
             MIRAGE_KEYFRAME_SET* kfs = mirage_get_kfs_by_id(entry->keyframe_sets, j);
             anim_tool_append_kfs_to_xml(kfs, mat->keyframes, anim, NULL);
+        }
+    }
+    
+    return xml;
+}
+
+SEXML_ELEMENT* anim_tool_lit_to_xml(MIRAGE_FILE* mirage, LIT_ANIM_FILE* lit)
+{
+    /* root name and params */
+    SEXML_ELEMENT* xml = sexml_create_root("LITAnimation");
+    sexml_append_attribute_uint(xml, "data_version", mirage->header.data_version);
+    
+    /* Entries */
+    for(uint32_t i = 0; i != cvec_size(lit->entries); ++i)
+    {
+        LIT_ANIM_ENTRY* entry = lit_anim_get_entry_by_id(lit->entries, i);
+        SEXML_ELEMENT* anim = sexml_append_element(xml, "Animation");
+        
+        /* Animation params */
+        const char* anim_name = mirage_get_ptr_in_table(lit->string_table, entry->name_offset);
+        sexml_append_attribute(anim, "name", anim_name);
+        sexml_append_attribute_uint(anim, "light_type", entry->light_type);
+        sexml_append_attribute_uint(anim, "flag2", entry->flag2);
+        sexml_append_attribute_uint(anim, "flag3", entry->flag3);
+        sexml_append_attribute_uint(anim, "flag4", entry->flag4);
+        sexml_append_attribute_double(anim, "frame_rate", entry->frame_rate, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "start_frame", entry->start_frame, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "end_frame", entry->end_frame, ANIM_TOOL_DBLP);
+        
+        sexml_append_attribute_double(anim, "unk_00", entry->unk_00, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_01", entry->unk_01, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_02", entry->unk_02, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_03", entry->unk_03, ANIM_TOOL_DBLP);
+        
+        sexml_append_attribute_double(anim, "color_red", entry->color_red, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "color_green", entry->color_green, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "color_blue", entry->color_blue, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_07", entry->unk_07, ANIM_TOOL_DBLP);
+        
+        sexml_append_attribute_double(anim, "unk_08", entry->unk_08, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_09", entry->unk_09, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_0A", entry->unk_0A, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_0B", entry->unk_0B, ANIM_TOOL_DBLP);
+        
+        sexml_append_attribute_double(anim, "unk_0C", entry->unk_0C, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_0D", entry->unk_0D, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_0E", entry->unk_0E, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "intensity", entry->intensity, ANIM_TOOL_DBLP);
+        
+        sexml_append_attribute_double(anim, "unk_10", entry->unk_10, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_11", entry->unk_11, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_12", entry->unk_12, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_13", entry->unk_13, ANIM_TOOL_DBLP);
+        
+        sexml_append_attribute_double(anim, "unk_14", entry->unk_14, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_15", entry->unk_15, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_16", entry->unk_16, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_17", entry->unk_17, ANIM_TOOL_DBLP);
+        
+        sexml_append_attribute_double(anim, "unk_18", entry->unk_18, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_19", entry->unk_19, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_1A", entry->unk_1A, ANIM_TOOL_DBLP);
+        sexml_append_attribute_double(anim, "unk_1B", entry->unk_1B, ANIM_TOOL_DBLP);
+        
+        /* Keyframe sets */
+        for(uint32_t j = 0; j != entry->keyframe_set_count; ++j)
+        {
+            MIRAGE_KEYFRAME_SET* kfs = mirage_get_kfs_by_id(entry->keyframe_sets, j);
+            anim_tool_append_kfs_to_xml(kfs, lit->keyframes, anim, NULL);
         }
     }
     
@@ -581,6 +667,12 @@ FU_FILE* anim_tool_xml_to_anim(const char* file_path)
         printf("Found MATAnimation node\n");
         g_animation_type = ANIM_TOOL_MAT;
         anim_fu = anim_tool_xml_to_mat(xml);
+    }
+    else if(su_cmp_string_char(xml->name, "LITAnimation", 12) == 0)
+    {
+        printf("Found LITAnimation node\n");
+        g_animation_type = ANIM_TOOL_LIT;
+        anim_fu = anim_tool_xml_to_lit(xml);
     }
     else
     {
@@ -995,6 +1087,103 @@ FU_FILE* anim_tool_xml_to_mat(SEXML_ELEMENT* xml)
     return mataf;
 }
 
+FU_FILE* anim_tool_xml_to_lit(SEXML_ELEMENT* xml)
+{
+    LIT_ANIM_FILE* lit = lit_anim_alloc();
+    SU_STRING* st = lit->string_table;
+    
+    /* Header values */
+    const uint8_t data_version = sexml_get_attribute_uint_by_name(xml, "data_version");
+
+    /* Preparing entries */
+    const uint32_t entries_count = sexml_get_child_count(xml, "Animation");
+    cvec_resize(lit->entries, entries_count);
+    
+    /* Start value for keyframe sets */
+    uint32_t kf_start = 0;
+    
+    for(uint32_t i = 0; i != entries_count; ++i)
+    {
+        SEXML_ELEMENT* entry_xml = sexml_get_element_by_id(xml, i);
+        LIT_ANIM_ENTRY* entry = lit_anim_get_entry_by_id(lit->entries, i);
+        
+        /* Entry values */
+        SEXML_ATTRIBUTE* name = sexml_get_attribute_by_name(entry_xml, "name");
+        entry->name_offset = mirage_add_str_to_table(st, name->value->ptr, name->value->size);
+
+        entry->light_type = sexml_get_attribute_uint_by_name(entry_xml, "light_type");
+        entry->flag2 = sexml_get_attribute_uint_by_name(entry_xml, "flag2");
+        entry->flag3 = sexml_get_attribute_uint_by_name(entry_xml, "flag3");
+        entry->flag4 = sexml_get_attribute_uint_by_name(entry_xml, "flag4");
+        entry->frame_rate = sexml_get_attribute_double_by_name(entry_xml, "frame_rate");
+        entry->start_frame = sexml_get_attribute_double_by_name(entry_xml, "start_frame");
+        entry->end_frame = sexml_get_attribute_double_by_name(entry_xml, "end_frame");
+        
+        entry->unk_00 = sexml_get_attribute_double_by_name(entry_xml, "unk_00");
+        entry->unk_01 = sexml_get_attribute_double_by_name(entry_xml, "unk_01");
+        entry->unk_02 = sexml_get_attribute_double_by_name(entry_xml, "unk_02");
+        entry->unk_03 = sexml_get_attribute_double_by_name(entry_xml, "unk_03");
+        
+        entry->color_red = sexml_get_attribute_double_by_name(entry_xml, "color_red");
+        entry->color_green = sexml_get_attribute_double_by_name(entry_xml, "color_green");
+        entry->color_blue = sexml_get_attribute_double_by_name(entry_xml, "color_blue");
+        entry->unk_07 = sexml_get_attribute_double_by_name(entry_xml, "unk_07");
+        
+        entry->unk_08 = sexml_get_attribute_double_by_name(entry_xml, "unk_08");
+        entry->unk_09 = sexml_get_attribute_double_by_name(entry_xml, "unk_09");
+        entry->unk_0A = sexml_get_attribute_double_by_name(entry_xml, "unk_0A");
+        entry->unk_0B = sexml_get_attribute_double_by_name(entry_xml, "unk_0B");
+        
+        entry->unk_0C = sexml_get_attribute_double_by_name(entry_xml, "unk_0C");
+        entry->unk_0D = sexml_get_attribute_double_by_name(entry_xml, "unk_0D");
+        entry->unk_0E = sexml_get_attribute_double_by_name(entry_xml, "unk_0E");
+        entry->intensity = sexml_get_attribute_double_by_name(entry_xml, "intensity");
+        
+        entry->unk_10 = sexml_get_attribute_double_by_name(entry_xml, "unk_10");
+        entry->unk_11 = sexml_get_attribute_double_by_name(entry_xml, "unk_11");
+        entry->unk_12 = sexml_get_attribute_double_by_name(entry_xml, "unk_12");
+        entry->unk_13 = sexml_get_attribute_double_by_name(entry_xml, "unk_13");
+        
+        entry->unk_14 = sexml_get_attribute_double_by_name(entry_xml, "unk_14");
+        entry->unk_15 = sexml_get_attribute_double_by_name(entry_xml, "unk_15");
+        entry->unk_16 = sexml_get_attribute_double_by_name(entry_xml, "unk_16");
+        entry->unk_17 = sexml_get_attribute_double_by_name(entry_xml, "unk_17");
+        
+        entry->unk_18 = sexml_get_attribute_double_by_name(entry_xml, "unk_18");
+        entry->unk_19 = sexml_get_attribute_double_by_name(entry_xml, "unk_19");
+        entry->unk_1A = sexml_get_attribute_double_by_name(entry_xml, "unk_1A");
+        entry->unk_1B = sexml_get_attribute_double_by_name(entry_xml, "unk_1B");
+
+        
+        /* Keyframe sets */
+        const uint32_t kfs_count = sexml_get_child_count(entry_xml, "KeyframeSet");
+        entry->keyframe_sets = cvec_create(sizeof(MIRAGE_KEYFRAME_SET));
+        entry->keyframe_set_count = kfs_count;
+        
+        for(uint32_t j = 0; j != kfs_count; ++j)
+        {
+            SEXML_ELEMENT* kfs_xml = sexml_get_element_by_id(entry_xml, j);
+            const uint32_t kf_read = anim_tool_read_kfs_from_xml(kfs_xml,
+                                                                 lit->keyframes,
+                                                                 entry->keyframe_sets,
+                                                                 kf_start);
+            kf_start += kf_read;
+        }
+    }
+    
+    /* Wrapping anim data in mirage and then exporting to FU_FILE */
+    FU_FILE* litf = lit_anim_export_to_fu(lit);
+    FU_FILE* litaf = anim_tool_wrap_anim_in_mirage((const uint8_t*)litf->buf, litf->size,
+                                                  data_version, lit_anim_calc_offsets(lit));
+    
+    /* Cleanup */
+    lit = lit_anim_free(lit);
+    fu_close(litf);
+    free(litf);
+    
+    return litaf;
+}
+
 const uint32_t anim_tool_read_kfs_from_xml(SEXML_ELEMENT* kfs_xml, CVEC keyframes,
                                            CVEC keyframe_sets, const uint32_t kf_start)
 {
@@ -1050,6 +1239,7 @@ void anim_tool_print_usage(const char* exe_path)
 	printf("\t- morph-anim\n");
 	printf("\t- pt-anim\n");
 	printf("\t- mat-anim\n");
+	printf("\t- lit-anim\n");
 	printf("Usage:\n");
 	printf("\tTo unpack:\t%s <file.*-anim>\n", exe_path);
 	printf("\tTo pack:\t%s <file.xml>\n", exe_path);

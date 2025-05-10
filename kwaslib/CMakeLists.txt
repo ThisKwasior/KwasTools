@@ -57,6 +57,7 @@ set(KWASLIB_HE_SOURCES
 	${PROJECT_SOURCE_DIR}/he/pt_anim.c
 	${PROJECT_SOURCE_DIR}/he/uv_anim.c
 	${PROJECT_SOURCE_DIR}/he/vis_anim.c
+	${PROJECT_SOURCE_DIR}/he/lit_anim.c
 	)
 	
 set(KWASLIB_NW4R_SOURCES
