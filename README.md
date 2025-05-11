@@ -30,7 +30,7 @@ After compiling, all tools and libraries are located in `KwasTools/bin`.
 
 ## Software
 ### Hedgehog Engine
-* `he_anim_tool` - Hedgehog Engine anim converter. Supports uv-anim, cam-anim, vis-anim, morph-anim, pt-anim and mat-anim
+* `he_anim_tool` - Hedgehog Engine anim converter. Supports uv-anim, cam-anim, vis-anim, morph-anim, pt-anim, mat-anim and lit-anim.
 
 ### CRIWARE
 **Everything here will be moved to [CryTools](https://github.com/ThisKwasior/CryTools) repo sometime in the future. I'm keeping it all in KwasTools until I rewrite everything in there with kwaslib.**
