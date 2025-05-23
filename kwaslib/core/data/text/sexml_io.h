@@ -21,6 +21,7 @@ const uint8_t sexml_get_attribute_bool_by_id(SEXML_ELEMENT* element, const uint6
 const uint64_t sexml_get_attribute_uint_by_id(SEXML_ELEMENT* element, const uint64_t id);
 const int64_t sexml_get_attribute_int_by_id(SEXML_ELEMENT* element, const uint64_t id);
 const double sexml_get_attribute_double_by_id(SEXML_ELEMENT* element, const uint64_t id);
+SU_STRING* sexml_get_attribute_vl_by_id(SEXML_ELEMENT* element, const uint64_t id);
 
 /*
     Getters by name
@@ -31,6 +32,7 @@ const uint8_t sexml_get_attribute_bool_by_name(SEXML_ELEMENT* element, const cha
 const uint64_t sexml_get_attribute_uint_by_name(SEXML_ELEMENT* element, const char* name);
 const int64_t sexml_get_attribute_int_by_name(SEXML_ELEMENT* element, const char* name);
 const double sexml_get_attribute_double_by_name(SEXML_ELEMENT* element, const char* name);
+SU_STRING* sexml_get_attribute_vl_by_name(SEXML_ELEMENT* element, const char* name);
 
 /*
     Removers
@@ -47,6 +49,7 @@ void sexml_set_element_text_bool(SEXML_ELEMENT* element, const uint8_t value);
 void sexml_set_element_text_uint(SEXML_ELEMENT* element, const uint64_t value);
 void sexml_set_element_text_int(SEXML_ELEMENT* element, const int64_t value);
 void sexml_set_element_text_double(SEXML_ELEMENT* element, const double value, const uint8_t precision);
+void sexml_set_element_text_vl(SEXML_ELEMENT* element, const char* data, const uint32_t size);
 
 void sexml_set_attribute_name(SEXML_ATTRIBUTE* attribute, const char* name);
 void sexml_set_attribute_value(SEXML_ATTRIBUTE* attribute, const char* value);
@@ -54,6 +57,7 @@ void sexml_set_attribute_value_bool(SEXML_ATTRIBUTE* attribute, const uint8_t va
 void sexml_set_attribute_value_uint(SEXML_ATTRIBUTE* attribute, const uint64_t value);
 void sexml_set_attribute_value_int(SEXML_ATTRIBUTE* attribute, const int64_t value);
 void sexml_set_attribute_value_double(SEXML_ATTRIBUTE* attribute, const double value, const uint8_t precision);
+void sexml_set_attribute_value_vl(SEXML_ATTRIBUTE* attribute, const char* data, const uint32_t size);
 
 /*
     Appends element and allocates all fields to default values.
@@ -76,6 +80,7 @@ SEXML_ATTRIBUTE* sexml_append_attribute_bool(SEXML_ELEMENT* element, const char*
 SEXML_ATTRIBUTE* sexml_append_attribute_uint(SEXML_ELEMENT* element, const char* name, const uint64_t value);
 SEXML_ATTRIBUTE* sexml_append_attribute_int(SEXML_ELEMENT* element, const char* name, const int64_t value);
 SEXML_ATTRIBUTE* sexml_append_attribute_double(SEXML_ELEMENT* element, const char* name, const double value, const uint8_t precision);
+SEXML_ATTRIBUTE* sexml_append_attribute_vl(SEXML_ELEMENT* element, const char* name, const char* data, const uint32_t size);
 
 /*
     Attribute converters
@@ -86,3 +91,4 @@ const uint8_t sexml_get_attribute_bool(SEXML_ATTRIBUTE* attribute);
 const uint64_t sexml_get_attribute_uint(SEXML_ATTRIBUTE* attribute);
 const int64_t sexml_get_attribute_int(SEXML_ATTRIBUTE* attribute);
 const double sexml_get_attribute_double(SEXML_ATTRIBUTE* attribute);
+SU_STRING* sexml_get_attribute_vl(SEXML_ATTRIBUTE* attribute);

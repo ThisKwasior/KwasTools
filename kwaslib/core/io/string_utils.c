@@ -11,7 +11,11 @@ SU_STRING* su_create_string(const char* str, const uint32_t size)
     {
         pustr->ptr = (char*)calloc(size+1, 1);
         pustr->size = size;
-        memcpy(&pustr->ptr[0], str, size);
+        
+        if(str != NULL)
+        {
+            memcpy(&pustr->ptr[0], str, size);
+        }
     }
     
     return pustr;
@@ -122,7 +126,8 @@ const uint8_t su_cmp_char(const char* s1, const uint64_t s1s,
         return SU_ERROR_LEN_NO_MATCH;
     }
     
-    if(strncmp(s1, s2, s1s) != 0)
+    //if(strncmp(s1, s2, s1s) != 0)
+    if(memcmp(s1, s2, s1s) != 0)
     {
         return SU_ERROR_STR_NO_MATCH;
     }

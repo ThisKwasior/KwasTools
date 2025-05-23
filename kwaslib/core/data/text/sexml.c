@@ -151,7 +151,6 @@ void sexml_save_to_file_formatted(const char* path, SEXML_ELEMENT* xml, const ui
 SEXML_ELEMENT* sexml_create_root(const char* name)
 {
     SEXML_ELEMENT* xml = sexml_alloc_element();
-    sexml_alloc_element_fields(xml);
     sexml_set_element_name(xml, name);
     return xml;
 }

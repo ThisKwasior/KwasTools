@@ -13,7 +13,8 @@ typedef struct
 } SU_STRING;
 
 /*
-	Allocates and populates an SU_STRING.
+	Allocates and populates an SU_STRING*.
+    If str is NULL, then it will create a zero-initalized string.
     Returns NULL on error.
 */
 SU_STRING* su_create_string(const char* str, const uint32_t size);

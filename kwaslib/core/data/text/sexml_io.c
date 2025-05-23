@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include <kwaslib/core/data/vl.h>
+
 void sexml_text_to_entity_references(SU_STRING* text)
 {
     uint64_t it = 0;
@@ -38,6 +40,11 @@ void sexml_text_to_entity_references(SU_STRING* text)
                 su_insert_char(text, it, SEXML_ENT_REF_QUOT_STR, SEXML_ENT_REF_QUOT_SIZE);
                 it += SEXML_ENT_REF_QUOT_SIZE;
                 break;
+            case SEXML_ENT_REF_NEWL:
+                su_remove(text, it, 1);
+                su_insert_char(text, it, SEXML_ENT_REF_NEWL_STR, SEXML_ENT_REF_NEWL_SIZE);
+                it += SEXML_ENT_REF_NEWL_SIZE;
+                break;
             default:
                 it += 1;
         }
@@ -57,6 +64,7 @@ void sexml_text_from_entity_references(SU_STRING* text)
             const uint8_t am = strncmp(&text->ptr[it], SEXML_ENT_REF_AMP_STR, SEXML_ENT_REF_AMP_SIZE);
             const uint8_t ap = strncmp(&text->ptr[it], SEXML_ENT_REF_APOS_STR, SEXML_ENT_REF_APOS_SIZE);
             const uint8_t qu = strncmp(&text->ptr[it], SEXML_ENT_REF_QUOT_STR, SEXML_ENT_REF_QUOT_SIZE);
+            const uint8_t nl = strncmp(&text->ptr[it], SEXML_ENT_REF_NEWL_STR, SEXML_ENT_REF_NEWL_SIZE);
 
             if(lt == 0)
             {
@@ -82,6 +90,11 @@ void sexml_text_from_entity_references(SU_STRING* text)
             {
                 su_remove(text, it, SEXML_ENT_REF_QUOT_SIZE);
                 su_insert_char(text, it, "\"", 1);
+            }
+            else if(nl == 0)
+            {
+                su_remove(text, it, SEXML_ENT_REF_NEWL_SIZE);
+                su_insert_char(text, it, "\n", 1);
             }
         }
         
@@ -187,6 +200,12 @@ const double sexml_get_attribute_double_by_id(SEXML_ELEMENT* element, const uint
     return sexml_get_attribute_double(attrib);
 }
 
+SU_STRING* sexml_get_attribute_vl_by_id(SEXML_ELEMENT* element, const uint64_t id)
+{
+    SEXML_ATTRIBUTE* attrib = sexml_get_attribute_by_id(element, id);
+    return sexml_get_attribute_vl(attrib);
+}
+
 /*
     Getters by name
 */
@@ -261,6 +280,11 @@ const double sexml_get_attribute_double_by_name(SEXML_ELEMENT* element, const ch
     return sexml_get_attribute_double(attrib);
 }
 
+SU_STRING* sexml_get_attribute_vl_by_name(SEXML_ELEMENT* element, const char* name)
+{
+    SEXML_ATTRIBUTE* attrib = sexml_get_attribute_by_name(element, name);
+    return sexml_get_attribute_vl(attrib);
+}
 
 /*
     Removers
@@ -343,6 +367,13 @@ void sexml_set_element_text_double(SEXML_ELEMENT* element, const double value, c
     sexml_set_element_text(element, value_str);
 }
 
+void sexml_set_element_text_vl(SEXML_ELEMENT* element, const char* data, const uint32_t size)
+{
+    SU_STRING* hex = vl_data_to_hex((const uint8_t*)data, size);
+    sexml_set_element_text(element, hex->ptr);
+    hex = su_free(hex);
+}
+
 void sexml_set_attribute_name(SEXML_ATTRIBUTE* attribute, const char* name)
 {
     if(name)
@@ -390,6 +421,13 @@ void sexml_set_attribute_value_double(SEXML_ATTRIBUTE* attribute, const double v
     char value_str[64] = {0};
     snprintf(value_str, 64, "%.*lf", precision, value);
     sexml_set_attribute_value(attribute, value_str);
+}
+
+void sexml_set_attribute_value_vl(SEXML_ATTRIBUTE* attribute, const char* data, const uint32_t size)
+{
+    SU_STRING* hex = vl_data_to_hex((const uint8_t*)data, size);
+    sexml_set_attribute_value(attribute, hex->ptr);
+    hex = su_free(hex);
 }
 
 SEXML_ELEMENT* sexml_append_element(SEXML_ELEMENT* element, const char* name)
@@ -480,6 +518,14 @@ SEXML_ATTRIBUTE* sexml_append_attribute_double(SEXML_ELEMENT* element, const cha
     return sexml_append_attribute(element, name, value_str);
 }
 
+SEXML_ATTRIBUTE* sexml_append_attribute_vl(SEXML_ELEMENT* element, const char* name, const char* data, const uint32_t size)
+{
+    SU_STRING* hex = vl_data_to_hex((const uint8_t*)data, size);
+    SEXML_ATTRIBUTE* attrib = sexml_append_attribute(element, name, hex->ptr);
+    hex = su_free(hex);
+    return attrib;
+}
+
 /*
     Attribute converters
 */
@@ -518,4 +564,9 @@ const double sexml_get_attribute_double(SEXML_ATTRIBUTE* attribute)
     double value = 0;
     sscanf(attribute->value->ptr, "%lf", &value);
     return value;
+}
+
+SU_STRING* sexml_get_attribute_vl(SEXML_ATTRIBUTE* attribute)
+{
+    return vl_hex_to_data(attribute->value->ptr, attribute->value->size);
 }

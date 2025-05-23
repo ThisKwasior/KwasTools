@@ -18,6 +18,8 @@
 
 #include <kwaslib/core/data/dbl_link_list.h>
 #include <kwaslib/core/data/cvector.h>
+#include <kwaslib/core/data/vl.h>
+
 #include <kwaslib/core/data/image/dds.h>
 #include <kwaslib/core/data/image/gtf.h>
 #include <kwaslib/core/data/image/image.h>

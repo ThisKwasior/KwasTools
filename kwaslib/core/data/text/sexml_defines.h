@@ -33,6 +33,10 @@
 #define SEXML_ENT_REF_QUOT_STR  (const char*)"&quot;"
 #define SEXML_ENT_REF_QUOT_SIZE 6
 
+#define SEXML_ENT_REF_NEWL      (const char)'\n'
+#define SEXML_ENT_REF_NEWL_STR  (const char*)"&#10;"
+#define SEXML_ENT_REF_NEWL_SIZE 5
+
 typedef struct SEXML_ELEMENT SEXML_ELEMENT;
 
 struct SEXML_ELEMENT
