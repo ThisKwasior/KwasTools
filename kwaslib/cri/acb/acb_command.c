@@ -34,7 +34,7 @@ ACB_COMMAND acb_cmd_load_from_data(const uint8_t* data, const uint32_t size)
     return acbcmd;
 }
 
-ACB_COMMAND_OPCODE acb_cmd_parse_opcode(const uint8_t* data)
+const ACB_COMMAND_OPCODE acb_cmd_parse_opcode(const uint8_t* data)
 {
     ACB_COMMAND_OPCODE cmd = {0};
     
@@ -179,7 +179,7 @@ SU_STRING* acb_cmd_to_data(ACB_COMMAND acbcmd)
     return output;
 }
 
-uint32_t acb_cmd_calc_buffer_size(ACB_COMMAND acbcmd)
+const uint32_t acb_cmd_calc_buffer_size(ACB_COMMAND acbcmd)
 {
     uint32_t size = 0;
     
