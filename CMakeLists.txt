@@ -23,8 +23,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 set(KWASTOOLS_PROGRAMS
-	${PROJECT_SOURCE_DIR}/src/cri_utf_tool.cpp
-	${PROJECT_SOURCE_DIR}/src/cri_awb_tool.cpp
+	${PROJECT_SOURCE_DIR}/src/cri_utf_tool.c
+	${PROJECT_SOURCE_DIR}/src/cri_awb_tool.c
 	
 	#${PROJECT_SOURCE_DIR}/src/pcmodeltool.cpp
 	${PROJECT_SOURCE_DIR}/src/he_anim_tool.c
@@ -59,26 +59,16 @@ else()
 	add_library(KwasToolsUtils SHARED ${KWASTOOLS_UTILS})
 endif()
 
-# assimp
-#set(ASSIMP_BUILD_TESTS False)
-#set(ASSIMP_INSTALL False)
-#set(ASSIMP_WARNINGS_AS_ERRORS True)
-#set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "All Assimp Importers" FORCE)
-#set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "All Assimp Exporters" FORCE)
-#set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "Assimp Tests" FORCE)
-
-#set(ASSIMP_BUILD_COLLADA_IMPORTER ON)
-#set(ASSIMP_BUILD_COLLADA_EXPORTER ON)
-#set(ASSIMP_BUILD_GLTF_IMPORTER ON)
-#set(ASSIMP_BUILD_GLTF_EXPORTER ON)
-#add_subdirectory(${PROJECT_SOURCE_DIR}/utils/assimp)
-
 #target_link_libraries(KwasToolsUtils)
 # end utils library
 
 foreach(program_src ${KWASTOOLS_PROGRAMS})
 	get_filename_component(program_name ${program_src} NAME_WLE)
-	add_executable(${program_name} ${program_src})
+	if(WIN32)
+        add_executable(${program_name} ${program_src})
+    else()
+        add_executable(${program_name} ${program_src})
+    endif()
 	target_include_directories(${program_name} PRIVATE "${KWASTOOLS_UTILS_INCLUDES}")
 	target_link_libraries(${program_name} KwasToolsUtils kwaslib)
 endforeach(program_src ${KWASTOOLS_PROGRAMS})
@@ -90,6 +80,3 @@ file(MAKE_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 
 # pugixml license
 file(COPY_FILE "${PROJECT_SOURCE_DIR}/utils/pugixml/LICENSE.md" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/LICENSE-pugixml.md")
-
-# assimp license
-#file(COPY_FILE "${PROJECT_SOURCE_DIR}/utils/assimp/LICENSE" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/LICENSE-assimp.md")

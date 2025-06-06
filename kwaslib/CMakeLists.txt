@@ -42,9 +42,17 @@ set(KWASLIB_CORE_SOURCES
 	)
 	
 set(KWASLIB_CRI_SOURCES
-	${PROJECT_SOURCE_DIR}/cri/acb_command.c
-	${PROJECT_SOURCE_DIR}/cri/utf.c
-	${PROJECT_SOURCE_DIR}/cri/awb.c
+	${PROJECT_SOURCE_DIR}/cri/acb/acb_command.c
+	${PROJECT_SOURCE_DIR}/cri/audio/adx.c
+	${PROJECT_SOURCE_DIR}/cri/audio/awb.c
+	${PROJECT_SOURCE_DIR}/cri/audio/hca.c
+	${PROJECT_SOURCE_DIR}/cri/utf/utf.c
+	${PROJECT_SOURCE_DIR}/cri/utf/utf_common.c
+	${PROJECT_SOURCE_DIR}/cri/utf/utf_data_table.c
+	${PROJECT_SOURCE_DIR}/cri/utf/utf_load.c
+	${PROJECT_SOURCE_DIR}/cri/utf/utf_save.c
+	${PROJECT_SOURCE_DIR}/cri/utf/utf_string_table.c
+	${PROJECT_SOURCE_DIR}/cri/utf/utf_table.c
 	)
 	
 set(KWASLIB_HE_SOURCES
