@@ -38,7 +38,7 @@ void cvec_grow(CVECTOR_METADATA* cvec)
 #endif
 
     const uint64_t to_alloc = new_cap*cvec->elem_size;
-    const uint64_t to_copy = cvec->size*cvec->elem_size;
+    const uint64_t to_copy = cvec->capacity*cvec->elem_size;
     uint8_t* new_data = (uint8_t*)calloc(to_alloc, 1);
     
     memcpy(new_data, cvec->data, to_copy);
