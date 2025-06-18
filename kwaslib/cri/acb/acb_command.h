@@ -33,6 +33,7 @@
 #define ACB_CMD_OPCODE_TYPE_U40     8
 #define ACB_CMD_OPCODE_TYPE_U48     9
 #define ACB_CMD_OPCODE_TYPE_U56     10
+#define ACB_CMD_OPCODE_TYPE_VL      11
 
 typedef struct
 {
@@ -48,6 +49,7 @@ typedef struct
 		uint64_t u64;		/* 5, 6, 7, 8 */
 		float f32;
 		double f64;
+        uint8_t vl[255];    /* 8< */
 	} data;
 } ACB_COMMAND_OPCODE;
 

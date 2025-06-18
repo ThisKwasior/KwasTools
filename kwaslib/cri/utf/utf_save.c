@@ -25,13 +25,14 @@ FU_FILE* utf_save_to_fu(UTF_TABLE* utf)
     /* Name for the table is first in the string_table */
     table_header.name_offset = utf_add_str_to_table(string_table, utf->name->ptr, utf->name->size);
     
+    const uint8_t utf_present = utf_check_for_utf_tables(utf);
     const uint32_t columns_count = utf_table_get_column_count(utf);
     const uint32_t rows_count = utf_table_get_row_count(utf);
-    CVEC schema = utf_generate_schema(utf, data_table, string_table);
+    CVEC schema = utf_generate_schema(utf, data_table, string_table, utf_present);
     const uint32_t rows_width = utf_get_row_size(schema);
     
     FU_FILE* schema_fu = utf_schema_to_fu(schema);
-    FU_FILE* rows_fu = utf_rows_to_fu(utf, schema, string_table, data_table);
+    FU_FILE* rows_fu = utf_rows_to_fu(utf, schema, string_table, data_table, utf_present);
 
     /*const uint32_t data_shift = bound_calc_leftover(16,
                                 8 + UTF_TABLE_HEADER_SIZE +
@@ -45,17 +46,13 @@ FU_FILE* utf_save_to_fu(UTF_TABLE* utf)
     table_header.string_table_offset = table_header.rows_offset + rows_width*rows_count;
     table_header.columns_count = columns_count;
     table_header.data_offset = table_header.string_table_offset + string_table->size;
+    if(utf_present) table_header.data_offset += bound_calc_leftover(32, 8+table_header.data_offset);
     table_header.rows_width = rows_width;
     table_header.rows_count = rows_count;
     
     /* Update the header */
     memcpy(&header.id[0], UTF_MAGIC, 4);
-    header.table_size = UTF_TABLE_HEADER_SIZE +
-                        schema_fu->size +
-                        rows_width*rows_count +
-                        string_table->size +
-                        data_table->size;
-                        
+    header.table_size = table_header.data_offset + data_table->size;         
     header.table_size += bound_calc_leftover(4, header.table_size);
     fu_change_buf_size(utf_fu, header.table_size+8);
     
@@ -74,7 +71,11 @@ FU_FILE* utf_save_to_fu(UTF_TABLE* utf)
     
     fu_write_data(utf_fu, (const uint8_t*)schema_fu->buf, schema_fu->size);
     if(rows_width) fu_write_data(utf_fu, (const uint8_t*)rows_fu->buf, rows_fu->size);
+    
+    fu_seek(utf_fu, table_header.string_table_offset+8, FU_SEEK_SET);
     fu_write_data(utf_fu, (const uint8_t*)string_table->ptr, string_table->size);
+    
+    fu_seek(utf_fu, table_header.data_offset+8, FU_SEEK_SET);
     fu_write_data(utf_fu, (const uint8_t*)data_table->ptr, data_table->size);
     
     /* Cleanup */
@@ -91,7 +92,8 @@ FU_FILE* utf_save_to_fu(UTF_TABLE* utf)
 
 CVEC utf_generate_schema(UTF_TABLE* utf,
                          SU_STRING* data_table,
-                         SU_STRING* string_table)
+                         SU_STRING* string_table,
+                         const uint8_t utf_present)
 {
     const uint32_t columns_count = utf_table_get_column_count(utf);
     CVEC schema = cvec_create(sizeof(UTF_SCHEMA_ENTRY));
@@ -101,7 +103,13 @@ CVEC utf_generate_schema(UTF_TABLE* utf,
     {
         UTF_COLUMN* col = utf_table_get_column_by_id(utf, i);
         UTF_SCHEMA_ENTRY* se = (UTF_SCHEMA_ENTRY*)cvec_at(schema, i);
-        const uint8_t are_rows_the_same = utf_column_rows_the_same(col);
+        
+        /*
+            Crashes Sonic Frontiers??
+            TODO: Figure out why it crashes
+        */
+        /*const uint8_t are_rows_the_same = utf_column_rows_the_same(col);*/
+        const uint8_t are_rows_the_same = 0;
         
         se->desc.type = col->type;
         se->desc.name = 1;
@@ -115,7 +123,7 @@ CVEC utf_generate_schema(UTF_TABLE* utf,
         {
             UTF_ROW* first_row = utf_table_get_row_from_col_by_id(col, 0);
             utf_table_row_to_record(first_row, &se->record, se->desc.type,
-                                    string_table, data_table);
+                                    string_table, data_table, utf_present);
         }
     }
     
@@ -148,7 +156,8 @@ FU_FILE* utf_schema_to_fu(CVEC schema)
 }
 
 FU_FILE* utf_rows_to_fu(UTF_TABLE* utf, CVEC schema,
-                        SU_STRING* string_table, SU_STRING* data_table)
+                        SU_STRING* string_table, SU_STRING* data_table,
+                        const uint8_t utf_present)
 {
     FU_FILE* rows_fu = fu_alloc_file();
     fu_create_mem_file(rows_fu);
@@ -167,7 +176,7 @@ FU_FILE* utf_rows_to_fu(UTF_TABLE* utf, CVEC schema,
             {
                 UTF_ROW* row = utf_table_get_row_xy(utf, column_it, row_it);
                 UTF_RECORD record = {0};
-                utf_table_row_to_record(row, &record, type, string_table, data_table);
+                utf_table_row_to_record(row, &record, type, string_table, data_table, utf_present);
                 utf_write_record_to_fu(rows_fu, &record, type);
             }
         }
@@ -232,7 +241,25 @@ const uint8_t utf_column_rows_the_same(UTF_COLUMN* col)
                     the_same = 0;
                 break;
             case UTF_COLUMN_TYPE_VLDATA:
+                if(first_row->embed_type == UTF_TABLE_VL_NONE)
+                {
+                    if(first_row->data.vl->size != cur_row->data.vl->size)
+                    {
+                        the_same = 0;
+                    }
+                    else if((first_row->data.vl->size > 1) && (first_row->data.vl->size < 16))
+                    {
+                        the_same = 0;
+                    }
+                    if(su_cmp_string(first_row->data.vl, cur_row->data.vl) != SU_STRINGS_MATCH)
+                    {
+                        the_same = 0;
+                    }
+                }
+                else
+                {
                     the_same = 0;
+                }
                 break;
             case UTF_COLUMN_TYPE_UINT128:
                 if(su_cmp_char((const char*)first_row->data.u128, 16,
@@ -252,7 +279,8 @@ const uint8_t utf_column_rows_the_same(UTF_COLUMN* col)
 }
 
 void utf_table_row_to_record(UTF_ROW* row, UTF_RECORD* record, const uint8_t type,
-                             SU_STRING* string_table, SU_STRING* data_table)
+                             SU_STRING* string_table, SU_STRING* data_table,
+                             const uint8_t utf_present)
 {
     switch(type)
     {
@@ -289,14 +317,14 @@ void utf_table_row_to_record(UTF_ROW* row, UTF_RECORD* record, const uint8_t typ
                 case UTF_TABLE_VL_NONE:
                     record->vl.offset = utf_add_data_to_table(data_table,
                                         (const uint8_t*)&row->data.vl->ptr[0],
-                                        row->data.vl->size);
+                                        row->data.vl->size, utf_present);
                     record->vl.size = row->data.vl->size;
                     break;
                 case UTF_TABLE_VL_UTF:
                     FU_FILE* utf_fu = utf_save_to_fu(row->embed.utf);
                     record->vl.offset = utf_add_data_to_table(data_table,
                                         (const uint8_t*)utf_fu->buf,
-                                        utf_fu->size);
+                                        utf_fu->size, utf_present);
                     record->vl.size = utf_fu->size;
                     fu_close(utf_fu);
                     free(utf_fu);
@@ -305,7 +333,7 @@ void utf_table_row_to_record(UTF_ROW* row, UTF_RECORD* record, const uint8_t typ
                     SU_STRING* afs2_str = awb_to_data(row->embed.afs2);
                     record->vl.offset = utf_add_data_to_table(data_table,
                                         (const uint8_t*)afs2_str->ptr,
-                                        afs2_str->size);
+                                        afs2_str->size, utf_present);
                     record->vl.size = afs2_str->size;
                     afs2_str = su_free(afs2_str);
                     break;
@@ -313,7 +341,7 @@ void utf_table_row_to_record(UTF_ROW* row, UTF_RECORD* record, const uint8_t typ
                     SU_STRING* acbcmd_str = acb_cmd_to_data(row->embed.acbcmd);
                     record->vl.offset = utf_add_data_to_table(data_table,
                                         (const uint8_t*)acbcmd_str->ptr,
-                                        acbcmd_str->size);
+                                        acbcmd_str->size, utf_present);
                     record->vl.size = acbcmd_str->size;
                     acbcmd_str = su_free(acbcmd_str);
                     break;
@@ -381,4 +409,25 @@ const uint32_t utf_get_row_size(CVEC schema)
     }
     
     return rows_width;
+}
+
+const uint8_t utf_check_for_utf_tables(UTF_TABLE* utf)
+{
+    const uint32_t columns_count = utf_table_get_column_count(utf);
+    const uint32_t rows_count = utf_table_get_row_count(utf);
+    
+    for(uint32_t row_it = 0; row_it != rows_count; ++row_it)
+    {
+        for(uint32_t column_it = 0; column_it != columns_count; ++column_it)
+        {
+            UTF_ROW* row = utf_table_get_row_xy(utf, column_it, row_it);
+
+            if(row->embed_type == UTF_TABLE_VL_UTF)
+            {
+                return 1;
+            }
+        }
+    }
+    
+    return 0;
 }

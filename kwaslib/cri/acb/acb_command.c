@@ -9,7 +9,7 @@ static const char* ACB_CMD_TYPE_STR[] =
 {
     "NOVAL", "U8", "U16", "U32",
     "U64", "FLOAT", "DOUBLE", "U24",
-    "U40", "U48", "U56"
+    "U40", "U48", "U56", "VL"
 };
 
 ACB_COMMAND acb_cmd_alloc()
@@ -85,6 +85,9 @@ const ACB_COMMAND_OPCODE acb_cmd_parse_opcode(const uint8_t* data)
             cmd.type = ACB_CMD_OPCODE_TYPE_U64;
             cmd.data.u64 = tr_read_u64be(&data[3]);
             break;
+        default:
+            cmd.type = ACB_CMD_OPCODE_TYPE_VL;
+            tr_read_array(&data[3], cmd.size, cmd.data.vl);
     }
     
     /* Check for floats */
@@ -171,6 +174,9 @@ SU_STRING* acb_cmd_to_data(ACB_COMMAND acbcmd)
             case ACB_CMD_OPCODE_TYPE_F64:
                 tw_write_f32be(op->data.f64, ptr);
                 break;
+            case ACB_CMD_OPCODE_TYPE_VL:
+                tw_write_array(op->data.vl, op->size, ptr);
+                break;
         }
         
         ptr += op->size;
@@ -229,6 +235,8 @@ const uint8_t acb_cmd_str_to_type(const char* str, const uint8_t size)
         type = ACB_CMD_OPCODE_TYPE_U48;
     if(su_cmp_char(str, size, "U56", 3) == SU_STRINGS_MATCH)
         type = ACB_CMD_OPCODE_TYPE_U56;
+    if(su_cmp_char(str, size, "VL", 2) == SU_STRINGS_MATCH)
+        type = ACB_CMD_OPCODE_TYPE_VL;
     
     return type;
 }
@@ -248,6 +256,7 @@ const uint8_t acb_cmd_size_by_type(const uint8_t type)
         case ACB_CMD_OPCODE_TYPE_U40:   return 5;
         case ACB_CMD_OPCODE_TYPE_U48:   return 6;
         case ACB_CMD_OPCODE_TYPE_U56:   return 7;
+        case ACB_CMD_OPCODE_TYPE_VL:    return 0;
     }
     
     return 0;

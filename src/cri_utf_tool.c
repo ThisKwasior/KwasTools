@@ -202,14 +202,7 @@ void utf_tool_print_table(UTF_TABLE* utf)
                     switch(row->embed_type)
                     {
                         case UTF_TABLE_VL_NONE:
-                             for(uint32_t i = 0; i != 8; ++i)
-                            {
-                                char c = row->data.vl->ptr[i];
-                                if(c < 32) c = 32;
-                                if(c > 126) c = 126;
-                                printf("%c", c);
-                            }
-                            printf("|");
+                            printf("%08u|", row->data.vl->size);
                             break;
                         case UTF_TABLE_VL_UTF:
                             printf("    @UTF|");
@@ -281,6 +274,9 @@ void utf_tool_print_acbcmd(ACB_COMMAND acbcmd)
                 break;
             case ACB_CMD_OPCODE_TYPE_F64:
                 printf("|%15lf|", op->data.f64);
+                break;
+            case ACB_CMD_OPCODE_TYPE_VL:
+                printf("|%15s|", "Variable Length");
                 break;
             default:
                 printf("|    UNKNOWN    |");
@@ -503,6 +499,9 @@ void utf_tool_acbcmd_to_xml(ACB_COMMAND acbcmd, SEXML_ELEMENT* root)
             case ACB_CMD_OPCODE_TYPE_F64:
                 sexml_append_attribute_double(cmd_xml, "value", op->data.f64, 16);
                 break;
+            case ACB_CMD_OPCODE_TYPE_VL:
+                sexml_append_attribute_vl(cmd_xml, "value", (const char*)op->data.vl, op->size);
+                break;
         }
     }
 }
@@ -701,6 +700,11 @@ ACB_COMMAND utf_tool_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml)
             case ACB_CMD_OPCODE_TYPE_F64:
                 op.data.f64 = sexml_get_attribute_double(val_attr);
                 break;
+            case ACB_CMD_OPCODE_TYPE_VL:
+                SU_STRING* vl = sexml_get_attribute_vl(val_attr);
+                op.size = vl->size;
+                memcpy(op.data.vl, (uint8_t*)vl->ptr, op.size);
+                su_free(vl);
         }
         
         acb_cmd_append_opcode(acbcmd, op);
