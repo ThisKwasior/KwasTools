@@ -544,9 +544,7 @@ SEXML_ELEMENT* anim_tool_lit_to_xml(MIRAGE_FILE* mirage, LIT_ANIM_FILE* lit)
         const char* anim_name = mirage_get_ptr_in_table(lit->string_table, entry->name_offset);
         sexml_append_attribute(anim, "name", anim_name);
         sexml_append_attribute_uint(anim, "light_type", entry->light_type);
-        sexml_append_attribute_uint(anim, "flag2", entry->flag2);
-        sexml_append_attribute_uint(anim, "flag3", entry->flag3);
-        sexml_append_attribute_uint(anim, "flag4", entry->flag4);
+        sexml_append_attribute_uint(anim, "attribute", entry->attribute);
         sexml_append_attribute_double(anim, "frame_rate", entry->frame_rate, ANIM_TOOL_DBLP);
         sexml_append_attribute_double(anim, "start_frame", entry->start_frame, ANIM_TOOL_DBLP);
         sexml_append_attribute_double(anim, "end_frame", entry->end_frame, ANIM_TOOL_DBLP);
@@ -1112,9 +1110,7 @@ FU_FILE* anim_tool_xml_to_lit(SEXML_ELEMENT* xml)
         entry->name_offset = mirage_add_str_to_table(st, name->value->ptr, name->value->size);
 
         entry->light_type = sexml_get_attribute_uint_by_name(entry_xml, "light_type");
-        entry->flag2 = sexml_get_attribute_uint_by_name(entry_xml, "flag2");
-        entry->flag3 = sexml_get_attribute_uint_by_name(entry_xml, "flag3");
-        entry->flag4 = sexml_get_attribute_uint_by_name(entry_xml, "flag4");
+        entry->attribute = sexml_get_attribute_uint_by_name(entry_xml, "attribute");
         entry->frame_rate = sexml_get_attribute_double_by_name(entry_xml, "frame_rate");
         entry->start_frame = sexml_get_attribute_double_by_name(entry_xml, "start_frame");
         entry->end_frame = sexml_get_attribute_double_by_name(entry_xml, "end_frame");

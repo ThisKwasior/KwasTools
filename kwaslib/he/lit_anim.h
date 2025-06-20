@@ -40,9 +40,9 @@ typedef struct
 {
 	uint32_t name_offset;
     uint8_t light_type;
-    uint8_t flag2;
-    uint8_t flag3;
-    uint8_t flag4;
+    uint8_t attribute;      /* Unused according to Skyth */
+    uint8_t pad1;
+    uint8_t pad2;
 	float frame_rate;
 	float start_frame;
 	float end_frame;

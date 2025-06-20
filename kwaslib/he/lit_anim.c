@@ -67,9 +67,7 @@ LIT_ANIM_FILE* lit_anim_load_from_data(const uint8_t* data)
 
             entry->name_offset = tr_read_u32be(&entry_ptr[0]);
             entry->light_type = tr_read_u8(&entry_ptr[4]);
-            entry->flag2 = tr_read_u8(&entry_ptr[5]);
-            entry->flag3 = tr_read_u8(&entry_ptr[6]);
-            entry->flag4 = tr_read_u8(&entry_ptr[7]);
+            entry->attribute = tr_read_u8(&entry_ptr[5]);
             entry->frame_rate = tr_read_f32be(&entry_ptr[8]);
             entry->start_frame = tr_read_f32be(&entry_ptr[12]);
             entry->end_frame = tr_read_f32be(&entry_ptr[16]);
@@ -171,9 +169,9 @@ FU_FILE* lit_anim_export_to_fu(LIT_ANIM_FILE* lit)
         fu_seek(data_fu, offset, FU_SEEK_SET);
         fu_write_u32(data_fu, entry->name_offset, FU_BIG_ENDIAN);
         fu_write_u8(data_fu, entry->light_type);
-        fu_write_u8(data_fu, entry->flag2);
-        fu_write_u8(data_fu, entry->flag3);
-        fu_write_u8(data_fu, entry->flag4);
+        fu_write_u8(data_fu, entry->attribute);
+        fu_write_u8(data_fu, entry->pad1);
+        fu_write_u8(data_fu, entry->pad2);
         fu_write_f32(data_fu, entry->frame_rate, FU_BIG_ENDIAN);
         fu_write_f32(data_fu, entry->start_frame, FU_BIG_ENDIAN);
         fu_write_f32(data_fu, entry->end_frame, FU_BIG_ENDIAN);
