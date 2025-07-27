@@ -5,12 +5,15 @@
 #define MIRAGE_KEYFRAME_SIZE        0x8
 #define MIRAGE_KEYFRAME_SET_SIZE    0xC
 
+#define MIRAGE_KFS_INTERP_CONSTANT  1
+#define MIRAGE_KFS_INTERP_LINEAR    0
+
 typedef struct
 {
-	uint8_t type;
-	uint8_t flag2;
-	uint8_t interpolation;
-	uint8_t flag4;
+	uint8_t type; /* Used in every anim besides morph-anim according to Skyth */
+	uint8_t flag2; /* Used in cam and lit anims according to Skyth. Purpose unknown */
+	uint8_t interpolation; /* Used in uv-anim only. 1 for constant, 0 for linear */
+	uint8_t flag4; /* Unused */
 	uint32_t length;
 	uint32_t start;
 } MIRAGE_KEYFRAME_SET;
