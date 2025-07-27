@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 project(KwasTools)
 
-set(KWASTOOLS_STATIC_UTILSLIB False CACHE STRING "Should KwasToolsUtils be a static library?")
-
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Configuration type" FORCE)
 endif()
@@ -29,38 +27,18 @@ set(KWASTOOLS_PROGRAMS
 	#${PROJECT_SOURCE_DIR}/src/pcmodeltool.cpp
 	${PROJECT_SOURCE_DIR}/src/he_anim_tool.c
 	
-	${PROJECT_SOURCE_DIR}/src/nw4r_misc_to_he_xml.cpp
+	${PROJECT_SOURCE_DIR}/src/nw4r_misc_to_he_xml.c
 
 	${PROJECT_SOURCE_DIR}/src/platinum_dat_tool.c
 	${PROJECT_SOURCE_DIR}/src/platinum_wtb_tool.c
 	#${PROJECT_SOURCE_DIR}/src/platinum_wmb4_tool.cpp
 	#${PROJECT_SOURCE_DIR}/src/platinum_misc_dat2dds2dat.c
-	)
-
-set(KWASTOOLS_UTILS
-	${PROJECT_SOURCE_DIR}/utils/pugixml/pugixml.cpp
-	)
-
-set(KWASTOOLS_UTILS_INCLUDES
-	"${PROJECT_SOURCE_DIR}"
-	"${PROJECT_SOURCE_DIR}/utils"
-	#"${PROJECT_SOURCE_DIR}/utils/assimp/include"
-	)
+)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/kwaslib)
-
-# utils library
-if(${KWASTOOLS_STATIC_UTILSLIB})
-	add_library(KwasToolsUtils STATIC ${KWASTOOLS_UTILS})
-else()
-	add_library(KwasToolsUtils SHARED ${KWASTOOLS_UTILS})
-endif()
-
-#target_link_libraries(KwasToolsUtils)
-# end utils library
 
 foreach(program_src ${KWASTOOLS_PROGRAMS})
 	get_filename_component(program_name ${program_src} NAME_WLE)
@@ -70,13 +48,8 @@ foreach(program_src ${KWASTOOLS_PROGRAMS})
         add_executable(${program_name} ${program_src})
     endif()
 	target_include_directories(${program_name} PRIVATE "${KWASTOOLS_UTILS_INCLUDES}")
-	target_link_libraries(${program_name} KwasToolsUtils kwaslib)
+	target_link_libraries(${program_name} kwaslib)
 endforeach(program_src ${KWASTOOLS_PROGRAMS})
-
-### Copying license files
 
 # Create bin directory
 file(MAKE_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
-
-# pugixml license
-file(COPY_FILE "${PROJECT_SOURCE_DIR}/utils/pugixml/LICENSE.md" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/LICENSE-pugixml.md")
