@@ -41,6 +41,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/kwaslib)
 foreach(program_src ${KWASTOOLS_PROGRAMS})
 	get_filename_component(program_name ${program_src} NAME_WLE)
     add_executable(${program_name} ${program_src})
+    target_include_directories(${program_name} PRIVATE "${PROJECT_SOURCE_DIR}")
 	target_link_libraries(${program_name} kwaslib m)
 endforeach(program_src ${KWASTOOLS_PROGRAMS})
 
