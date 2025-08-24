@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
+#include <string.h>
 
 #define SU_STRINGS_MATCH        0
 #define SU_ERROR_STR_NO_MATCH   1

@@ -1,7 +1,6 @@
 #include "string_utils.h"
 
 #include <stdlib.h>
-#include <string.h>
 
 SU_STRING* su_create_string(const char* str, const uint32_t size)
 {
