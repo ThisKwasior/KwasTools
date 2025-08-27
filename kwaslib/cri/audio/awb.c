@@ -101,14 +101,30 @@ AWB_FILE* awb_load_from_data(const uint8_t* data, const uint32_t size)
             uint32_t sixth_block_pos = hca.data_offset;
             if(hca.sections.comp) sixth_block_pos += 6*hca.comp.block_size;
             if(hca.sections.dec) sixth_block_pos += 6*hca.dec.block_size;
-            const uint16_t block_start_value = tr_read_u16be(&data_offset[sixth_block_pos]);
+            const uint32_t block_start_offset = fixed_offset+sixth_block_pos;
             
-            /*if(entry->size >= file_size)*/
-            if(block_start_value != 0xFFFF)
+            /*
+                We've gone past the boundary of the AFS2 archive.
+                The check would crash the program later.
+                It's either very small hca or prefetch one.
+                TODO: Do it better. What if block count is smaller than 6?
+            */
+            if(block_start_offset >= size)
             {
-                /* It's probably a prefetch hca */
                 hca.fmt.block_count = 5;
                 entry->size = hca_get_file_size(hca);
+            }
+            else
+            {
+                const uint16_t block_start_value = tr_read_u16be(&data[block_start_offset]);
+                
+                /*if(entry->size >= file_size)*/
+                if(block_start_value != 0xFFFF)
+                {
+                    /* It's probably a prefetch hca */
+                    hca.fmt.block_count = 5;
+                    entry->size = hca_get_file_size(hca);
+                }
             }
         }
         
