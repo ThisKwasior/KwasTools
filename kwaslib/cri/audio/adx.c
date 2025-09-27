@@ -92,8 +92,13 @@ ADX_FILE* adx_load_from_data(const uint8_t* data, const uint32_t size)
             pos += 4;
         }
     }
-    
-    /* Loop data */
+
+    /*
+        Loop data
+        Disabled for now. Sometimes (c)CRI is in place of h->loop_count
+        TODO: Fix ADX loop
+    */
+    /*
     h->alignment_samples = tr_read_u16be(&data[pos]);
     h->loop_count = tr_read_u16be(&data[pos+2]);
     cvec_resize(h->loop, h->loop_count);
@@ -110,6 +115,7 @@ ADX_FILE* adx_load_from_data(const uint8_t* data, const uint32_t size)
         loop->loop_end_byte = tr_read_u32be(&data[pos+16]);
         pos += 20;
     }
+    */
     
     /* Reading audio frames */
     pos = 4 + h->header_size;
