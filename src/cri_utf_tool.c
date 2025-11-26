@@ -7,6 +7,7 @@
 #include <kwaslib/core/io/file_utils.h>
 #include <kwaslib/core/data/text/sexml.h>
 #include <kwaslib/core/data/vl.h>
+#include <kwaslib/core/io/arg_parser.h>
 
 #include <kwaslib/cri/utf/utf.h>
 #include <kwaslib/cri/utf/utf_table.h>
@@ -25,12 +26,26 @@
 #define XML_ACBCMD_NAME_SIZE    6
 
 /*
+    Arguments
+*/
+const AP_ARG_DESC arg_list[] =
+{
+    {"--verbose", AP_TYPE_NOV},
+};
+const uint32_t arg_list_size = 1;
+
+AP_VALUE_NODE* arg_node = NULL;
+
+/*
     Globals
 */
+uint8_t g_flag_verbose = 0;
 
 /*
 	Common
 */
+void utf_tool_parse_arguments(int argc, char** argv);
+
 void utf_tool_print_usage(char* program_name);
 void utf_tool_print_table(UTF_TABLE* utf);
 void utf_tool_print_afs2(AWB_FILE* awb);
@@ -123,7 +138,10 @@ int main(int argc, char** argv)
                 return 0;
             }
             
-			utf_tool_print_table(utf);
+			if(g_flag_verbose)
+            {
+                utf_tool_print_table(utf);
+            }
 
 			/* Change the path extension to xml */
 			SU_STRING* out_str = pu_path_to_string(input_file_path);
@@ -151,8 +169,20 @@ void utf_tool_print_usage(char* program_name)
 	printf("Converts CRIWARE UTF to XML and vice versa.\n");
 	printf("Also parses internal UTF tables, AWB archives and limited subset of ACB Commands.\n");
 	printf("Usage:\n");
-	printf("\tTo unpack: %s <file.acb>\n", program_name);
-	printf("\tTo pack: %s <file.xml>\n", program_name);
+	printf("\tTo unpack: %s <file.acb> <options>\n", program_name);
+	printf("\tTo pack: %s <file.xml> <options>\n", program_name);
+    printf("\n");
+    printf("Options:\n");
+    printf("\t%24s\t%s\n", "--verbose", "Print everything regarding the ACB/XML");
+}
+
+void utf_tool_parse_arguments(int argc, char** argv)
+{
+    arg_node = ap_parse_argv(argv, argc, arg_list, arg_list_size);
+
+    AP_VALUE_NODE* arg_verbose = ap_get_node_by_arg(arg_node, "--verbose");
+    
+    if(arg_verbose != NULL) g_flag_verbose = 1;
 }
 
 void utf_tool_print_table(UTF_TABLE* utf)
@@ -613,7 +643,10 @@ UTF_TABLE* utf_tool_xml_to_utf(SEXML_ELEMENT* utf_xml)
         }
     }
     
-    utf_tool_print_table(utf);
+    if(g_flag_verbose)
+    {
+        utf_tool_print_table(utf);
+    }
 
     return utf;
 }
@@ -654,7 +687,10 @@ AWB_FILE* utf_tool_xml_to_afs2(SEXML_ELEMENT* awb_root)
         }
     }
     
-    utf_tool_print_afs2(afs2);
+    if(g_flag_verbose)
+    {
+        utf_tool_print_afs2(afs2);
+    }
 
     return afs2;
 }
@@ -710,7 +746,10 @@ ACB_COMMAND utf_tool_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml)
         acb_cmd_append_opcode(acbcmd, op);
     }
     
-    utf_tool_print_acbcmd(acbcmd);
+    if(g_flag_verbose)
+    {
+        utf_tool_print_acbcmd(acbcmd);
+    }
     
     return acbcmd;
 }
