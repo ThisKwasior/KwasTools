@@ -9,6 +9,8 @@
 #include <kwaslib/cri/audio/hca.h>
 #include <kwaslib/cri/audio/adx.h>
 
+#include <kwaslib/nw4r/bcwav.h>
+
 AWB_FILE* awb_alloc()
 {
     AWB_FILE* awb = (AWB_FILE*)calloc(1, sizeof(AWB_FILE));
@@ -128,7 +130,16 @@ AWB_FILE* awb_load_from_data(const uint8_t* data, const uint32_t size)
             }
         }
         
-        /* Not ADX or HCA */
+        /* N3DS format used in Lost World */
+        const BCWAV_HEADER bcwav = bcwav_read_header_from_data(data_offset, temp_size);
+        
+        if(bcwav.header_size == BCWAV_HEADER_SIZE)
+        {
+            entry->type = AWB_DATA_BCWAV;
+            entry->size = bcwav.file_size;
+        }
+        
+        /* Not ADX or HCA or BCWAV */
         if(entry->type == AWB_DATA_BIN)
         {
             entry->size = temp_size;

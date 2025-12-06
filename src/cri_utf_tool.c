@@ -475,6 +475,9 @@ void utf_tool_afs2_to_xml(AWB_FILE* afs2, SEXML_ELEMENT* root, SU_STRING* work_d
             case AWB_DATA_HCA:
                 su_insert_char(cur_file, -1, ".hca", 4);
                 break;
+            case AWB_DATA_BCWAV:
+                su_insert_char(cur_file, -1, ".bcwav", 6);
+                break;
             default:
                 su_insert_char(cur_file, -1, ".bin", 4);
         }
