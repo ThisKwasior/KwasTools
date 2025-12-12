@@ -1,0 +1,51 @@
+ <!DOCTYPE html>
+<html>
+<head>
+<title>CRI Scramble Key</title>
+</head>
+<body>
+
+<script>
+function cri_scramble_key(keycode, awbkey)
+{
+    const awbkey_int = parseInt(awbkey);
+    const awbkey_shifted = (awbkey_int<<16) 
+    const awbkey_negated = (((~awbkey_int)+2)&0xFFFF)
+    const awbkey_result = (awbkey_shifted | awbkey_negated);
+    
+    // JavaScript is evil and should not be used
+    const u64_keys = (new BigUint64Array([BigInt(keycode), BigInt(awbkey_result>>>0)]));
+    const acbkey = (new BigUint64Array([u64_keys[0]*u64_keys[1]]));
+    return acbkey[0];
+}
+
+function insert_scrambled_key()
+{
+    const keycode = document.getElementById("enckey").value;
+    const awbkey = document.getElementById("awbkey").value;
+    const result = cri_scramble_key(keycode, awbkey);
+    document.getElementById("finalkey").value = result;
+}
+</script>
+Computes a key to be used in HCA/ADX encryption.<br>
+Both encryption and awb keys should be in decimal.<br>
+<br>
+<form>
+  <label for="enckey">Encryption key</label><br>
+  <input type="text" id="enckey" name="enckey"><br>
+  <label for="awbkey">AWB key</label><br>
+  <input type="text" id="awbkey" name="awbkey"><br>
+  <input type="button" value="Calculate" onclick="insert_scrambled_key()"><br>
+  <label for="Final key">Final key</label><br>
+  <input type="text" id="finalkey" name="finalkey"><br>
+</form> 
+
+<br><br>
+Sources:<br>
+<a href='https://github.com/hozuki/libcgss/issues/4#issuecomment-429415659'>github.com/hozuki/libcgss/issues/4</a><br>
+<a href='https://blog.mottomo.moe/categories/Tech/RE/en/2018-10-12-New-HCA-Encryption/'>blog.mottomo.moe/categories/Tech/RE/en/2018-10-12-New-HCA-Encryption</a><br>
+<a href='https://github.com/vgmstream/vgmstream/blob/776c4d8cf53a73336e1314660ae2a04961b288e3/src/coding/hca_decoder.c#L314'>github.com/vgmstream/vgmstream/src/coding/hca_decoder.c</a><br>
+<a href='https://github.com/ActualMandM/ScrambleCriKey/blob/main/ScrambleCriKey/ScrambleCriKey.cpp'>github.com/ActualMandM/ScrambleCriKey/ScrambleCriKey.cpp</a><br>
+
+</body>
+</html>
