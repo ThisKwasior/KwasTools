@@ -37,6 +37,7 @@ After compiling, CMake script will output binaries and libraries in the `./bin` 
 ### CRIWARE
 * `cri_utf_tool` - CRI UTF parser to and from XML. Will parse structures from VLDATA (UTF, AWB and ACB Commands).
 * `cri_awb_tool` - CRI AWB packer/unpacker. Supports creating AWBs from custom XML config and unpacks AWBs to a folder and XML config.
+* `CRI Scramble Key` - Python script and HTML page to compute ACB key for encoding HCA/ADX files. Found in `scripts` directory. Also [hosted on my site](https://thiskwasior.ct8.pl/cri_scramble_key.htm).
 
 ### NW4R
 * `nw4r_misc_to_he_xml` - Converts SCN0 and SRT0 from Wii NW4R to Hedgehog Engine XML supported by he_anim_tool.
