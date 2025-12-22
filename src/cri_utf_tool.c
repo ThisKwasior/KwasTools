@@ -28,17 +28,18 @@
 /*
     Arguments
 */
-const AP_ARG_DESC arg_list[] =
-{
-    {"--verbose", AP_TYPE_NOV},
-};
-const uint32_t arg_list_size = 1;
+//const AP_ARG_DESC arg_list[] =
+//{
+//    {"--verbose", AP_TYPE_NOV},
+//};
+//const uint32_t arg_list_size = 1;
 
-AP_VALUE_NODE* arg_node = NULL;
+
 
 /*
     Globals
 */
+AP_DESC* g_arg_node = NULL;
 uint8_t g_flag_verbose = 0;
 
 /*
@@ -71,11 +72,18 @@ ACB_COMMAND utf_tool_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml);
 */
 int main(int argc, char** argv)
 {
+    /* Setting up arguments */
+    g_arg_node = ap_create();
+    ap_append_desc_noval(g_arg_node, 0, "--verbose", "Print everything regarding the ACB/XML");
+    
 	if(argc == 1)
 	{
 		utf_tool_print_usage(&argv[0][0]);
 		return 0;
 	}
+    
+    utf_tool_parse_arguments(argc, argv);
+    g_arg_node = ap_free(g_arg_node);
 
 	/* It's a file so let's process it */
 	if(pu_is_file(argv[1]))
@@ -173,16 +181,28 @@ void utf_tool_print_usage(char* program_name)
 	printf("\tTo pack: %s <file.xml> <options>\n", program_name);
     printf("\n");
     printf("Options:\n");
-    printf("\t%24s\t%s\n", "--verbose", "Print everything regarding the ACB/XML");
+
+    for(uint32_t i = 0; i != ap_get_desc_count(g_arg_node); ++i)
+    {
+        AP_ARG_DESC* apd = ap_get_desc_by_id(g_arg_node, i);
+        printf("\t%24s\t%s\n", apd->name, apd->description);
+    }
 }
 
 void utf_tool_parse_arguments(int argc, char** argv)
 {
-    arg_node = ap_parse_argv(argv, argc, arg_list, arg_list_size);
+    if(ap_parse(g_arg_node, argc-2, &argv[2]) != AP_STAT_SUCCESS)
+    {
+        return;
+    }
 
-    AP_VALUE_NODE* arg_verbose = ap_get_node_by_arg(arg_node, "--verbose");
+    AP_ARG_VEC arg_verbose = ap_get_arg_vec_by_name(g_arg_node, "--verbose");
     
-    if(arg_verbose != NULL) g_flag_verbose = 1;
+    if(arg_verbose)
+    {
+        g_flag_verbose = 1;
+        arg_verbose = ap_free_arg_vec(arg_verbose);
+    }
 }
 
 void utf_tool_print_table(UTF_TABLE* utf)

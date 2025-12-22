@@ -14,19 +14,6 @@
 #include <kwaslib/platinum/wtb.h>
 
 /*
-	Arguments
-*/
-const AP_ARG_DESC arg_list[] =
-{
-	{"--skip_ext_check", AP_TYPE_NOV},
-	{"--wtb", AP_TYPE_NOV},
-	{"--wta", AP_TYPE_NOV}
-};
-const uint32_t arg_list_size = 3;
-
-AP_VALUE_NODE* arg_node = NULL;
-
-/*
     Function declarations
 */
 
@@ -48,6 +35,7 @@ void wtb_tool_to_wta_wtp(SU_STRING* wta_path_str, WTB_FILE* wtb);
 /*
     Globals
 */
+AP_DESC* g_arg_node = NULL;
 
 /*
     Flags
@@ -61,6 +49,13 @@ uint8_t flag_wta = 0;
 */
 int main(int argc, char** argv)
 {
+    /* Setting up arguments */
+    g_arg_node = ap_create();
+    
+    ap_append_desc_noval(g_arg_node, 0, "--skip_ext_check", "Don't get a file type from directory suffix");
+    ap_append_desc_noval(g_arg_node, 1, "--wtb", "Force the creation of standalone WTB file (default)");
+    ap_append_desc_noval(g_arg_node, 0, "--wta", "Force the creation of WTA and WTP files");
+    
     /* No arguments, print usage */
     if(argc == 1)
     {
@@ -69,6 +64,7 @@ int main(int argc, char** argv)
     }
     
     wtb_tool_parse_arguments(argc, argv);
+    g_arg_node = ap_free(g_arg_node);
     
     if(pu_is_dir(argv[1])) /* It's a directory */
     {
@@ -260,9 +256,13 @@ void wtb_tool_print_usage(const char* exe_name)
 	printf("\n");
 	printf("Options:\n");
 	printf("\tPacking:\n");
-	printf("\t\t%24s\t%s\n", "--skip_ext_check", "Don't get a file type from directory suffix");
-	printf("\t\t%24s\t%s\n", "--wtb", "Force the creation of standalone WTB file (default)");
-	printf("\t\t%24s\t%s\n", "--wta", "Force the creation of WTA and WTP files");
+    
+    for(uint32_t i = 0; i != ap_get_desc_count(g_arg_node); ++i)
+    {
+        AP_ARG_DESC* apd = ap_get_desc_by_id(g_arg_node, i);
+        printf("\t\t%24s\t%s\n", apd->name, apd->description);
+    }
+    
 	printf("\n");
 	printf("DDS filenames in the unpacked directory are the texture IDs in decimal.\n");
 	printf("Only change them if you know what you are doing.\n");
@@ -270,27 +270,33 @@ void wtb_tool_print_usage(const char* exe_name)
 
 void wtb_tool_parse_arguments(int argc, char** argv)
 {
-	arg_node = ap_parse_argv(argv, argc, arg_list, arg_list_size);
+    if(ap_parse(g_arg_node, argc-2, &argv[2]) != AP_STAT_SUCCESS)
+    {
+        return;
+    }
 
-	AP_VALUE_NODE* arg_skip_ext_check = ap_get_node_by_arg(arg_node, "--skip_ext_check");
-	AP_VALUE_NODE* arg_wtb = ap_get_node_by_arg(arg_node, "--wtb");
-	AP_VALUE_NODE* arg_wta = ap_get_node_by_arg(arg_node, "--wta");
+    AP_ARG_VEC arg_ext = ap_get_arg_vec_by_name(g_arg_node, "--skip_ext_check");
+    AP_ARG_VEC arg_wtb = ap_get_arg_vec_by_name(g_arg_node, "--wtb");
+    AP_ARG_VEC arg_wta = ap_get_arg_vec_by_name(g_arg_node, "--wta");
 
-	if(arg_skip_ext_check)
+	if(arg_ext)
 	{
 		flag_skip_ext_check = 1;
+        arg_ext = ap_free_arg_vec(arg_ext);
 	}
 
     if(arg_wtb)
     {
         flag_wtb = 1;
         flag_wta = 0;
+        arg_wtb = ap_free_arg_vec(arg_wtb);
     }
     
     if(arg_wta)
     {
         flag_wtb = 0;
         flag_wta = 1;
+        arg_wta = ap_free_arg_vec(arg_wta);
     }
 }
 

@@ -1,264 +1,307 @@
 #include "arg_parser.h"
 
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 
-static const char* AP_TYPES_STR[] = 
+AP_DESC* ap_create()
 {
-	"AP_TYPE_NOV", 
-	"AP_TYPE_U8", "AP_TYPE_S8", 
-	"AP_TYPE_U16", "AP_TYPE_S16",
-	"AP_TYPE_U32", "AP_TYPE_S32", 
-	"AP_TYPE_U64", "AP_TYPE_S64",
-	"AP_TYPE_FLT", "AP_TYPE_DBL", 
-	"AP_TYPE_STR"
-};
-
-AP_VALUE_NODE* ap_parse_argv(char** argv, int argc, const AP_ARG_DESC* descs, const uint32_t descs_size)
-{
-	AP_VALUE_NODE* node = NULL;
-	AP_VALUE_NODE* cur_node = NULL;
-
-	/* First argument is the executable run path */
-	for(uint32_t it = 1; it != argc; ++it)
-	{
-		uint8_t arg_found = AP_ERROR;
-		
-		for(uint32_t it_desc = 0; it_desc < descs_size; ++it_desc)
-		{
-			const int arg_len = strlen(argv[it]);
-			const int desc_len = strlen(descs[it_desc].arg);
-			
-			if(strncmp(descs[it_desc].arg, argv[it], arg_len) == 0)
-			{
-				if(arg_len != desc_len)
-				{
-					/* Different sizes of the strings! Abort!!! */
-					it_desc = descs_size;
-					continue;
-				}
-				else
-				{
-					uint8_t selected_type = AP_TYPE_ILL;
-					
-					switch(descs[it_desc].type)
-					{
-						case AP_TYPE_NOV:
-							arg_found = AP_SUCCESS;
-							selected_type = AP_TYPE_NOV;
-							break;
-						case AP_TYPE_U8:
-						case AP_TYPE_U16:
-						case AP_TYPE_U32:
-						case AP_TYPE_U64:
-						case AP_TYPE_S8:
-						case AP_TYPE_S16:
-						case AP_TYPE_S32:
-						case AP_TYPE_S64:
-						case AP_TYPE_FLT:
-						case AP_TYPE_DBL:
-						case AP_TYPE_STR:
-							if(it < (argc-1))
-							{
-								arg_found = AP_SUCCESS;
-								selected_type = descs[it_desc].type;
-								it += 1;
-							}
-							break;
-					}
-					
-					if(arg_found == AP_SUCCESS)
-					{
-						if(node == NULL)
-						{
-							node = ap_create_empty_node();
-							cur_node = node;
-						}
-						else
-						{
-							ap_append_new_elem(node);
-							cur_node = cur_node->next;
-						}
-						
-						cur_node->data.desc.type = selected_type;
-						memcpy(cur_node->data.desc.arg, descs[it_desc].arg, arg_len);
-						
-						switch(cur_node->data.desc.type)
-						{
-							case AP_TYPE_U8:
-								cur_node->data.value.u8 = strtoul(argv[it], NULL, 0);
-								break;
-							case AP_TYPE_U16:
-								cur_node->data.value.u16 = strtoul(argv[it], NULL, 0);
-								break;
-							case AP_TYPE_U32:
-								cur_node->data.value.u32 = strtoul(argv[it], NULL, 0);
-								break;
-							case AP_TYPE_U64:
-								cur_node->data.value.u64 = strtoul(argv[it], NULL, 0);
-								break;
-							case AP_TYPE_S8:
-								cur_node->data.value.s8 = strtol(argv[it], NULL, 0);
-								break;
-							case AP_TYPE_S16:
-								cur_node->data.value.s16 = strtol(argv[it], NULL, 0);
-								break;
-							case AP_TYPE_S32:
-								cur_node->data.value.s32 = strtol(argv[it], NULL, 0);
-								break;
-							case AP_TYPE_S64:
-								cur_node->data.value.s64 = strtol(argv[it], NULL, 0);
-								break;
-							case AP_TYPE_FLT:
-								cur_node->data.value.f = strtod(argv[it], NULL);
-								break;
-							case AP_TYPE_DBL:
-								cur_node->data.value.d = strtod(argv[it], NULL);
-								break;
-							case AP_TYPE_STR:
-								cur_node->data.value.str = (char*)calloc(strlen(argv[it]), 1);
-								memcpy(cur_node->data.value.str, argv[it], strlen(argv[it]));
-								break;
-						}
-					}
-				}
-			}
-		}
-	}
-	
-	return node;
+    AP_DESC* desc = (AP_DESC*)calloc(1, sizeof(AP_DESC));
+    desc->available_args = cvec_create(sizeof(AP_ARG_DESC));
+    desc->parsed_args = cvec_create(sizeof(AP_ARG));
+    return desc;
 }
 
-AP_VALUE_NODE* ap_create_empty_node()
+AP_DESC* ap_free(AP_DESC* ap)
 {
-	return (AP_VALUE_NODE*)calloc(1, sizeof(AP_VALUE_NODE));
+    if(ap)
+    {
+        const uint64_t desc_count = ap_get_desc_count(ap);
+        const uint64_t arg_count = ap_get_arg_count(ap);
+        
+        /* Argument descriptors first */
+        for(uint64_t i = 0; i != desc_count; ++i)
+        {
+            AP_ARG_DESC* desc = ap_get_desc_by_id(ap, i);
+            
+            free(desc->name);
+            free(desc->description);
+            
+            if(desc->type == AP_TYPE_STR)
+            {
+                free(desc->value.str);
+            }
+        }
+        
+        /* Parsed arguments second */
+        for(uint64_t i = 0; i != arg_count; ++i)
+        {
+            AP_ARG* arg = ap_get_arg_by_id(ap, i);
+
+            if(arg->type == AP_TYPE_STR)
+            {
+                free(arg->value.str);
+            }
+        }
+        
+        /* Vectors third */
+        ap->available_args = cvec_destroy(ap->available_args);
+        ap->parsed_args = cvec_destroy(ap->parsed_args);
+        
+        /* Descriptor fourth */
+        free(ap);
+    }
+    
+    return NULL;
 }
 
-AP_VALUE_NODE* ap_get_node_by_arg(AP_VALUE_NODE* node, const char* arg)
+const uint8_t ap_append_arg_desc(AP_DESC* ap,
+                                 const char* name, const char* description,
+                                 uint8_t value_type, AP_VALUE default_value)
 {
-	if(node == NULL) return NULL;
-	
-	const uint32_t arg_size = strlen(arg);
-	AP_VALUE_NODE* cur_elem = node;
-	
-	while(1)
-	{
-		if(cur_elem != NULL)
-		{
-			const uint32_t cur_arg_size = strlen(cur_elem->data.desc.arg);
-			
-			if(cur_arg_size == arg_size)
-			{
-				if(strncmp(arg, cur_elem->data.desc.arg, arg_size) == 0)
-				{
-					return cur_elem;
-				}
-			}
-			
-			cur_elem = cur_elem->next;
-		}
-		else
-		{
-			return NULL;
-		}
-	}
-	
-	return NULL;
+    AP_ARG_DESC desc = {0};
+    
+    switch(value_type)
+    {
+        case AP_TYPE_NOV:
+        case AP_TYPE_U64:
+        case AP_TYPE_S64:
+        case AP_TYPE_F64:
+        case AP_TYPE_STR:
+        case AP_TYPE_BOOL:
+            desc.type = value_type;
+            desc.value.u64 = default_value.u64;
+            break;
+        default:
+            return AP_STAT_UNK_TYPE;
+    }
+    
+    const uint64_t name_len = strlen(name);
+    const uint64_t description_len = strlen(description);
+    desc.name = (char*)calloc(1, name_len+1);
+    desc.description = (char*)calloc(1, description_len+1);
+    memcpy(desc.name, name, name_len);
+    memcpy(desc.description, description, description_len);
+    
+    desc.name_hash = crc32_encode((const uint8_t*)name, name_len);
+    
+    cvec_push_back(ap->available_args, &desc);
+    
+    return AP_STAT_SUCCESS;
 }
 
-void ap_append_new_elem(AP_VALUE_NODE* node)
+const uint8_t ap_parse(AP_DESC* ap, int argc, char** argv)
 {
-	AP_VALUE_NODE* new_elem = ap_create_empty_node();
-	AP_VALUE_NODE* cur_elem = node;
+    if(argc == 0)
+    {
+        return AP_STAT_ARGC_0;
+    }
+    
+    for(int i = 0; i != argc; ++i)
+    {
+        const uint64_t len = strlen(argv[i]);
+        const uint32_t hash = crc32_encode((const uint8_t*)argv[i], len);
+        
+        AP_ARG_DESC* desc = ap_get_desc_by_hash(ap, hash);
+        
+        if(desc)
+        {
+            const uint8_t is_nov = (desc->type == AP_TYPE_NOV);
+            const int value_index = i+1;
+            char* value_str = argv[value_index];
+            uint64_t value_len = 0;
+            char* endptr = NULL;
+            AP_VALUE val = {0};
 
-	while(1)
-	{
-		if(cur_elem->next == NULL)
-		{
-			cur_elem->next = new_elem;
-			return;
-		}
-		else
-		{
-			cur_elem = cur_elem->next;
-		}
-	}
+            if(is_nov == 0)
+            {
+                if(value_index >= argc)
+                {
+                    return AP_STAT_ARG_NO_VAL;
+                }
+                
+                value_len = strlen(value_str);
+            }
+            
+            switch(desc->type)
+            {
+                case AP_TYPE_U64:
+                    val.u64 = strtoull(value_str, &endptr, 10);
+                    break;
+                case AP_TYPE_S64:
+                    val.s64 = strtoll(value_str, &endptr, 10);
+                    break;
+                case AP_TYPE_F64:
+                    val.f64 = strtod(value_str, &endptr);
+                    break;
+                case AP_TYPE_STR:
+                    val.str = (char*)calloc(1, value_len+1);
+                    memcpy(val.str, value_str, value_len);
+                    break;
+                case AP_TYPE_BOOL:
+                    switch(value_str[0])
+                    {
+                        case '0':
+                        case 'n':
+                        case 'N':
+                        case 'f':
+                        case 'F':
+                            val.b = 0;
+                            break;
+                        default:
+                            val.b = 1;
+                    }
+                    break;
+                case AP_TYPE_NOV:
+                    val.nov = (!desc->value.nov);
+                    break;
+                default:
+                    return AP_STAT_UNK_TYPE;
+            }
+            
+            ap_append_arg(ap, desc->name_hash, desc->type, val);
+        }
+        else
+        {
+            continue;
+        }
+    }
+    
+    return AP_STAT_SUCCESS;
 }
 
-
-void ap_free_node(AP_VALUE_NODE* node)
+const uint8_t ap_append_arg(AP_DESC* ap, uint32_t desc_hash,
+                            uint8_t value_type, AP_VALUE value)
 {
-	AP_VALUE_NODE* cur_node = node;
-	
-	while(cur_node != NULL)
-	{
-		AP_VALUE_NODE* next_node = cur_node->next;
-		
-		if(cur_node->data.desc.type == AP_TYPE_STR)
-		{
-			free(cur_node->data.value.str);
-		}
-		
-		free(cur_node);
-		
-		cur_node = next_node;
-	}
+    AP_ARG arg = {0};
+
+    switch(value_type)
+    {
+        case AP_TYPE_NOV:
+        case AP_TYPE_U64:
+        case AP_TYPE_S64:
+        case AP_TYPE_F64:
+        case AP_TYPE_STR:
+        case AP_TYPE_BOOL:
+            arg.value.u64 = value.u64;
+            arg.desc_hash = desc_hash;
+            arg.type = value_type;
+            break;
+        default:
+            return AP_STAT_UNK_TYPE;
+    }
+
+    cvec_push_back(ap->parsed_args, &arg);
+
+    return AP_STAT_SUCCESS;
 }
 
-void ap_print_node(AP_VALUE_NODE* node)
+/*
+    Functions for appending individual types of argument descriptors.
+*/
+const uint8_t ap_append_desc_uint(AP_DESC* ap, const uint64_t default_value,
+                                  const char* name, const char* description)
 {
-	AP_VALUE_NODE* elem = node;
-	uint32_t it = 0;
-	
-	while(elem != NULL)
-	{
-		switch(elem->data.desc.type)
-		{
-			case AP_TYPE_NOV:
-				printf("Node [%04u][%s]\n", it, ap_type_str(elem->data.desc.type));
-				break;
-			case AP_TYPE_U8: 
-				printf("Node [%04u][%s]: %u\n", it, ap_type_str(elem->data.desc.type), elem->data.value.s8);
-				break;
-			case AP_TYPE_U16: 
-				printf("Node [%04u][%s]: %u\n", it, ap_type_str(elem->data.desc.type), elem->data.value.s16);
-				break;
-			case AP_TYPE_U32: 
-				printf("Node [%04u][%s]: %u\n", it, ap_type_str(elem->data.desc.type), elem->data.value.s32);
-				break;
-			case AP_TYPE_U64: 
-				printf("Node [%04u][%s]: %llu\n", it, ap_type_str(elem->data.desc.type), elem->data.value.s64);
-				break;
-			case AP_TYPE_S8: 
-				printf("Node [%04u][%s]: %d\n", it, ap_type_str(elem->data.desc.type), elem->data.value.s8);
-				break;
-			case AP_TYPE_S16: 
-				printf("Node [%04u][%s]: %d\n", it, ap_type_str(elem->data.desc.type), elem->data.value.s16);
-				break;
-			case AP_TYPE_S32: 
-				printf("Node [%04u][%s]: %d\n", it, ap_type_str(elem->data.desc.type), elem->data.value.s32);
-				break;
-			case AP_TYPE_S64: 
-				printf("Node [%04u][%s]: %lld\n", it, ap_type_str(elem->data.desc.type), elem->data.value.s64);
-				break;
-			case AP_TYPE_FLT: 
-				printf("Node [%04u][%s]: %f\n", it, ap_type_str(elem->data.desc.type), elem->data.value.f);
-				break;
-			case AP_TYPE_DBL: 
-				printf("Node [%04u][%s]: %lf\n", it, ap_type_str(elem->data.desc.type), elem->data.value.d);
-				break;
-			case AP_TYPE_STR: 
-				printf("Node [%04u][%s]: %s\n", it, ap_type_str(elem->data.desc.type), elem->data.value.str);
-				break;
-		}
-		
-		elem = elem->next;
-		it += 1;
-	}
+    AP_VALUE def;
+    def.u64 = default_value;
+    return ap_append_arg_desc(ap, name, description, AP_TYPE_U64, def);
+}
+                                      
+const uint8_t ap_append_desc_int(AP_DESC* ap, const int64_t default_value,
+                                 const char* name, const char* description)
+{
+    AP_VALUE def;
+    def.s64 = default_value;
+    return ap_append_arg_desc(ap, name, description, AP_TYPE_S64, def);
+}
+                                     
+const uint8_t ap_append_desc_float(AP_DESC* ap, const double default_value,
+                                   const char* name, const char* description)
+{
+    AP_VALUE def;
+    def.f64 = default_value;
+    return ap_append_arg_desc(ap, name, description, AP_TYPE_F64, def);
+}
+                                       
+const uint8_t ap_append_desc_str(AP_DESC* ap, const char* default_value,
+                                 const char* name, const char* description)
+{
+    AP_VALUE def;
+    const uint64_t len = strlen(default_value);
+    def.str = (char*)calloc(1, len+1);
+    memcpy(def.str, default_value, len);
+    const uint8_t stat = ap_append_arg_desc(ap, name, description, AP_TYPE_STR, def);
+    
+    if(stat != AP_STAT_SUCCESS)
+    {
+        free(def.str);
+    }
+    
+    return stat;
+}
+                                     
+const uint8_t ap_append_desc_bool(AP_DESC* ap, const uint8_t default_value,
+                                      const char* name, const char* description)
+{
+    AP_VALUE def;
+    def.b = default_value;
+    return ap_append_arg_desc(ap, name, description, AP_TYPE_BOOL, def);
 }
 
-const char* ap_type_str(const uint8_t type)
+const uint8_t ap_append_desc_noval(AP_DESC* ap, const uint8_t default_value,
+                                       const char* name, const char* description)
 {
-	return AP_TYPES_STR[type];
+    AP_VALUE def;
+    def.nov = default_value;
+    return ap_append_arg_desc(ap, name, description, AP_TYPE_NOV, def);
+}
+
+/*
+    Misc utils
+*/
+AP_ARG_DESC* ap_get_desc_by_hash(AP_DESC* ap, const uint32_t name_hash)
+{
+    const uint64_t desc_count = ap_get_desc_count(ap);
+    
+    /* Argument descriptors first */
+    for(uint64_t i = 0; i != desc_count; ++i)
+    {
+        AP_ARG_DESC* desc = ap_get_desc_by_id(ap, i);
+        
+        if(desc->name_hash == name_hash)
+        {
+            return desc;
+        }
+    }
+    
+    return NULL;
+}
+
+AP_ARG_VEC ap_get_arg_vec_by_hash(AP_DESC* ap, const uint32_t desc_hash)
+{
+    AP_ARG_DESC* desc = ap_get_desc_by_hash(ap, desc_hash);
+    
+    if(desc == NULL)
+    {
+        return NULL;
+    }
+    
+    AP_ARG_VEC args = cvec_create(sizeof(AP_ARG));
+    
+    const uint64_t arg_count = ap_get_arg_count(ap);
+
+    for(uint64_t i = 0; i != arg_count; ++i)
+    {
+        AP_ARG* arg = ap_get_arg_by_id(ap, i);
+        
+        if(arg->desc_hash == desc_hash)
+        {
+            cvec_push_back(args, arg);
+        }
+    }
+    
+    if(ap_get_arg_vec_count(args) == 0)
+    {
+        args = ap_free_arg_vec(args);
+    }
+    
+    return args;
 }

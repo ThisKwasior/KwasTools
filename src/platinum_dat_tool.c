@@ -12,15 +12,7 @@
 /*
     Arguments
 */
-const AP_ARG_DESC arg_list[] =
-{
-    {"--be", AP_TYPE_NOV},
-    {"--skip_ext_check", AP_TYPE_NOV},
-    {"--block_size", AP_TYPE_U32},
-};
-const uint32_t arg_list_size = 3;
-
-AP_VALUE_NODE* arg_node = NULL;
+AP_DESC* g_arg_node = NULL;
 
 /* Flags */
 uint8_t dat_tool_endian = FU_HOST_ENDIAN;
@@ -55,6 +47,13 @@ DAT_FILE* dat_tool_from_folder(const char* input_dir);
 */
 int main(int argc, char** argv)
 {
+    /* Setting up arguments */
+    g_arg_node = ap_create();
+    
+    ap_append_desc_noval(g_arg_node, 0, "--be", "Pack the DAT as Big Endian (X360/PS3/WiiU)");
+    ap_append_desc_noval(g_arg_node, 0, "--skip_ext_check", "Don't get a file type from directory suffix");
+    ap_append_desc_uint(g_arg_node, DAT_DEFAULT_BLOCK_SIZE, "--block_size", "Block size to be used in the resulting DAT");
+
     if(argc < 2)
     {
         dat_tool_print_usage(argv[0]);
@@ -62,6 +61,7 @@ int main(int argc, char** argv)
     }
 
     dat_tool_parse_arguments(argc, argv);
+    g_arg_node = ap_free(g_arg_node);
     
     /* It's a file so let's process a DAT file */
     if(pu_is_file(argv[1]))
@@ -152,15 +152,32 @@ int main(int argc, char** argv)
 
 void dat_tool_parse_arguments(int argc, char** argv)
 {
-    arg_node = ap_parse_argv(argv, argc, arg_list, arg_list_size);
+    if(ap_parse(g_arg_node, argc-2, &argv[2]) != AP_STAT_SUCCESS)
+    {
+        return;
+    }
 
-    AP_VALUE_NODE* arg_be = ap_get_node_by_arg(arg_node, "--be");
-    AP_VALUE_NODE* arg_skip_ext_check = ap_get_node_by_arg(arg_node, "--skip_ext_check");
-    AP_VALUE_NODE* arg_block_size = ap_get_node_by_arg(arg_node, "--block_size");
+    AP_ARG_VEC arg_be  = ap_get_arg_vec_by_name(g_arg_node, "--be");
+    AP_ARG_VEC arg_ext = ap_get_arg_vec_by_name(g_arg_node, "--skip_ext_check");
+    AP_ARG_VEC arg_block_size = ap_get_arg_vec_by_name(g_arg_node, "--block_size");
     
-    if(arg_be != NULL) dat_tool_endian = FU_BIG_ENDIAN;
-    if(arg_skip_ext_check != NULL) flag_skip_ext_check = 1;
-    if(arg_block_size != NULL) val_block_size = arg_block_size->data.value.u32;
+    if(arg_be)
+    {
+        dat_tool_endian = FU_BIG_ENDIAN;
+        arg_be = ap_free_arg_vec(arg_be);
+    }
+    
+    if(arg_ext)
+    {
+        flag_skip_ext_check = 1;
+        arg_ext = ap_free_arg_vec(arg_ext);
+    }
+    
+    if(arg_block_size)
+    {
+        val_block_size = AP_GET_ARG_UINT(ap_get_arg_from_vec_by_id(arg_block_size, 0));
+        arg_block_size = ap_free_arg_vec(arg_block_size);
+    }
 }
 
 void dat_tool_print_usage(char* program_name)
@@ -171,9 +188,12 @@ void dat_tool_print_usage(char* program_name)
     printf("\n");
     printf("Options:\n");
     printf("\tPacking:\n");
-    printf("\t\t%24s\t%s\n", "--be", "Pack the DAT as Big Endian (X360/PS3/WiiU)");
-    printf("\t\t%24s\t%s\n", "--skip_ext_check", "Do not get the extension from the folder suffix");
-    printf("\t\t%24s\t%s\n", "--block_size", "Block size to be used in the resulting DAT (default is 16)");
+    
+    for(uint32_t i = 0; i != ap_get_desc_count(g_arg_node); ++i)
+    {
+        AP_ARG_DESC* apd = ap_get_desc_by_id(g_arg_node, i);
+        printf("\t\t%24s\t%s\n", apd->name, apd->description);
+    }
 }
 
 void dat_tool_print_dat(DAT_FILE* dat)
