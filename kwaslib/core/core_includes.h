@@ -5,6 +5,7 @@
 #include <kwaslib/core/crypto/crc32.h>
 
 #include <kwaslib/core/io/arg_parser.h>
+#include <kwaslib/core/io/date_utils.h>
 #include <kwaslib/core/io/dir_list.h>
 #include <kwaslib/core/io/file_utils.h>
 #include <kwaslib/core/io/path_utils.h>
