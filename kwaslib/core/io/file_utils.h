@@ -48,6 +48,12 @@ typedef struct
 	Functions
 */
 
+/*
+    Allocates and fills the FU_FILE pointer. Should've done it sooner.
+    Returns NULL on error.
+*/
+FU_FILE* fu_open(const char* path, const uint8_t to_memory);
+
 /* Return FU_SUCCESS on success, FU_ERROR otherwise. */
 uint8_t fu_open_file(const char* path, const uint8_t to_memory, FU_FILE* f);
 uint8_t fu_open_file_pu(PU_PATH* path, const uint8_t to_memory, FU_FILE* f);

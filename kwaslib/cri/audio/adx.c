@@ -31,7 +31,7 @@ ADX_FILE* adx_free(ADX_FILE* adx)
 
 ADX_FILE* adx_load_from_data(const uint8_t* data, const uint32_t size)
 {
-    if(size < 48)
+    if(size < ADX_MIN_FILE_SIZE)
     {
         return NULL;
     }
@@ -154,4 +154,42 @@ const uint32_t adx_get_file_size(ADX_FILE* adx)
     return 4 + adx->header.header_size
            + cvec_size(adx->frames)*adx->header.frame_size
            + 4 + adx->footer.pad_len;
+}
+
+const uint8_t adx_check_if_valid(const uint8_t* data, const uint32_t size)
+{
+    if(size < ADX_MIN_FILE_SIZE)
+    {
+        return ADX_TYPE_BAD;
+    }
+    
+    /* Check if it's a valid ADX before doing ANYTHING (learned hard way) */
+    if(su_cmp_char(ADX_MAGIC, 2, (const char*)&data[0], 2) != SU_STRINGS_MATCH)
+    {
+        return ADX_TYPE_BAD;
+    }
+    
+    /*
+        Read the header size and check
+        for cri copyright before allocating anything
+    */
+    const uint16_t header_size = tr_read_u16be(&data[2]);
+    char cric[6] = {0};
+    tr_read_array(&data[header_size-2], 6, (uint8_t*)&cric[0]);
+    
+    if(su_cmp_char(ADX_CRI_COPYRIGHT_STR, 6, cric, 6) != SU_STRINGS_MATCH)
+    {
+        return ADX_TYPE_BAD;
+    }
+    
+    /*
+        Check for AHX (MP2 audio)
+        TODO: Check framesize==0, bps==0, channels==1
+    */
+    if(data[4] == 0x10 || data[4] == 0x11)
+    {
+        return ADX_TYPE_AHX;
+    }
+    
+    return ADX_TYPE_ADX;
 }

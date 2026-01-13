@@ -88,7 +88,12 @@ AWB_FILE* awb_load_from_data(const uint8_t* data, const uint32_t size)
         
         if(adx)
         {
-            entry->type = AWB_DATA_ADX;
+            const uint8_t adx_type = adx_check_if_valid(data_offset, temp_size);
+            switch(adx_type)
+            {
+                case ADX_TYPE_AHX:  entry->type = AWB_DATA_AHX; break;
+                default:            entry->type = AWB_DATA_ADX;
+            }
             entry->size = adx_get_file_size(adx);
         }
         

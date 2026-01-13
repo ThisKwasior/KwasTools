@@ -41,6 +41,7 @@
 */
 AP_DESC* g_arg_node = NULL;
 uint8_t g_flag_verbose = 0;
+uint8_t g_afs2_counter = 0; 
 
 /*
 	Common
@@ -396,6 +397,7 @@ void utf_tool_table_to_xml(UTF_TABLE* utf, SEXML_ELEMENT* root, SU_STRING* work_
 			else if(record->embed_type == UTF_TABLE_VL_AFS2)
             {
                 utf_tool_afs2_to_xml(record->embed.afs2, row_xml, work_dir, utf_name);
+                g_afs2_counter += 1;
             }
 			else if(record->embed_type == UTF_TABLE_VL_ACBCMD)
 			{
@@ -455,15 +457,14 @@ void utf_tool_table_to_xml(UTF_TABLE* utf, SEXML_ELEMENT* root, SU_STRING* work_
 
 void utf_tool_afs2_to_xml(AWB_FILE* afs2, SEXML_ELEMENT* root, SU_STRING* work_dir, SU_STRING* awb_name)
 {
-    char buf[32] = {0};
-    
     SU_STRING* xml_path = su_copy(work_dir);
     su_insert_char(xml_path, -1, "/", 1);
     su_insert_string(xml_path, -1, awb_name);
     
     SU_STRING* files_dir = su_copy(xml_path);
-    const uint32_t buf_size = sprintf(buf, "_0x%08x", &afs2);
-    su_insert_char(files_dir, -1, buf, buf_size);
+    char dir_suffix_buf[4] = {0};
+    sprintf(dir_suffix_buf, "_%02x", g_afs2_counter);
+    su_insert_char(files_dir, -1, dir_suffix_buf, 3);
     su_insert_char(files_dir, -1, "/", 1);
 
     su_insert_char(xml_path, -1, ".xml", 4);
@@ -484,6 +485,7 @@ void utf_tool_afs2_to_xml(AWB_FILE* afs2, SEXML_ELEMENT* root, SU_STRING* work_d
         SEXML_ELEMENT* entry_xml = sexml_append_element(afs2_node, "entry");
         AWB_ENTRY* entry = awb_get_entry_by_id(afs2, i);
         SU_STRING* cur_file = su_copy(files_dir);
+        char buf[32] = {0};
         const uint32_t buf_id_size = sprintf(buf, "%05u", entry->id);
         su_insert_char(cur_file, -1, buf, buf_id_size);
         

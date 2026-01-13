@@ -15,6 +15,11 @@
 
 #define ADX_MAGIC               (const char*)"\x80\x00"
 #define ADX_CRI_COPYRIGHT_STR   (const char*)"(c)CRI"
+#define ADX_MIN_FILE_SIZE       (uint32_t)(48)
+
+#define ADX_TYPE_BAD            (uint8_t)(0)
+#define ADX_TYPE_ADX            (uint8_t)(1)
+#define ADX_TYPE_AHX            (uint8_t)(2)
 
 typedef struct
 {
@@ -49,7 +54,7 @@ typedef struct
 {
     uint8_t magic[2];
     uint16_t header_size;
-    uint8_t encoding_type;
+    uint8_t encoding_type;  /* 0x0N for ADX, 0x10/0x11 for AHX*/
     uint8_t frame_size;
     uint8_t bit_depth;
     uint8_t channel_count;
@@ -113,3 +118,9 @@ ADX_FILE* adx_load_from_data(const uint8_t* data, const uint32_t size);
     
 */
 const uint32_t adx_get_file_size(ADX_FILE* adx);
+
+/*
+    Checks if the file is either ADX or AHX.
+    Returns ADX_TYPE_BAD on error.
+*/
+const uint8_t adx_check_if_valid(const uint8_t* data, const uint32_t size);

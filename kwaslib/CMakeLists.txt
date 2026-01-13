@@ -43,6 +43,9 @@ set(KWASLIB_CORE_SOURCES
 	
 set(KWASLIB_CRI_SOURCES
 	${PROJECT_SOURCE_DIR}/cri/acb/acb_command.c
+	${PROJECT_SOURCE_DIR}/cri/archive/afs.c
+	${PROJECT_SOURCE_DIR}/cri/archive/afs_parse.c
+	${PROJECT_SOURCE_DIR}/cri/archive/afs_export.c
 	${PROJECT_SOURCE_DIR}/cri/audio/adx.c
 	${PROJECT_SOURCE_DIR}/cri/audio/awb.c
 	${PROJECT_SOURCE_DIR}/cri/audio/hca.c

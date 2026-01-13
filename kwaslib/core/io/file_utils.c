@@ -12,6 +12,19 @@ static const char* FU_STATUS_STR[] =
 	"FU_FEXISTS", "FU_NOTMEMF", "FU_REQ0", "FU_REQBEL0"
 };
 
+FU_FILE* fu_open(const char* path, const uint8_t to_memory)
+{
+    FU_FILE* fu = fu_alloc_file();
+    
+    if(fu_open_file(path, to_memory, fu) != FU_SUCCESS)
+    {
+        free(fu);
+        return NULL;
+    }
+        
+    return fu;
+}
+
 uint8_t fu_open_file(const char* path, const uint8_t to_memory, FU_FILE* f)
 {
 	fu_close(f);

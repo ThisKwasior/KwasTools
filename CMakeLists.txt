@@ -21,6 +21,7 @@ endif()
 set(KWASTOOLS_PROGRAMS
 	${PROJECT_SOURCE_DIR}/src/cri_utf_tool.c
 	${PROJECT_SOURCE_DIR}/src/cri_awb_tool.c
+	${PROJECT_SOURCE_DIR}/src/cri_afs_tool.c
 	
 	#${PROJECT_SOURCE_DIR}/src/pcmodeltool.cpp
 	${PROJECT_SOURCE_DIR}/src/he_anim_tool.c

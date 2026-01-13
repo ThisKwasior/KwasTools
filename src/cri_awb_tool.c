@@ -15,6 +15,8 @@
 #define XML_AFS2_NAME           (const char*)"AWB"
 #define XML_AFS2_NAME_SIZE      3
 
+uint8_t g_afs2_counter = 0; 
+
 /*
 	Common
 */
@@ -169,19 +171,20 @@ void awb_tool_to_xml(AWB_FILE* afs2, SU_STRING* out_file_str)
     xml_root = sexml_destroy(xml_root);
     work_dir = su_free(work_dir);
     awb_name = su_free(awb_name);
+    
+    g_afs2_counter += 1;
 }
 
 void awb_tool_afs2_to_xml(AWB_FILE* afs2, SEXML_ELEMENT* root, SU_STRING* work_dir, SU_STRING* awb_name)
 {
-    char buf[32] = {0};
-    
     SU_STRING* xml_path = su_copy(work_dir);
     su_insert_char(xml_path, -1, "/", 1);
     su_insert_string(xml_path, -1, awb_name);
     
     SU_STRING* files_dir = su_copy(xml_path);
-    const uint32_t buf_size = sprintf(buf, "_0x%08x", &afs2);
-    su_insert_char(files_dir, -1, buf, buf_size);
+    char dir_suffix_buf[4] = {0};
+    sprintf(dir_suffix_buf, "_%02x", g_afs2_counter);
+    su_insert_char(files_dir, -1, dir_suffix_buf, 3);
     su_insert_char(files_dir, -1, "/", 1);
 
     su_insert_char(xml_path, -1, ".xml", 4);
@@ -202,6 +205,7 @@ void awb_tool_afs2_to_xml(AWB_FILE* afs2, SEXML_ELEMENT* root, SU_STRING* work_d
         SEXML_ELEMENT* entry_xml = sexml_append_element(afs2_node, "entry");
         AWB_ENTRY* entry = awb_get_entry_by_id(afs2, i);
         SU_STRING* cur_file = su_copy(files_dir);
+        char buf[32] = {0};
         const uint32_t buf_id_size = sprintf(buf, "%05u", entry->id);
         su_insert_char(cur_file, -1, buf, buf_id_size);
         
@@ -209,6 +213,9 @@ void awb_tool_afs2_to_xml(AWB_FILE* afs2, SEXML_ELEMENT* root, SU_STRING* work_d
         {
             case AWB_DATA_ADX:
                 su_insert_char(cur_file, -1, ".adx", 4);
+                break;
+            case AWB_DATA_AHX:
+                su_insert_char(cur_file, -1, ".ahx", 4);
                 break;
             case AWB_DATA_HCA:
                 su_insert_char(cur_file, -1, ".hca", 4);

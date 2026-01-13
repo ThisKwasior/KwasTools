@@ -18,6 +18,7 @@
 #define AWB_DATA_ADX    1
 #define AWB_DATA_HCA    2
 #define AWB_DATA_BCWAV  3
+#define AWB_DATA_AHX    4
 
 typedef struct
 {

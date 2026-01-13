@@ -4,6 +4,10 @@
 #include <kwaslib/cri/acb/acb_command_opcodes.h>
 #include <kwaslib/cri/acb/acb_waveform.h>
 
+#include <kwaslib/cri/archive/afs.h>
+#include <kwaslib/cri/archive/afs_parse.h>
+#include <kwaslib/cri/archive/afs_export.h>
+
 #include <kwaslib/cri/audio/adx.h>
 #include <kwaslib/cri/audio/awb.h>
 #include <kwaslib/cri/audio/hca.h>
