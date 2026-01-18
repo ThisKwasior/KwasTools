@@ -6,7 +6,7 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")	
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os -fdata-sections -ffunction-sections" CACHE STRING "C Compiler flags" FORCE)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os -fdata-sections -ffunction-sections -fno-ident" CACHE STRING "C Compiler flags" FORCE)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm -fPIC -fno-ident -s -Wl,--gc-sections" CACHE STRING "EXE link flags" FORCE)
 	
 	set(CMAKE_STATIC_LINKER_FLAGS "-s" CACHE STRING "Static library linker flags" FORCE)
@@ -19,19 +19,19 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 set(KWASTOOLS_PROGRAMS
-	${PROJECT_SOURCE_DIR}/src/cri_utf_tool.c
-	${PROJECT_SOURCE_DIR}/src/cri_awb_tool.c
-	${PROJECT_SOURCE_DIR}/src/cri_afs_tool.c
+	${PROJECT_SOURCE_DIR}/src/cri/cri_utf_tool.c
+	${PROJECT_SOURCE_DIR}/src/cri/cri_awb_tool.c
+	${PROJECT_SOURCE_DIR}/src/cri/cri_afs_tool.c
 	
-	#${PROJECT_SOURCE_DIR}/src/pcmodeltool.cpp
-	${PROJECT_SOURCE_DIR}/src/he_anim_tool.c
+	#${PROJECT_SOURCE_DIR}/src/he/pcmodeltool.cpp
+	${PROJECT_SOURCE_DIR}/src/he/he_anim_tool.c
 	
-	${PROJECT_SOURCE_DIR}/src/nw4r_misc_to_he_xml.c
+	${PROJECT_SOURCE_DIR}/src/nw4r/nw4r_misc_to_he_xml.c
 
-	${PROJECT_SOURCE_DIR}/src/platinum_dat_tool.c
-	${PROJECT_SOURCE_DIR}/src/platinum_wtb_tool.c
-	#${PROJECT_SOURCE_DIR}/src/platinum_wmb4_tool.cpp
-	#${PROJECT_SOURCE_DIR}/src/platinum_misc_dat2dds2dat.c
+	${PROJECT_SOURCE_DIR}/src/platinum/platinum_dat_tool.c
+	${PROJECT_SOURCE_DIR}/src/platinum/platinum_wtb_tool.c
+	#${PROJECT_SOURCE_DIR}/src/platinum/platinum_wmb4_tool.cpp
+	#${PROJECT_SOURCE_DIR}/src/platinum/platinum_misc_dat2dds2dat.c
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
