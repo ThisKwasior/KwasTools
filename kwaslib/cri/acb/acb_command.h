@@ -22,18 +22,18 @@
     Defines
 */
 
-#define ACB_CMD_OPCODE_TYPE_NOVAL   0
-#define ACB_CMD_OPCODE_TYPE_U8      1
-#define ACB_CMD_OPCODE_TYPE_U16     2
-#define ACB_CMD_OPCODE_TYPE_U32     3
-#define ACB_CMD_OPCODE_TYPE_U64     4
-#define ACB_CMD_OPCODE_TYPE_F32     5
-#define ACB_CMD_OPCODE_TYPE_F64     6
-#define ACB_CMD_OPCODE_TYPE_U24     7
-#define ACB_CMD_OPCODE_TYPE_U40     8
-#define ACB_CMD_OPCODE_TYPE_U48     9
-#define ACB_CMD_OPCODE_TYPE_U56     10
-#define ACB_CMD_OPCODE_TYPE_VL      11
+#define ACB_CMD_OPCODE_TYPE_NOVAL   (uint8_t)(0)
+#define ACB_CMD_OPCODE_TYPE_U8      (uint8_t)(1)
+#define ACB_CMD_OPCODE_TYPE_U16     (uint8_t)(2)
+#define ACB_CMD_OPCODE_TYPE_U32     (uint8_t)(3)
+#define ACB_CMD_OPCODE_TYPE_U64     (uint8_t)(4)
+#define ACB_CMD_OPCODE_TYPE_F32     (uint8_t)(5)
+#define ACB_CMD_OPCODE_TYPE_F64     (uint8_t)(6)
+#define ACB_CMD_OPCODE_TYPE_U24     (uint8_t)(7)
+#define ACB_CMD_OPCODE_TYPE_U40     (uint8_t)(8)
+#define ACB_CMD_OPCODE_TYPE_U48     (uint8_t)(9)
+#define ACB_CMD_OPCODE_TYPE_U56     (uint8_t)(10)
+#define ACB_CMD_OPCODE_TYPE_VL      (uint8_t)(11)
 
 typedef struct
 {

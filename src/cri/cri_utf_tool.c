@@ -13,28 +13,17 @@
 #include <kwaslib/cri/utf/utf_table.h>
 #include <kwaslib/cri/utf/utf_common.h>
 
-#include <kwaslib/cri/acb/acb_command.h>
+/* ACB command unpacking/packing */
+#include "cri_acb_cmd.h"
+
+/* AWB unpacking/packing stuff shared with cri_awb_tool */
+#include "cri_awb.h"
 
 /*
     Defines
 */
 #define XML_UTF_NAME            (const char*)"CRIUTF"
 #define XML_UTF_NAME_SIZE       6
-#define XML_AFS2_NAME           (const char*)"AWB"
-#define XML_AFS2_NAME_SIZE      3
-#define XML_ACBCMD_NAME         (const char*)"ACBCMD"
-#define XML_ACBCMD_NAME_SIZE    6
-
-/*
-    Arguments
-*/
-//const AP_ARG_DESC arg_list[] =
-//{
-//    {"--verbose", AP_TYPE_NOV},
-//};
-//const uint32_t arg_list_size = 1;
-
-
 
 /*
     Globals
@@ -50,23 +39,17 @@ void utf_tool_parse_arguments(int argc, char** argv);
 
 void utf_tool_print_usage(char* program_name);
 void utf_tool_print_table(UTF_TABLE* utf);
-void utf_tool_print_afs2(AWB_FILE* awb);
-void utf_tool_print_acbcmd(ACB_COMMAND acbcmd);
 
 /*
 	Unpacker
 */
 void utf_tool_to_xml(UTF_TABLE* utf, SU_STRING* out_file_str);
 void utf_tool_table_to_xml(UTF_TABLE* utf, SEXML_ELEMENT* root, SU_STRING* work_dir, SU_STRING* utf_name);
-void utf_tool_afs2_to_xml(AWB_FILE* afs2, SEXML_ELEMENT* root, SU_STRING* work_dir, SU_STRING* awb_name);
-void utf_tool_acbcmd_to_xml(ACB_COMMAND acbcmd, SEXML_ELEMENT* root);
 
 /*
 	Packer
 */
 UTF_TABLE* utf_tool_xml_to_utf(SEXML_ELEMENT* utf_root);
-AWB_FILE* utf_tool_xml_to_afs2(SEXML_ELEMENT* awb_root);
-ACB_COMMAND utf_tool_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml);
 
 /* 
 	Entry
@@ -112,6 +95,11 @@ int main(int argc, char** argv)
             /* Convert the table to FU_FILE for saving */
 			UTF_TABLE* utf = utf_tool_xml_to_utf(xml_root);
             FU_FILE* utf_fu = utf_save_file(utf);
+            
+            if(g_flag_verbose)
+            {
+                utf_tool_print_table(utf);
+            }
 
 			/* Remove XML extension */
 			su_remove(input_file_path->ext, 0, -1);
@@ -276,68 +264,6 @@ void utf_tool_print_table(UTF_TABLE* utf)
     }
 }
 
-void utf_tool_print_afs2(AWB_FILE* awb)
-{
-    printf("### AFS2 ###\n");
-    for(uint32_t i = 0; i != awb_get_file_count(awb); ++i)
-    {
-        AWB_ENTRY* entry = awb_get_entry_by_id(awb, i);
-        printf("ID: %u\n", entry->id);
-        printf("\tSize: %u\n", entry->size);
-        printf("\tOffset: %u\n", entry->offset);
-        printf("\tType: %u\n", entry->type);
-    }
-    printf("### AFS2 END ###\n");
-}
-
-void utf_tool_print_acbcmd(ACB_COMMAND acbcmd)
-{
-    printf("### ACB Command ###\n");
-    printf("|Opcode|Size| Type |     Value     |\n");
-    
-    for(uint32_t i = 0; i != cvec_size(acbcmd); ++i)
-    {
-        ACB_COMMAND_OPCODE* op = acb_cmd_get_opcode_by_id(acbcmd, i);
-        printf("|%6u", op->op);
-        printf("|%4u", op->size);
-        printf("|%6s", acb_cmd_type_to_str(op->type));
-
-        switch(op->type)
-        {
-            case ACB_CMD_OPCODE_TYPE_U8:
-                printf("|%15u|", op->data.u8);
-                break;
-            case ACB_CMD_OPCODE_TYPE_U16:
-                printf("|%15u|", op->data.u16);
-                break;
-            case ACB_CMD_OPCODE_TYPE_U24:
-            case ACB_CMD_OPCODE_TYPE_U32:
-                printf("|%15u|", op->data.u32);
-                break;
-            case ACB_CMD_OPCODE_TYPE_U40:
-            case ACB_CMD_OPCODE_TYPE_U48:
-            case ACB_CMD_OPCODE_TYPE_U56:
-            case ACB_CMD_OPCODE_TYPE_U64:
-                printf("|%15llu|", op->data.u64);
-                break;
-            case ACB_CMD_OPCODE_TYPE_F32:
-                printf("|%15f|", op->data.f32);
-                break;
-            case ACB_CMD_OPCODE_TYPE_F64:
-                printf("|%15lf|", op->data.f64);
-                break;
-            case ACB_CMD_OPCODE_TYPE_VL:
-                printf("|%15s|", "Variable Length");
-                break;
-            default:
-                printf("|    UNKNOWN    |");
-        }
-        
-        printf("\n");
-    }
-    printf("### ACB Command END ###\n");
-}
-
 /*
 	Unpacker
 */
@@ -396,12 +322,12 @@ void utf_tool_table_to_xml(UTF_TABLE* utf, SEXML_ELEMENT* root, SU_STRING* work_
 			}
 			else if(record->embed_type == UTF_TABLE_VL_AFS2)
             {
-                utf_tool_afs2_to_xml(record->embed.afs2, row_xml, work_dir, utf_name);
+                cri_awb_afs2_to_xml(record->embed.afs2, row_xml, work_dir, utf_name, g_afs2_counter);
                 g_afs2_counter += 1;
             }
 			else if(record->embed_type == UTF_TABLE_VL_ACBCMD)
 			{
-				utf_tool_acbcmd_to_xml(record->embed.acbcmd, row_xml);
+				cri_acb_cmd_to_xml(record->embed.acbcmd, row_xml);
 			}
 			else /* Regular record or unknown VL data */
 			{
@@ -453,112 +379,6 @@ void utf_tool_table_to_xml(UTF_TABLE* utf, SEXML_ELEMENT* root, SU_STRING* work_
 			}
 		}
 	}
-}
-
-void utf_tool_afs2_to_xml(AWB_FILE* afs2, SEXML_ELEMENT* root, SU_STRING* work_dir, SU_STRING* awb_name)
-{
-    SU_STRING* xml_path = su_copy(work_dir);
-    su_insert_char(xml_path, -1, "/", 1);
-    su_insert_string(xml_path, -1, awb_name);
-    
-    SU_STRING* files_dir = su_copy(xml_path);
-    char dir_suffix_buf[4] = {0};
-    sprintf(dir_suffix_buf, "_%02x", g_afs2_counter);
-    su_insert_char(files_dir, -1, dir_suffix_buf, 3);
-    su_insert_char(files_dir, -1, "/", 1);
-
-    su_insert_char(xml_path, -1, ".xml", 4);
-    
-    /* Create the directory */
-    pu_create_dir_char(files_dir->ptr);
-    
-    /* Writing XML stuff */
-    SEXML_ELEMENT* afs2_node = sexml_append_element(root, XML_AFS2_NAME);
-    sexml_append_attribute_uint(afs2_node, "version", afs2->header.version);
-    sexml_append_attribute_uint(afs2_node, "offset_size", afs2->header.offset_size);
-    sexml_append_attribute_uint(afs2_node, "id_size", afs2->header.id_size);
-    sexml_append_attribute_uint(afs2_node, "alignment", afs2->header.alignment);
-    sexml_append_attribute_uint(afs2_node, "subkey", afs2->header.subkey);
-    
-    for(uint32_t i = 0; i != awb_get_file_count(afs2); ++i)
-    {
-        SEXML_ELEMENT* entry_xml = sexml_append_element(afs2_node, "entry");
-        AWB_ENTRY* entry = awb_get_entry_by_id(afs2, i);
-        SU_STRING* cur_file = su_copy(files_dir);
-        char buf[32] = {0};
-        const uint32_t buf_id_size = sprintf(buf, "%05u", entry->id);
-        su_insert_char(cur_file, -1, buf, buf_id_size);
-        
-        switch(entry->type)
-        {
-            case AWB_DATA_ADX:
-                su_insert_char(cur_file, -1, ".adx", 4);
-                break;
-            case AWB_DATA_HCA:
-                su_insert_char(cur_file, -1, ".hca", 4);
-                break;
-            case AWB_DATA_BCWAV:
-                su_insert_char(cur_file, -1, ".bcwav", 6);
-                break;
-            default:
-                su_insert_char(cur_file, -1, ".bin", 4);
-        }
-        
-        sexml_append_attribute_uint(entry_xml, "id", entry->id);
-        sexml_append_attribute(entry_xml, "path", cur_file->ptr);
-        
-        fu_buffer_to_file(cur_file->ptr, (char*)entry->data, entry->size, 1);
-        
-        cur_file = su_free(cur_file);
-    }
-    
-    files_dir = su_free(files_dir);
-    xml_path = su_free(xml_path);
-}
-
-void utf_tool_acbcmd_to_xml(ACB_COMMAND acbcmd, SEXML_ELEMENT* root)
-{
-    const uint32_t acbcmd_count = acb_cmd_get_opcode_count(acbcmd);
-    
-    SEXML_ELEMENT* acbcmd_node = sexml_append_element(root, XML_ACBCMD_NAME);
-    
-    for(uint32_t i = 0; i != acbcmd_count; ++i)
-    {
-        ACB_COMMAND_OPCODE* op = acb_cmd_get_opcode_by_id(acbcmd, i);
-        
-        SEXML_ELEMENT* cmd_xml = sexml_append_element(acbcmd_node, "cmd");
-		sexml_append_attribute_uint(cmd_xml, "op", op->op);
-		sexml_append_attribute(cmd_xml, "type", acb_cmd_type_to_str(op->type));
-        
-        switch(op->type)
-        {
-            case ACB_CMD_OPCODE_TYPE_U8:
-                sexml_append_attribute_uint(cmd_xml, "value", op->data.u8);
-                break;
-            case ACB_CMD_OPCODE_TYPE_U16:
-                sexml_append_attribute_uint(cmd_xml, "value", op->data.u16);
-                break;
-            case ACB_CMD_OPCODE_TYPE_U24:
-            case ACB_CMD_OPCODE_TYPE_U32:
-                sexml_append_attribute_uint(cmd_xml, "value", op->data.u32);
-                break;
-            case ACB_CMD_OPCODE_TYPE_U40:
-            case ACB_CMD_OPCODE_TYPE_U48:
-            case ACB_CMD_OPCODE_TYPE_U56:
-            case ACB_CMD_OPCODE_TYPE_U64:
-                sexml_append_attribute_uint(cmd_xml, "value", op->data.u64);
-                break;
-            case ACB_CMD_OPCODE_TYPE_F32:
-                sexml_append_attribute_double(cmd_xml, "value", op->data.f32, 8);
-                break;
-            case ACB_CMD_OPCODE_TYPE_F64:
-                sexml_append_attribute_double(cmd_xml, "value", op->data.f64, 16);
-                break;
-            case ACB_CMD_OPCODE_TYPE_VL:
-                sexml_append_attribute_vl(cmd_xml, "value", (const char*)op->data.vl, op->size);
-                break;
-        }
-    }
 }
 
 /*
@@ -648,6 +468,11 @@ UTF_TABLE* utf_tool_xml_to_utf(SEXML_ELEMENT* utf_xml)
                 /* UTF Table */
                 record->embed_type = UTF_TABLE_VL_UTF;
                 record->embed.utf = utf_tool_xml_to_utf(record_xml);
+                
+                if(g_flag_verbose)
+                {
+                    utf_tool_print_table(record->embed.utf);
+                }
 			}
 			else if(su_cmp_char(XML_AFS2_NAME, XML_AFS2_NAME_SIZE,
                                 record_xml->name->ptr, record_xml->name->size)
@@ -655,7 +480,12 @@ UTF_TABLE* utf_tool_xml_to_utf(SEXML_ELEMENT* utf_xml)
 			{
                 /* AFS2 */
                 record->embed_type = UTF_TABLE_VL_AFS2;
-                record->embed.afs2 = utf_tool_xml_to_afs2(record_xml);
+                record->embed.afs2 = cri_awb_xml_to_afs2(record_xml);
+                
+                if(g_flag_verbose)
+                {
+                    cri_awb_print_afs2(record->embed.afs2);
+                }
 			}
 			else if(su_cmp_char(XML_ACBCMD_NAME, XML_ACBCMD_NAME_SIZE,
                                 record_xml->name->ptr, record_xml->name->size)
@@ -663,118 +493,15 @@ UTF_TABLE* utf_tool_xml_to_utf(SEXML_ELEMENT* utf_xml)
 			{
                 /* ACB Command */
                 record->embed_type = UTF_TABLE_VL_ACBCMD;
-                record->embed.acbcmd = utf_tool_xml_to_acbcmd(record_xml);
+                record->embed.acbcmd = cri_acb_cmd_xml_to_acbcmd(record_xml);
+                
+                if(g_flag_verbose)
+                {
+                    cri_acb_cmd_print_acbcmd(record->embed.acbcmd);
+                }
 			}
         }
     }
     
-    if(g_flag_verbose)
-    {
-        utf_tool_print_table(utf);
-    }
-
     return utf;
-}
-
-AWB_FILE* utf_tool_xml_to_afs2(SEXML_ELEMENT* awb_root)
-{
-    AWB_FILE* afs2 = awb_alloc();
-    
-    afs2->header.version = sexml_get_attribute_int_by_name(awb_root, "version");
-    afs2->header.offset_size = sexml_get_attribute_int_by_name(awb_root, "offset_size");
-    afs2->header.id_size = sexml_get_attribute_int_by_name(awb_root, "id_size");
-    afs2->header.alignment = sexml_get_attribute_int_by_name(awb_root, "alignment");
-    afs2->header.subkey = sexml_get_attribute_int_by_name(awb_root, "subkey");
-    const uint32_t entries_count = cvec_size(awb_root->elements);
-    
-    for(uint32_t i = 0; i != entries_count; ++i)
-    {
-        SEXML_ELEMENT* entry_xml = sexml_get_element_by_id(awb_root, i);
-        
-        /* Check if it really is an entry */
-        if(su_cmp_char(entry_xml->name->ptr, entry_xml->name->size, "entry", 5) == SU_STRINGS_MATCH)
-        {
-            SEXML_ATTRIBUTE* id_attr = sexml_get_attribute_by_name(entry_xml, "id");
-            SEXML_ATTRIBUTE* file_path = sexml_get_attribute_by_name(entry_xml, "path");
-            
-            /* Only proceed if both values exist */
-            if(id_attr && file_path)
-            {
-                const uint32_t id = sexml_get_attribute_uint(id_attr);
-                FU_FILE audio_file = {0};
-                fu_open_file(file_path->value->ptr, 1, &audio_file);
-                
-                if(audio_file.size != 0)
-                    awb_append_entry(afs2, id, (uint8_t*)audio_file.buf, audio_file.size);
-                
-                fu_close(&audio_file);
-            }
-        }
-    }
-    
-    if(g_flag_verbose)
-    {
-        utf_tool_print_afs2(afs2);
-    }
-
-    return afs2;
-}
-
-ACB_COMMAND utf_tool_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml)
-{
-    const uint32_t cmd_count = cvec_size(acbcmd_xml->elements);
-    ACB_COMMAND acbcmd = acb_cmd_alloc();
- 
-    for(uint32_t i = 0; i != cmd_count; ++i)
-    {
-        ACB_COMMAND_OPCODE op = {0};
-        SEXML_ELEMENT* cmd_xml = sexml_get_element_by_id(acbcmd_xml, i);
-        
-        SEXML_ATTRIBUTE* type_attr = sexml_get_attribute_by_name(cmd_xml, "type");
-        SEXML_ATTRIBUTE* val_attr = sexml_get_attribute_by_name(cmd_xml, "value");
-        
-        op.op = sexml_get_attribute_uint_by_name(cmd_xml, "op");
-        op.type = acb_cmd_str_to_type(type_attr->value->ptr, type_attr->value->size);
-        op.size = acb_cmd_size_by_type(op.type);
-        
-        switch(op.type)
-        {
-            case ACB_CMD_OPCODE_TYPE_U8:
-                op.data.u8 = sexml_get_attribute_uint(val_attr);
-                break;
-            case ACB_CMD_OPCODE_TYPE_U16:
-                op.data.u16 = sexml_get_attribute_uint(val_attr);
-                break;
-            case ACB_CMD_OPCODE_TYPE_U24:
-            case ACB_CMD_OPCODE_TYPE_U32:
-                op.data.u32 = sexml_get_attribute_uint(val_attr);
-                break;
-            case ACB_CMD_OPCODE_TYPE_U40:
-            case ACB_CMD_OPCODE_TYPE_U48:
-            case ACB_CMD_OPCODE_TYPE_U56:
-            case ACB_CMD_OPCODE_TYPE_U64:
-                op.data.u64 = sexml_get_attribute_uint(val_attr);
-                break;
-            case ACB_CMD_OPCODE_TYPE_F32:
-                op.data.f32 = sexml_get_attribute_double(val_attr);
-                break;
-            case ACB_CMD_OPCODE_TYPE_F64:
-                op.data.f64 = sexml_get_attribute_double(val_attr);
-                break;
-            case ACB_CMD_OPCODE_TYPE_VL:
-                SU_STRING* vl = sexml_get_attribute_vl(val_attr);
-                op.size = vl->size;
-                memcpy(op.data.vl, (uint8_t*)vl->ptr, op.size);
-                su_free(vl);
-        }
-        
-        acb_cmd_append_opcode(acbcmd, op);
-    }
-    
-    if(g_flag_verbose)
-    {
-        utf_tool_print_acbcmd(acbcmd);
-    }
-    
-    return acbcmd;
 }

@@ -2,6 +2,7 @@
 
 #include <kwaslib/cri/acb/acb_command.h>
 #include <kwaslib/cri/acb/acb_command_opcodes.h>
+#include <kwaslib/cri/acb/acb_command_readers.h>
 #include <kwaslib/cri/acb/acb_waveform.h>
 
 #include <kwaslib/cri/archive/afs.h>
