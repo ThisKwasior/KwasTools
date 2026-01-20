@@ -22,10 +22,12 @@
 #define AP_TYPE_F64	        (uint8_t)(12)
 #define AP_TYPE_STR	        (uint8_t)(13)
 #define AP_TYPE_BOOL	    (uint8_t)(14)
-#define AP_TYPE_NOV         (uint8_t)(15)   /* Arg isn't followed by a value. Internally a bool.
+#define AP_TYPE_NOV         (uint8_t)(15)   /* 
+                                               Arg isn't followed by a value. Internally a bool.
                                                Every parsed arg of this type will be
                                                a negation of default value. 
-                                               i.e. 0 -> 1, 1 -> 0 */
+                                               i.e. 0 -> 1, 1 -> 0
+                                            */
                                             
 
 /*
