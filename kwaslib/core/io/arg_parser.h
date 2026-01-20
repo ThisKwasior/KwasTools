@@ -42,8 +42,8 @@
     Misc macros
 */
 #define AP_VEC_ELEM_BY_ID(v,i)          (cvec_at(v,i))
-#define AP_DESC_FROM_VEC_BY_ID(v,i)     (AP_ARG_DESC*)(AP_VEC_ELEM_BY_ID(v,i))
-#define AP_ARG_FROM_VEC_BY_ID(v,i)      (AP_ARG*)(AP_VEC_ELEM_BY_ID(v,i))
+#define AP_DESC_FROM_VEC_BY_ID(v,i)     ((AP_ARG_DESC*)(AP_VEC_ELEM_BY_ID(v,i)))
+#define AP_ARG_FROM_VEC_BY_ID(v,i)      ((AP_ARG*)(AP_VEC_ELEM_BY_ID(v,i)))
 
 /*
     Types
