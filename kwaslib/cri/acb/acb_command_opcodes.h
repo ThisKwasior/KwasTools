@@ -4,6 +4,12 @@
     Integers
 */
 #define ACB_CMD_OP_NOP                                      (uint16_t)(0)
+
+/*
+    Wrong size - 0x0b, should be 0x07
+    https://game.criware.jp/manual/adx2_tool_en/latest/criatom_tools_atomcraft_dsp_effect_biquad_filter.html
+*/
+#define ACB_CMD_OP_BIQUAD                                   (uint16_t)(31)      
 #define ACB_CMD_OP_MUTE                                     (uint16_t)(33)
 #define ACB_CMD_OP_CATEGORY                                 (uint16_t)(65)
 #define ACB_CMD_OP_VOLUME_GAIN_RESOLUTION100                (uint16_t)(87)
@@ -49,6 +55,7 @@
     Names
 */
 #define ACB_CMD_NAME_NOP                                    (const char*)"nop"
+#define ACB_CMD_NAME_BIQUAD                                 (const char*)"biquad_0x001F"
 #define ACB_CMD_NAME_MUTE                                   (const char*)"mute"
 #define ACB_CMD_NAME_CATEGORY                               (const char*)"category"
 #define ACB_CMD_NAME_VOLUME_GAIN_RESOLUTION100              (const char*)"volumeGainResolution100"
@@ -64,7 +71,7 @@
 #define ACB_CMD_NAME_SET_SYNTH_OR_WAVEFORM                  (const char*)"setSynthOrWaveform"
 #define ACB_CMD_NAME_NOTE_ON_WITH_NO                        (const char*)"noteOnWithNo"
 #define ACB_CMD_NAME_NOTE_ON_WITH_DURATION                  (const char*)"noteOnWithDuration"
-#define ACB_CMD_NAME_SEQUENCE_END                             (const char*)"sequenceEnd"
+#define ACB_CMD_NAME_SEQUENCE_END                           (const char*)"sequenceEnd"
 #define ACB_CMD_NAME_BLOCK_END                              (const char*)"blockEnd"
 #define ACB_CMD_NAME_TRANSITION_TRACK                       (const char*)"transitionTrack"
 #define ACB_CMD_NAME_START_ACTION                           (const char*)"startAction"

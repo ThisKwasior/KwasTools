@@ -40,6 +40,7 @@ typedef struct
 	uint16_t op;
 	uint8_t size;
 	uint8_t type;
+    uint8_t real_size;
 	
 	union
 	{

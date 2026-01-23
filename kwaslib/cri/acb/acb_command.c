@@ -28,7 +28,7 @@ ACB_COMMAND acb_cmd_load_from_data(const uint8_t* data, const uint32_t size)
         const ACB_COMMAND_OPCODE op = acb_cmd_parse_opcode(&data[iter]);
         acb_cmd_append_opcode(acbcmd, op);
         iter += 3;
-        iter += op.size;
+        iter += op.real_size;
     }
     
     return acbcmd;
@@ -40,6 +40,14 @@ const ACB_COMMAND_OPCODE acb_cmd_parse_opcode(const uint8_t* data)
     
     cmd.op = tr_read_u16be(&data[0]);
     cmd.size = data[2];
+    cmd.real_size = cmd.size;
+    
+    switch(cmd.op)
+    {
+        case ACB_CMD_OP_BIQUAD:
+            cmd.real_size = 0x07;
+            break;
+    }
     
     /* For nonstandard ints */
     uint8_t buf[8] = {0};
@@ -87,7 +95,7 @@ const ACB_COMMAND_OPCODE acb_cmd_parse_opcode(const uint8_t* data)
             break;
         default:
             cmd.type = ACB_CMD_OPCODE_TYPE_VL;
-            tr_read_array(&data[3], cmd.size, cmd.data.vl);
+            tr_read_array(&data[3], cmd.real_size, cmd.data.vl);
     }
     
     /* Check for floats */
@@ -96,9 +104,9 @@ const ACB_COMMAND_OPCODE acb_cmd_parse_opcode(const uint8_t* data)
         case ACB_CMD_OP_POS_3D_DISTANCE_MIN:
         case ACB_CMD_OP_POS_3D_DISTANCE_MAX:
         case ACB_CMD_OP_VOLUME_CONTROL:
-            if(cmd.size == 4)
+            if(cmd.real_size == 4)
                 cmd.type = ACB_CMD_OPCODE_TYPE_F32;
-            if(cmd.size == 8)
+            if(cmd.real_size == 8)
                 cmd.type = ACB_CMD_OPCODE_TYPE_F64;
             break;
     }
@@ -175,11 +183,11 @@ SU_STRING* acb_cmd_to_data(ACB_COMMAND acbcmd)
                 tw_write_f32be(op->data.f64, ptr);
                 break;
             case ACB_CMD_OPCODE_TYPE_VL:
-                tw_write_array(op->data.vl, op->size, ptr);
+                tw_write_array(op->data.vl, op->real_size, ptr);
                 break;
         }
         
-        ptr += op->size;
+        ptr += op->real_size;
     }
     
     return output;
@@ -193,7 +201,7 @@ const uint32_t acb_cmd_calc_buffer_size(ACB_COMMAND acbcmd)
     {
         ACB_COMMAND_OPCODE* op = acb_cmd_get_opcode_by_id(acbcmd, i);
         size += 3;
-        size += op->size;
+        size += op->real_size;
     }
     
     return size;
