@@ -29,8 +29,10 @@
     Globals
 */
 AP_DESC* g_arg_node = NULL;
-uint8_t g_flag_verbose = 0;
-uint8_t g_afs2_counter = 0; 
+uint8_t g_flag_verbose      = 0;
+uint8_t g_flag_overwrite    = 0;
+uint8_t g_xml_indent        = 4;
+uint8_t g_afs2_counter      = 0; 
 
 /*
 	Common
@@ -59,6 +61,8 @@ int main(int argc, char** argv)
     /* Setting up arguments */
     g_arg_node = ap_create();
     ap_append_desc_noval(g_arg_node, 0, "--verbose", "Print everything regarding the ACB/XML");
+    ap_append_desc_noval(g_arg_node, 0, "--force", "Force overwrite of the output");
+    ap_append_desc_uint(g_arg_node, 4, "--xml_indent", "Indentation for the XML file");
     
 	if(argc == 1)
 	{
@@ -115,7 +119,34 @@ int main(int argc, char** argv)
 
             /* Saving the table to disk */
 			printf("\nUTF Path: %*s\n", utf_out_str->size, utf_out_str->ptr);
-			fu_to_file(utf_out_str->ptr, utf_fu, 1);
+            
+            /* Check if the file exists before writing to it */
+            if(g_flag_overwrite)
+            {
+                fu_to_file(utf_out_str->ptr, utf_fu, 1);
+            }
+            else
+            {
+                if(pu_is_file(utf_out_str->ptr))
+                {
+                    printf("File \"%s\" exists!\nAre you sure you want to overwrite? [Y/n] ", utf_out_str->ptr);
+                    int decision = getc(stdin);
+                    
+                    switch(decision)
+                    {
+                        case 'Y':
+                            printf("Overwriting...\n");
+                            fu_to_file(utf_out_str->ptr, utf_fu, 1);
+                            break;
+                        default:
+                            printf("Not overwriting\n");
+                    }
+                }
+                else
+                {
+                    fu_to_file(utf_out_str->ptr, utf_fu, 1);
+                }
+            }
             
             utf_out_str_ext = su_free(utf_out_str_ext);
             utf_out_str = su_free(utf_out_str);
@@ -146,7 +177,32 @@ int main(int argc, char** argv)
             printf("\nSave Path: %*s\n", out_str->size, out_str->ptr);
 
 			/* Save the UTF to xml */
-			utf_tool_to_xml(utf, out_str);
+            if(g_flag_overwrite)
+            {
+                utf_tool_to_xml(utf, out_str);
+            }
+            else
+            {
+                if(pu_is_file(out_str->ptr))
+                {
+                    printf("File \"%s\" exists!\nAre you sure you want to overwrite? [Y/n] ", out_str->ptr);
+                    int decision = getc(stdin);
+                    
+                    switch(decision)
+                    {
+                        case 'Y':
+                            printf("Overwriting...\n");
+                            utf_tool_to_xml(utf, out_str);
+                            break;
+                        default:
+                            printf("Not overwriting\n");
+                    }
+                }
+                else
+                {
+                    utf_tool_to_xml(utf, out_str);
+                }
+            }
 
 			/* Cleanup */
             out_str = su_free(out_str);
@@ -186,11 +242,25 @@ void utf_tool_parse_arguments(int argc, char** argv)
     }
 
     AP_ARG_VEC arg_verbose = ap_get_arg_vec_by_name(g_arg_node, "--verbose");
+    AP_ARG_VEC arg_force = ap_get_arg_vec_by_name(g_arg_node, "--force");
+    AP_ARG_VEC arg_xml_indent = ap_get_arg_vec_by_name(g_arg_node, "--xml_indent");
     
     if(arg_verbose)
     {
         g_flag_verbose = 1;
         arg_verbose = ap_free_arg_vec(arg_verbose);
+    }
+    
+    if(arg_verbose)
+    {
+        g_flag_overwrite = 1;
+        arg_force = ap_free_arg_vec(arg_force);
+    }
+    
+    if(arg_xml_indent)
+    {
+        g_xml_indent = AP_GET_ARG_UINT(AP_ARG_FROM_VEC_BY_ID(arg_xml_indent, 0));
+        arg_xml_indent = ap_free_arg_vec(arg_xml_indent);
     }
 }
 
@@ -277,7 +347,7 @@ void utf_tool_to_xml(UTF_TABLE* utf, SU_STRING* out_file_str)
     
     SEXML_ELEMENT* utf_xml = sexml_get_element_by_id(xml_root, 0);
     utf_xml->parent = NULL; /* A little bit of trickery */
-	sexml_save_to_file_formatted(out_file_str->ptr, utf_xml, 4);
+	sexml_save_to_file_formatted(out_file_str->ptr, utf_xml, g_xml_indent);
     utf_xml->parent = xml_root;
     
     xml_root = sexml_destroy(xml_root);
@@ -311,6 +381,8 @@ void utf_tool_table_to_xml(UTF_TABLE* utf, SEXML_ELEMENT* root, SU_STRING* work_
 	for(uint32_t i = 0; i != rows_count; ++i)
 	{
         SEXML_ELEMENT* row_xml = sexml_append_element(rows_xml, "row");
+        sexml_append_attribute_uint(row_xml, "index", i);
+        
 		for(uint32_t j = 0; j != columns_count; ++j)
 		{
             UTF_COLUMN* column = utf_table_get_column_by_id(utf, j);

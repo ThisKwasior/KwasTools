@@ -46,6 +46,8 @@ inline static void cri_acb_cmd_to_xml(ACB_COMMAND acbcmd, SEXML_ELEMENT* root)
         ACB_COMMAND_OPCODE* op = acb_cmd_get_opcode_by_id(acbcmd, i);
         SEXML_ELEMENT* cmd_xml = NULL;
         
+        //goto dont_parse_known;
+        
         /* First we try to parse known opcodes to more familiar structure */
         switch(op->op)
         {
@@ -53,16 +55,27 @@ inline static void cri_acb_cmd_to_xml(ACB_COMMAND acbcmd, SEXML_ELEMENT* root)
             case ACB_CMD_OP_NOP:
                 cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_NOP);
                 continue;
+            /* 31 - 7 bytes, but reports 11 */
+            case ACB_CMD_OP_BIQUAD:
+                cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_BIQUAD);
+                uint8_t biquad_type;
+                uint16_t biquad_cof, biquad_gain, biquad_qf;
+                acb_cmd_read_biquad(op, &biquad_type, &biquad_cof, &biquad_gain, &biquad_qf);
+                sexml_append_attribute_uint(cmd_xml, "type", biquad_type);
+                sexml_append_attribute_uint(cmd_xml, "cof", biquad_cof);
+                sexml_append_attribute_uint(cmd_xml, "gain", biquad_gain);
+                sexml_append_attribute_uint(cmd_xml, "qf", biquad_qf);
+                continue;
             /* 33 - u8 */
             case ACB_CMD_OP_MUTE:
                 cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_MUTE);
                 sexml_append_attribute_uint(cmd_xml, "value", op->data.u8);
                 continue;
-            /* 65 - u32 */
-            case ACB_CMD_OP_CATEGORY:
-                cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_CATEGORY);
-                sexml_append_attribute_uint(cmd_xml, "value", op->data.u32);
-                continue;
+            ///* 65 - u32 (Variable actually) */
+            //case ACB_CMD_OP_CATEGORY:
+            //    cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_CATEGORY);
+            //    sexml_append_attribute_uint(cmd_xml, "value", op->data.u32);
+            //    continue;
             /* 68 - float */
             case ACB_CMD_OP_POS_3D_DISTANCE_MIN:
                 cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_POS_3D_DISTANCE_MIN);
@@ -86,10 +99,10 @@ inline static void cri_acb_cmd_to_xml(ACB_COMMAND acbcmd, SEXML_ELEMENT* root)
             /* 2000 */
             case ACB_CMD_OP_NOTE_ON:
                 cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_NOTE_ON);
-                uint16_t type, index;
-                acb_cmd_read_note_on(op, &type, &index);
+                uint16_t noteon_type, noteon_index;
+                acb_cmd_read_note_on(op, &noteon_type, &noteon_index);
                 
-                switch(type)
+                switch(noteon_type)
                 {
                     case ACB_CMD_NOTE_ON_TYPE_SYNTH:
                         sexml_append_attribute(cmd_xml, "type", ACB_CMD_NOTE_ON_TYPE_SYNTH_NAME);
@@ -101,7 +114,7 @@ inline static void cri_acb_cmd_to_xml(ACB_COMMAND acbcmd, SEXML_ELEMENT* root)
                         sexml_append_attribute(cmd_xml, "type", ACB_CMD_NOTE_ON_TYPE_UNK_NAME);
                 }
                 
-                sexml_append_attribute_uint(cmd_xml, "index", index);
+                sexml_append_attribute_uint(cmd_xml, "index", noteon_index);
                 continue;
             /* 2001 - u32 */
             case ACB_CMD_OP_DELAY:
@@ -116,7 +129,17 @@ inline static void cri_acb_cmd_to_xml(ACB_COMMAND acbcmd, SEXML_ELEMENT* root)
             case ACB_CMD_OP_BLOCK_END:
                 cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_BLOCK_END);
                 continue;
+            /* 7100 */
+            case ACB_CMD_OP_START_ACTION:
+                cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_START_ACTION);
+                continue;
+            /* 7101 */
+            case ACB_CMD_OP_STOP_ACTION:
+                cmd_xml = sexml_append_element(acbcmd_node, ACB_CMD_NAME_STOP_ACTION);
+                continue;
         }
+        
+//dont_parse_known:
         
         /* It's an unknown opcode, do the usual */
         cmd_xml = sexml_append_element(acbcmd_node, "cmd");
@@ -149,6 +172,7 @@ inline static void cri_acb_cmd_to_xml(ACB_COMMAND acbcmd, SEXML_ELEMENT* root)
                 break;
             case ACB_CMD_OPCODE_TYPE_VL:
                 sexml_append_attribute_vl(cmd_xml, "value", (const char*)op->data.vl, op->size);
+                sexml_append_attribute_uint(cmd_xml, "real_size", op->real_size);
                 break;
         }
     }
@@ -167,6 +191,8 @@ inline static ACB_COMMAND cri_acb_cmd_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml)
         ACB_COMMAND_OPCODE op = {0};
         SEXML_ELEMENT* cmd_xml = sexml_get_element_by_id(acbcmd_xml, i);
         
+        //goto dont_parse_known;
+        
         /* First we try to parse known opcodes */
         
         /* NOP - 0 */
@@ -175,68 +201,64 @@ inline static ACB_COMMAND cri_acb_cmd_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml)
             acb_cmd_write_nop(&op);
             goto append_command;
         }
-        
-        /* MUTE - 33 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_MUTE, strlen(ACB_CMD_NAME_MUTE)) == 0)
+        /* BIQUAD - 31 */
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_BIQUAD, strlen(ACB_CMD_NAME_BIQUAD)) == 0)
         {
-            SEXML_ATTRIBUTE* mute_xml = sexml_get_attribute_by_name(cmd_xml, "value");
-            const uint8_t is_muted = sexml_get_attribute_uint(mute_xml);
+            const uint8_t type = sexml_get_attribute_uint_by_name(cmd_xml, "type");
+            const uint16_t cof = sexml_get_attribute_uint_by_name(cmd_xml, "cof");
+            const uint16_t gain = sexml_get_attribute_uint_by_name(cmd_xml, "gain");
+            const uint16_t qf = sexml_get_attribute_uint_by_name(cmd_xml, "qf");
+            acb_cmd_write_biquad(&op, type, cof, gain, qf);
+            goto append_command;
+        }
+        /* MUTE - 33 */
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_MUTE, strlen(ACB_CMD_NAME_MUTE)) == 0)
+        {
+            const uint8_t is_muted = sexml_get_attribute_uint_by_name(cmd_xml, "value");
             acb_cmd_write_mute(&op, is_muted);
             goto append_command;
         }
-        
         /* CATEGORY - 65 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_CATEGORY, strlen(ACB_CMD_NAME_CATEGORY)) == 0)
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_CATEGORY, strlen(ACB_CMD_NAME_CATEGORY)) == 0)
         {
-            SEXML_ATTRIBUTE* category_xml = sexml_get_attribute_by_name(cmd_xml, "value");
-            const uint32_t category = sexml_get_attribute_uint(category_xml);
+            const uint32_t category = sexml_get_attribute_uint_by_name(cmd_xml, "value");
             acb_cmd_write_category(&op, category);
             goto append_command;
         }
-
         /* POS_3D_DISTANCE_MIN - 68 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_POS_3D_DISTANCE_MIN, strlen(ACB_CMD_NAME_POS_3D_DISTANCE_MIN)) == 0)
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_POS_3D_DISTANCE_MIN, strlen(ACB_CMD_NAME_POS_3D_DISTANCE_MIN)) == 0)
         {
-            SEXML_ATTRIBUTE* pos_xml = sexml_get_attribute_by_name(cmd_xml, "value");
-            const float pos = sexml_get_attribute_double(pos_xml);
+            const float pos = sexml_get_attribute_double_by_name(cmd_xml, "value");
             acb_cmd_write_pos_3d_distance_min(&op, pos);
             goto append_command;
         }
-
         /* POS_3D_DISTANCE_MAX - 69 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_POS_3D_DISTANCE_MAX, strlen(ACB_CMD_NAME_POS_3D_DISTANCE_MAX)) == 0)
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_POS_3D_DISTANCE_MAX, strlen(ACB_CMD_NAME_POS_3D_DISTANCE_MAX)) == 0)
         {
-            SEXML_ATTRIBUTE* pos_xml = sexml_get_attribute_by_name(cmd_xml, "value");
-            const float pos = sexml_get_attribute_double(pos_xml);
+            const float pos = sexml_get_attribute_double_by_name(cmd_xml, "value");
             acb_cmd_write_pos_3d_distance_max(&op, pos);
             goto append_command;
         }
-        
         /* VOLUME_GAIN_RESOLUTION100 - 87 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_VOLUME_GAIN_RESOLUTION100, strlen(ACB_CMD_NAME_VOLUME_GAIN_RESOLUTION100)) == 0)
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_VOLUME_GAIN_RESOLUTION100, strlen(ACB_CMD_NAME_VOLUME_GAIN_RESOLUTION100)) == 0)
         {
-            SEXML_ATTRIBUTE* gain_xml = sexml_get_attribute_by_name(cmd_xml, "value");
-            const uint16_t gain = sexml_get_attribute_uint(gain_xml);
+            const uint16_t gain = sexml_get_attribute_uint_by_name(cmd_xml, "value");
             acb_cmd_write_volume_gain_resolution100(&op, gain);
             goto append_command;
         }
-        
         /* VOLUME_CONTROL - 146 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_VOLUME_CONTROL, strlen(ACB_CMD_NAME_VOLUME_CONTROL)) == 0)
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_VOLUME_CONTROL, strlen(ACB_CMD_NAME_VOLUME_CONTROL)) == 0)
         {
-            SEXML_ATTRIBUTE* volume_xml = sexml_get_attribute_by_name(cmd_xml, "value");
-            const float volume = sexml_get_attribute_double(volume_xml);
+            const float volume = sexml_get_attribute_double_by_name(cmd_xml, "value");
             acb_cmd_write_volume_control(&op, volume);
             goto append_command;
         }
-        
         /* NOTE_ON - 2000 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_NOTE_ON, strlen(ACB_CMD_NAME_NOTE_ON)) == 0)
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_NOTE_ON, strlen(ACB_CMD_NAME_NOTE_ON)) == 0)
         {
             SEXML_ATTRIBUTE* type_xml = sexml_get_attribute_by_name(cmd_xml, "type");
-            SEXML_ATTRIBUTE* index_xml = sexml_get_attribute_by_name(cmd_xml, "index");
             uint16_t type = 0;
-            const uint16_t index = sexml_get_attribute_uint(index_xml);
+            const uint16_t index = sexml_get_attribute_uint_by_name(cmd_xml, "index");
             
             /* Synth */
             if(strncmp(type_xml->value->ptr,
@@ -256,29 +278,39 @@ inline static ACB_COMMAND cri_acb_cmd_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml)
             acb_cmd_write_note_on(&op, type, index);
             goto append_command;
         }
-        
         /* DELAY - 2001 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_DELAY, strlen(ACB_CMD_NAME_DELAY)) == 0)
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_DELAY, strlen(ACB_CMD_NAME_DELAY)) == 0)
         {
-            SEXML_ATTRIBUTE* delay_xml = sexml_get_attribute_by_name(cmd_xml, "value");
-            const uint32_t delay = sexml_get_attribute_uint(delay_xml);
+            const uint32_t delay = sexml_get_attribute_uint_by_name(cmd_xml, "value");
             acb_cmd_write_delay(&op, delay);
             goto append_command;
         }
-        
         /* SEQUENCE_END - 4000 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_SEQUENCE_END, strlen(ACB_CMD_NAME_SEQUENCE_END)) == 0)
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_SEQUENCE_END, strlen(ACB_CMD_NAME_SEQUENCE_END)) == 0)
         {
             acb_cmd_write_sequence_end(&op);
             goto append_command;
         }
-        
         /* BLOCK_END - 4050 */
-        if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_BLOCK_END, strlen(ACB_CMD_NAME_BLOCK_END)) == 0)
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_BLOCK_END, strlen(ACB_CMD_NAME_BLOCK_END)) == 0)
         {
             acb_cmd_write_block_end(&op);
             goto append_command;
         }
+        /* START_ACTION - 7100 */
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_START_ACTION, strlen(ACB_CMD_NAME_START_ACTION)) == 0)
+        {
+            acb_cmd_write_start_action(&op);
+            goto append_command;
+        }
+        /* STOP_ACTION - 7101 */
+        else if(strncmp(cmd_xml->name->ptr, ACB_CMD_NAME_STOP_ACTION, strlen(ACB_CMD_NAME_STOP_ACTION)) == 0)
+        {
+            acb_cmd_write_stop_action(&op);
+            goto append_command;
+        }
+        
+//dont_parse_known:
         
         /*
             It's an unknown opcode, do the usual
@@ -289,6 +321,7 @@ inline static ACB_COMMAND cri_acb_cmd_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml)
         op.op = sexml_get_attribute_uint_by_name(cmd_xml, "op");
         op.type = acb_cmd_str_to_type(type_attr->value->ptr, type_attr->value->size);
         op.size = acb_cmd_size_by_type(op.type);
+        op.real_size = op.size;
         
         switch(op.type)
         {
@@ -317,7 +350,8 @@ inline static ACB_COMMAND cri_acb_cmd_xml_to_acbcmd(SEXML_ELEMENT* acbcmd_xml)
             case ACB_CMD_OPCODE_TYPE_VL:
                 SU_STRING* vl = sexml_get_attribute_vl(val_attr);
                 op.size = vl->size;
-                memcpy(op.data.vl, (uint8_t*)vl->ptr, op.size);
+                op.real_size = sexml_get_attribute_uint_by_name(cmd_xml, "real_size");
+                memcpy(op.data.vl, (uint8_t*)vl->ptr, op.real_size);
                 su_free(vl);
         }
 
