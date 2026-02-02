@@ -9,7 +9,7 @@ set(KWASLIB_BUILD_NW4R True CACHE STRING "Build with Nintendo Ware For Revolutio
 set(KWASLIB_BUILD_PLATINUM True CACHE STRING "Build with Platinum Engine")
 
 set(KWASLIB_CORE_SOURCES
-	${PROJECT_SOURCE_DIR}/core/cpu/endianness.c
+	#${PROJECT_SOURCE_DIR}/core/cpu/endianness.c
 	
 	${PROJECT_SOURCE_DIR}/core/crypto/crc32.c
 	
@@ -17,8 +17,8 @@ set(KWASLIB_CORE_SOURCES
 	${PROJECT_SOURCE_DIR}/core/io/dir_list.c
 	${PROJECT_SOURCE_DIR}/core/io/file_utils.c
 	${PROJECT_SOURCE_DIR}/core/io/path_utils.c
-	${PROJECT_SOURCE_DIR}/core/io/type_readers.c
-	${PROJECT_SOURCE_DIR}/core/io/type_writers.c
+	#${PROJECT_SOURCE_DIR}/core/io/type_readers.c
+	#${PROJECT_SOURCE_DIR}/core/io/type_writers.c
 	${PROJECT_SOURCE_DIR}/core/io/string_utils.c
     
 	${PROJECT_SOURCE_DIR}/core/math/boundary.c
@@ -106,6 +106,15 @@ if(NOT ${KWASLIB_CORE_ONLY})
 	if(${KWASLIB_BUILD_PLATINUM})
 		list(APPEND KWASLIB_SOURCES "${KWASLIB_PLATINUM_SOURCES}")
 	endif()
+endif()
+
+# Test for Big Endian
+include(TestBigEndian)
+TEST_BIG_ENDIAN(KWASLIB_IS_BIG_ENDIAN)
+if(KWASLIB_IS_BIG_ENDIAN)
+    add_definitions(-DKWASLIB_BIG_ENDIAN)
+else()
+    add_definitions(-DKWASLIB_LITTLE_ENDIAN)
 endif()
 
 add_library(kwaslib SHARED ${KWASLIB_SOURCES})

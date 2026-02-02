@@ -39,6 +39,12 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/kwaslib)
 
+if(KWASLIB_IS_BIG_ENDIAN)
+    add_definitions(-DKWASLIB_BIG_ENDIAN)
+else()
+    add_definitions(-DKWASLIB_LITTLE_ENDIAN)
+endif()
+
 foreach(program_src ${KWASTOOLS_PROGRAMS})
 	get_filename_component(program_name ${program_src} NAME_WLE)
     add_executable(${program_name} ${program_src})
