@@ -21,7 +21,7 @@ set(KWASLIB_CORE_SOURCES
 	#${PROJECT_SOURCE_DIR}/core/io/type_writers.c
 	${PROJECT_SOURCE_DIR}/core/io/string_utils.c
     
-	${PROJECT_SOURCE_DIR}/core/math/boundary.c
+	#${PROJECT_SOURCE_DIR}/core/math/boundary.c
 	${PROJECT_SOURCE_DIR}/core/math/half.c
 	${PROJECT_SOURCE_DIR}/core/math/vec.c
 
