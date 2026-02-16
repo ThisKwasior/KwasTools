@@ -57,3 +57,19 @@ Features:
 - uv-anim import and export
 - Camera setup creation for cam-anim (searchable with F3)
 - UV Animator creation for uv-anim (searchable with F3, to use in material->Shift+A->Group)
+
+## Special Thanks
+* [ik-01](https://github.com/ik-01) for multiple contributions, both in code and knowledge, in Hedgehog Engine formats.
+* [ecksdii](https://github.com/ecksdii) for extensive testing and end-user feedback.
+* [Ashrindy](https://github.com/Ashrindy) for contributions and help with Hedgehog Engine `-anim` formats.
+* [Adam Gąsior](https://github.com/anhosh) for giving feedback on my code whenever I ask.
+* [Skyth](https://github.com/blueskythlikesclouds) for help with Hedgehog Engine related issues and insight.
+* [Mario Tainaka](https://github.com/MarioTainaka) for help with CRI Middleware related issues and insight.
+* [Sewer56](https://github.com/Sewer56) for help with CRI Middleware related issues and insight.
+* Metal Gear Rising Revengeance modding community for feedback and bug reports.
+* And anyone else I forgot to mention!
+
+## Acknowledgements
+* [vgmstream](https://github.com/vgmstream/vgmstream) - Learned about the CRI `@UTF` file format from their extensive implementation.
+* [Xenia](https://github.com/xenia-project/xenia) - Untiling code for Xbox 360 textures. Copyright (c) 2015, Ben Vanik. All rights reserved.
+* [RPCS3](https://github.com/RPCS3/rpcs3) - Texture swizzling code for GTF textures. Licensed under GNU GPL-2.0 license.
