@@ -2,7 +2,10 @@
 
 #include <kwaslib/core/cpu/endianness.h>
 
+#include <kwaslib/core/crypto/crc_utils.h>
 #include <kwaslib/core/crypto/crc32.h>
+#include <kwaslib/core/crypto/crc16.h>
+#include <kwaslib/core/crypto/crc8.h>
 
 #include <kwaslib/core/io/arg_parser.h>
 #include <kwaslib/core/io/date_utils.h>

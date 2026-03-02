@@ -1,11 +1,11 @@
-#include "crc32.h"
+#include "crc16.h"
 
-uint32_t crc32_calc_hash_bit_by_bit(const uint8_t* data, const uint64_t size,
-                                    const uint32_t poly,
-                                    const uint32_t init, const uint32_t xorout,
+uint16_t crc16_calc_hash_bit_by_bit(const uint8_t* data, const uint64_t size,
+                                    const uint16_t poly,
+                                    const uint16_t init, const uint16_t xorout,
                                     const uint8_t refin, const uint8_t refout)
 {
-    uint32_t crc = init;
+    uint16_t crc = init;
 
     for(uint64_t i = 0; i < size; ++i)
     {
@@ -16,8 +16,8 @@ uint32_t crc32_calc_hash_bit_by_bit(const uint8_t* data, const uint64_t size,
         
         for(uint8_t j = 0; j < 8; ++j)
         {
-            const uint32_t bit = (c >> (7-j)) & 1;
-            const uint32_t msb = (crc >> 31) & 1;
+            const uint16_t bit = (c >> (7-j)) & 1;
+            const uint16_t msb = (crc >> 15) & 1;
             crc <<= 1;
             
             if(bit ^ msb)
@@ -26,7 +26,7 @@ uint32_t crc32_calc_hash_bit_by_bit(const uint8_t* data, const uint64_t size,
     }
 
     if(refout == CRC_REFLECTION_TRUE)
-        crc = crc_reflect_u32(crc);
+        crc = crc_reflect_u16(crc);
     
     crc ^= xorout;
     return crc;

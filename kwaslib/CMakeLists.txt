@@ -12,6 +12,8 @@ set(KWASLIB_CORE_SOURCES
 	#${PROJECT_SOURCE_DIR}/core/cpu/endianness.c
 	
 	${PROJECT_SOURCE_DIR}/core/crypto/crc32.c
+	${PROJECT_SOURCE_DIR}/core/crypto/crc16.c
+	${PROJECT_SOURCE_DIR}/core/crypto/crc8.c
 	
 	${PROJECT_SOURCE_DIR}/core/io/arg_parser.c
 	${PROJECT_SOURCE_DIR}/core/io/dir_list.c
