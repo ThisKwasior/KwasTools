@@ -123,20 +123,3 @@ HCA_HEADER hca_read_header_from_data(const uint8_t* data, const uint32_t size)
 
     return h;
 }
-
-const uint32_t hca_get_file_size(const HCA_HEADER hcah)
-{
-    uint32_t size = 0;
-    uint32_t block_size = 0;
-    uint32_t block_count = 0;
-    
-    if(hcah.data_offset) size = hcah.data_offset;
-    if(hcah.sections.fmt) block_count = hcah.fmt.block_count;
-    
-    if(hcah.sections.comp) block_size = hcah.comp.block_size;
-    else if(hcah.sections.dec) block_size = hcah.dec.block_size;
-
-    size += block_size*block_count;
-    
-    return size;
-}

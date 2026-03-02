@@ -15,6 +15,8 @@
 #include <stdint.h>
 
 #include <kwaslib/core/io/string_utils.h>
+#include <kwaslib/core/io/type_readers.h>
+#include <kwaslib/core/crypto/crc16.h>
 
 #define HCA_MAGIC   (const char*)"HCA\0"
 
@@ -116,6 +118,72 @@ typedef struct
     Implementation
 */
 
+/*
+    Reads the HCA header from data provided.
+*/
 HCA_HEADER hca_read_header_from_data(const uint8_t* data, const uint32_t size);
 
-const uint32_t hca_get_file_size(const HCA_HEADER hcah);
+/*
+    Returns the theoretical size of the HCA.
+    Keep in mind the size here can be incorrect, because prefetch HCAs
+    in ACBs have the same header, but are only few kb long.
+*/
+static inline uint32_t hca_get_file_size(const HCA_HEADER hcah)
+{
+    uint32_t size = 0;
+    uint32_t block_size = 0;
+    uint32_t block_count = 0;
+    
+    if(hcah.data_offset) size = hcah.data_offset;
+    if(hcah.sections.fmt) block_count = hcah.fmt.block_count;
+    
+    if(hcah.sections.comp) block_size = hcah.comp.block_size;
+    else if(hcah.sections.dec) block_size = hcah.dec.block_size;
+
+    size += block_size*block_count;
+    
+    return size;
+}
+
+/*
+    Checks if the hash at the end of the block matches the calculated one.
+    Returns 1 if it matches, 0 otherwise.
+*/
+static inline uint8_t hca_check_block_hash(const uint8_t* data, const uint32_t block_size)
+{
+    const uint16_t hash = tr_read_u16be(&data[block_size-2]);
+    const uint16_t calculated_hash = crc16_encode_umts(data, block_size-2);
+    
+    if(hash == calculated_hash)
+        return 1;
+    
+    return 0;
+}
+
+/*
+    Counts blocks by validating the hash of the block.
+    Goes as long as the hash matches or we reached the size of the data.
+*/
+static inline uint32_t hca_count_valid_blocks(const uint8_t* data, const uint32_t size, const HCA_HEADER hcah)
+{
+    uint32_t block_size = 0;
+    uint32_t block_count = 0;
+    
+    if(hcah.sections.comp) block_size = hcah.comp.block_size;
+    else if(hcah.sections.dec) block_size = hcah.dec.block_size;
+    
+    const uint32_t max_blocks = (size-hcah.data_offset)/block_size;
+    const uint8_t* data_ptr = (const uint8_t*)&data[hcah.data_offset];
+    
+    for(uint32_t i = 0; i != max_blocks; ++i)
+    {
+        const uint8_t check = hca_check_block_hash(&data_ptr[i*block_size], block_size);
+        
+        if(check)
+            block_count += 1;
+        else
+            break;
+    }
+    
+    return block_count;
+}

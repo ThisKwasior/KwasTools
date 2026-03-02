@@ -95,44 +95,28 @@ AWB_FILE* awb_load_from_data(const uint8_t* data, const uint32_t size)
                 default:            entry->type = AWB_DATA_ADX;
             }
             entry->size = adx_get_file_size(adx);
+            
+            goto read_file_data;
         }
         
         /* ADX failed. Next is HCA. */
         HCA_HEADER hca = hca_read_header_from_data(data_offset, temp_size);
+        const uint8_t hca_header_hash = hca_check_block_hash(data_offset, hca.data_offset);
         
-        if(hca.sections.comp || hca.sections.dec)
+        if((hca.sections.comp || hca.sections.dec) && hca_header_hash)
         {
             entry->type = AWB_DATA_HCA;
             entry->size = hca_get_file_size(hca);
+            const uint32_t valid_blocks = hca_count_valid_blocks(data_offset, temp_size, hca);
             
-            uint32_t sixth_block_pos = hca.data_offset;
-            if(hca.sections.comp) sixth_block_pos += 6*hca.comp.block_size;
-            if(hca.sections.dec) sixth_block_pos += 6*hca.dec.block_size;
-            const uint32_t block_start_offset = fixed_offset+sixth_block_pos;
-            
-            /*
-                We've gone past the boundary of the AFS2 archive.
-                The check would crash the program later.
-                It's either very small hca or prefetch one.
-                TODO: Do it better. What if block count is smaller than 6?
-            */
-            if(block_start_offset >= size)
+            /* It's a prefetch HCA*/
+            if(hca.fmt.block_count != valid_blocks)
             {
-                hca.fmt.block_count = 5;
+                hca.fmt.block_count = valid_blocks;
                 entry->size = hca_get_file_size(hca);
             }
-            else
-            {
-                const uint16_t block_start_value = tr_read_u16be(&data[block_start_offset]);
-                
-                /*if(entry->size >= file_size)*/
-                if(block_start_value != 0xFFFF)
-                {
-                    /* It's probably a prefetch hca */
-                    hca.fmt.block_count = 5;
-                    entry->size = hca_get_file_size(hca);
-                }
-            }
+            
+            goto read_file_data;
         }
         
         /* N3DS format used in Lost World */
@@ -142,6 +126,8 @@ AWB_FILE* awb_load_from_data(const uint8_t* data, const uint32_t size)
         {
             entry->type = AWB_DATA_BCWAV;
             entry->size = bcwav.file_size;
+            
+            goto read_file_data;
         }
         
         /* Not ADX or HCA or BCWAV */
@@ -150,6 +136,7 @@ AWB_FILE* awb_load_from_data(const uint8_t* data, const uint32_t size)
             entry->size = temp_size;
         }
         
+read_file_data:
         /* Read the file data */
         entry->data = (uint8_t*)calloc(1, entry->size);
         tr_read_array(data_offset, entry->size, &entry->data[0]);
