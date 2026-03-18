@@ -1,14 +1,20 @@
 # KwasTools
-Library (kwaslib) and tools for video game modding.
+Library (`kwaslib`) and tools for video game modding.
+
+`kwaslib` is a C library inspired by [Gnulib](https://www.gnu.org/software/gnulib/), in a way of being easy to incorporate into your own projects - entire library can be compiled as-is without needing to set any environmental variables/defines or external dependencies.
 
 ## Requirements
-* [CMake](https://cmake.org/)
-* GCC/MinGW-w64 (For Windows, I recommend [winlibs MSVCRT](https://winlibs.com/), but [MSYS2](https://www.msys2.org/) is also fine)
-* git (Like above, [Git for Windows](https://gitforwindows.org/) or [MSYS2](https://www.msys2.org/))
+Must-have:
+* **GCC/[MinGW-w64](https://github.com/niXman/mingw-builds-binaries)** (or [MSYS2](https://www.msys2.org/))
+* **[CMake](https://cmake.org/)** (but it's possible to compile any program with a one-liner)
 
-**This project does not support Visual Studio.**
+Optional:
+* **Git** (project doesn't use any external dependencies, downloading a zip is fine)
 
 ## Building
+I write mostly on Windows and compile with GCC from MinGW-w64.<br>
+Tested on Windows (x86/x64 GCC/Clang) and Linux (ARM/x86/x64 GCC/Clang).<br>
+**This project does not support Visual Studio compilers.**
 
 ### Windows
 ```
@@ -32,21 +38,28 @@ After compiling, CMake script will output binaries and libraries in the `./bin` 
 
 ## Software
 ### Hedgehog Engine
-* `he_anim_tool` - Hedgehog Engine anim converter. Supports uv-anim, cam-anim, vis-anim, morph-anim, pt-anim, mat-anim and lit-anim.
+| Program      | Description                      | Supported formats                                                                                                  |
+|--------------|----------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| he_anim_tool | Hedgehog Engine *-anim converter | Reading/writing:<br>- uv-anim<br>- cam-anim<br>- vis-anim<br>- morph-anim<br>- pt-anim<br>- mat-anim<br>- lit-anim |
 
 ### CRIWARE
-* `cri_utf_tool` - CRI UTF parser to and from XML. Will parse structures from VLDATA (UTF, AWB and ACB Commands).
-* `cri_afs_tool` - CRI AFS packer/unpacker. Supports creating AFS files from custom XML config and unpacks AFS files to a folder and XML config.
-* `cri_awb_tool` - CRI AWB packer/unpacker. Supports creating AWBs from custom XML config and unpacks AWBs to a folder and XML config.
-* `CRI Scramble Key` - Python script and HTML page to compute ACB key for encoding HCA/ADX files. Found in `scripts` directory. Also [hosted on my site](https://thiskwasior.ct8.pl/cri_scramble_key.htm).
+| Program          | Description                                                                                                                                                                                  | Supported formats                                                                     |
+|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| cri_utf_tool     | CRI UTF parser to and from XML.<br>Will parse structures from VLDATA (UTF, AWB and ACB commands).                                                                                            | Reading/writing:<br>- ACB<br>- ACF<br>- AAX<br>- Any `@UTF` table i forgot to mention |
+| cri_afs_tool     | CRI AFS packer/unpacker to and from XML.<br>If metadata section is not present, it will detect and add extensions to known file formats (AFS, AHX, ADX)                                      | Reading/writing:<br>- AFS                                                             |
+| cri_awb_tool     | CRI AWB packer/unpacker to and from XML.<br>Will detect and add extensions to known file formats (HCA, ADX, BCWAV)                                                                           | Reading/writing:<br>- AWB                                                             |
+| CRI Scramble Key | Python script and HTML+JS page to compute ACB key for encoding HCA/ADX files.<br>Found in `scripts` directory.<br>Also [hosted on my site](https://thiskwasior.ct8.pl/cri_scramble_key.htm). |                                                                                       |
 
 ### NW4R
-* `nw4r_misc_to_he_xml` - Converts SCN0 and SRT0 from Wii NW4R to Hedgehog Engine XML supported by he_anim_tool.
+| Program             | Description                                                         | Supported formats                                           |
+|---------------------|---------------------------------------------------------------------|-------------------------------------------------------------|
+| nw4r_misc_to_he_xml | Wii NW4R converter to Hedgehog Engine XML supported by he_anim_tool | Reading/writing:<br>- SCN0 -> cam-anim<br>- SRT0 -> uv-anim |
 
 ### Platinum Games
-* `platinum_dat_tool` - DAT unpacker/packer with experimental support for Big Endian archives (X360/PS3)
-* `platinum_wtb_tool` - WTB/WTA+WTP unpacker/packer with WIP X360/PS3 texture conversion to PNG
-* `platinum_misc_dat2dds2dat` - (At the moment not usable) WIP WTA/WTP/WTB unpacker/packer directly from DAT/DTT
+| Program           | Description                                                                       | Supported formats                           |
+|-------------------|-----------------------------------------------------------------------------------|---------------------------------------------|
+| platinum_dat_tool | Unpacker/packer with experimental support for Big Endian archives (X360/PS3/WiiU) | Reading/writing:<br>- DAT<br>- DTT<br>- EFF |
+| platinum_wtb_tool | Unpacker/packer with WIP X360/PS3 texture conversion to PNG                       | Reading/writing:<br>- WTB<br>- WTA+WTP      |
 
 ## Addons
 ### io_kwastools
@@ -71,5 +84,6 @@ Features:
 
 ## Acknowledgements
 * [vgmstream](https://github.com/vgmstream/vgmstream) - Learned about the CRI `@UTF` file format from their extensive implementation.
+* [VGAudio](https://github.com/Thealexbarney/VGAudio) - HCA format specifics.
 * [Xenia](https://github.com/xenia-project/xenia) - Untiling code for Xbox 360 textures. Copyright (c) 2015, Ben Vanik. All rights reserved.
 * [RPCS3](https://github.com/RPCS3/rpcs3) - Texture swizzling code for GTF textures. Licensed under GNU GPL-2.0 license.
