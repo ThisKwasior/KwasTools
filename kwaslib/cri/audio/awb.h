@@ -22,7 +22,7 @@
 
 typedef struct
 {
-    char* magic[4];
+    char magic[4];
     uint8_t version;
     uint8_t offset_size;
     uint8_t id_size;
