@@ -101,22 +101,26 @@ AWB_FILE* awb_load_from_data(const uint8_t* data, const uint32_t size)
         
         /* ADX failed. Next is HCA. */
         HCA_HEADER hca = hca_read_header_from_data(data_offset, temp_size);
-        const uint8_t hca_header_hash = hca_check_block_hash(data_offset, hca.data_offset);
         
-        if((hca.sections.comp || hca.sections.dec) && hca_header_hash)
+        if(hca.sections.comp || hca.sections.dec)
         {
-            entry->type = AWB_DATA_HCA;
-            entry->size = hca_get_file_size(hca);
-            const uint32_t valid_blocks = hca_count_valid_blocks(data_offset, temp_size, hca);
+            const uint8_t hca_header_hash = hca_check_block_hash(data_offset, hca.data_offset);
             
-            /* It's a prefetch HCA*/
-            if(hca.fmt.block_count != valid_blocks)
+            if(hca_header_hash)
             {
-                hca.fmt.block_count = valid_blocks;
+                entry->type = AWB_DATA_HCA;
                 entry->size = hca_get_file_size(hca);
+                const uint32_t valid_blocks = hca_count_valid_blocks(data_offset, temp_size, hca);
+                
+                /* It's a prefetch HCA*/
+                if(hca.fmt.block_count != valid_blocks)
+                {
+                    hca.fmt.block_count = valid_blocks;
+                    entry->size = hca_get_file_size(hca);
+                }
+                
+                goto read_file_data;
             }
-            
-            goto read_file_data;
         }
         
         /* N3DS format used in Lost World */
