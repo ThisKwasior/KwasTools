@@ -172,7 +172,7 @@ static inline uint32_t hca_count_valid_blocks(const uint8_t* data, const uint32_
     if(hcah.sections.comp) block_size = hcah.comp.block_size;
     else if(hcah.sections.dec) block_size = hcah.dec.block_size;
     
-    const uint32_t max_blocks = (size-hcah.data_offset)/block_size;
+    const uint32_t max_blocks = hcah.fmt.block_count;
     const uint8_t* data_ptr = (const uint8_t*)&data[hcah.data_offset];
     
     for(uint32_t i = 0; i != max_blocks; ++i)
