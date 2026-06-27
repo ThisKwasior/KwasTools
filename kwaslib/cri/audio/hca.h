@@ -177,7 +177,13 @@ static inline uint32_t hca_count_valid_blocks(const uint8_t* data, const uint32_
     
     for(uint32_t i = 0; i != max_blocks; ++i)
     {
-        const uint8_t check = hca_check_block_hash(&data_ptr[i*block_size], block_size);
+        const uint32_t offset = i*block_size;
+        
+        /* FIX 20260627: Actually check for size of data */
+        if((offset+block_size) > (size-hcah.data_offset))
+            break;
+        
+        const uint8_t check = hca_check_block_hash(&data_ptr[offset], block_size);
         
         if(check)
             block_count += 1;
