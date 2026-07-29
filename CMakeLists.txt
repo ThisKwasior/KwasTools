@@ -19,6 +19,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 set(KWASTOOLS_PROGRAMS
+	${PROJECT_SOURCE_DIR}/src/blizzard/blizzard_blte_tool.c
+    
 	${PROJECT_SOURCE_DIR}/src/cri/cri_utf_tool.c
 	${PROJECT_SOURCE_DIR}/src/cri/cri_awb_tool.c
 	${PROJECT_SOURCE_DIR}/src/cri/cri_afs_tool.c

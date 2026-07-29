@@ -3,6 +3,7 @@ project(kwaslib)
 
 set(KWASLIB_CORE_ONLY False CACHE STRING "Build only core functionality of kwaslib")
 
+set(KWASLIB_BUILD_BLIZZARD True CACHE STRING "Build with Blizzard")
 set(KWASLIB_BUILD_CRI True CACHE STRING "Build with CRIWARE")
 set(KWASLIB_BUILD_HE True CACHE STRING "Build with Hedgehog Engine")
 set(KWASLIB_BUILD_NW4R True CACHE STRING "Build with Nintendo Ware For Revolution")
@@ -42,7 +43,11 @@ set(KWASLIB_CORE_SOURCES
 	${PROJECT_SOURCE_DIR}/core/data/text/sexml_io.c
 	${PROJECT_SOURCE_DIR}/core/data/text/sexml_parser.c
 	)
-	
+
+set(KWASLIB_BLIZZARD_SOURCES
+	${PROJECT_SOURCE_DIR}/blizzard/blte.c
+	)
+
 set(KWASLIB_CRI_SOURCES
 	${PROJECT_SOURCE_DIR}/cri/acb/acb_command.c
 	${PROJECT_SOURCE_DIR}/cri/archive/afs.c
@@ -93,6 +98,10 @@ set(KWASLIB_SOURCES
 
 # Adding individual requested modules
 if(NOT ${KWASLIB_CORE_ONLY})
+	if(${KWASLIB_BUILD_BLIZZARD})
+		list(APPEND KWASLIB_SOURCES "${KWASLIB_BLIZZARD_SOURCES}")
+	endif()
+    
 	if(${KWASLIB_BUILD_CRI})
 		list(APPEND KWASLIB_SOURCES "${KWASLIB_CRI_SOURCES}")
 	endif()

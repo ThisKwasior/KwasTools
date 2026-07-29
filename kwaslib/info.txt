@@ -1,6 +1,7 @@
 Each folder contains code for different purposes.
 
 List:
+ * blizzard     -   Activision Blizzard (OW1)
  * core         -   Common helper utilities and general purpose code
  * ext          -   external, header-only libraries
  * cri          -   CRIWARE

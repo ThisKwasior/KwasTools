@@ -10,6 +10,11 @@ extern "C" {
 #include <kwaslib/core/core_includes.h>
 
 /* 
+	Blizzard
+*/
+#include <kwaslib/blizzard/blizzard_includes.h>
+
+/* 
 	CRIWARE
 */
 #include <kwaslib/cri/cri_includes.h>
