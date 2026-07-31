@@ -39,6 +39,7 @@ extern "C" {
 */
 #include <kwaslib/ext/stb_image.h>
 #include <kwaslib/ext/stb_image_write.h>
+#include <kwaslib/ext/miniz.h>
 
 #ifdef __cplusplus
 }

@@ -10,11 +10,14 @@
 /*
     Globals
 */
+static char* blte_embedded_file_exts[] = {"bin", "bk2", "lwav", "exe", "stud", "bnk"};
 
 /*
 	Common
 */
 void blte_tool_print_usage(char* program_name);
+
+char* blte_detect_extension(const uint8_t* data);
 
 /*
 	Unpacker
@@ -69,11 +72,13 @@ int main(int argc, char** argv)
             if(blte == NULL)
                 break;
             
+            uint64_t data_size = 0;
             const uint64_t raw_data_size = blte_get_raw_data_size(&blte->chunkinfo);
-            const uint64_t data_size = blte_get_logical_data_size(&blte->chunkinfo);
-            uint8_t* data = blte_data_to_raw(blte);
+            uint8_t* data = blte_data_to_logical(blte, &data_size);
 
-            sprintf(nameptr_buf, "0x%08x_%c\0", fu_tell(blte_fu), blte->data[0]);
+            sprintf(nameptr_buf, "0x%08x_%c.%s\0", fu_tell(blte_fu),
+                    blte->data[0], blte_detect_extension(data));
+                    
             SU_STRING* arc_file_path = su_copy(arc_path_str);
             su_insert_char(arc_file_path, -1, "/", 1);
             su_insert_char(arc_file_path, -1, nameptr_buf, strlen(nameptr_buf));
@@ -106,4 +111,30 @@ void blte_tool_print_usage(char* program_name)
 	printf("Extractor for Overwatch 1 archives with BLTE files.\n");
 	printf("Usage:\n");
 	printf("\tTo unpack: %s <data.xxx.xxx>\n", program_name);
+}
+
+char* blte_detect_extension(const uint8_t* data)
+{
+    /* Bink 2 video with IVOM header */
+    if(memcmp(&data[0], "IVOM", 4) == 0)
+        return blte_embedded_file_exts[1];
+    
+    /* RIFF wave, with ATRAC9 audio on PS4 */
+    if(memcmp(&data[0], "RIFF", 4) == 0)
+        if(memcmp(&data[8], "WAVEfmt ", 8) == 0)
+            return blte_embedded_file_exts[2];
+        
+    /* PE executable */
+    if(memcmp(&data[0], "MZ", 2) == 0)
+        return blte_embedded_file_exts[3];
+    
+    /* STU Descriptor? */
+    if(memcmp(&data[0], "DUTS", 4) == 0)
+        return blte_embedded_file_exts[4];
+    
+    /* Wwise SoundBank */
+    if(memcmp(&data[0], "BKHD", 4) == 0)
+        return blte_embedded_file_exts[5];
+    
+    return blte_embedded_file_exts[0];
 }

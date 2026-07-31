@@ -42,6 +42,8 @@ set(KWASLIB_CORE_SOURCES
 	${PROJECT_SOURCE_DIR}/core/data/text/sexml_exporter.c
 	${PROJECT_SOURCE_DIR}/core/data/text/sexml_io.c
 	${PROJECT_SOURCE_DIR}/core/data/text/sexml_parser.c
+    
+	${PROJECT_SOURCE_DIR}/ext/miniz.c
 	)
 
 set(KWASLIB_BLIZZARD_SOURCES

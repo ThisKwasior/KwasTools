@@ -126,7 +126,7 @@ uint8_t* blte_data_to_raw(const BLTE_FILE* const blte);
     TODO: For now, only BLTE_ENCODING_PLAIN is supported,
           other types return without any conversion.
 */
-uint8_t* blte_data_to_logical(const BLTE_FILE* const blte);
+uint8_t* blte_data_to_logical(const BLTE_FILE* const blte, uint64_t* out_size);
 
 
 /*

@@ -6,6 +6,8 @@
 
 #include <kwaslib/core/io/type_readers.h>
 
+#include <kwaslib/ext/miniz.h>
+
 BLTE_FILE* blte_read_file(const uint8_t* data)
 {
     BLTE_FILE* blte = (BLTE_FILE*)calloc(1, sizeof(BLTE_FILE));
@@ -126,21 +128,7 @@ uint8_t* blte_data_to_raw(const BLTE_FILE* const blte)
         {
             BLTE_BLOCK* cur_block = (BLTE_BLOCK*)cvec_at(blte->chunkinfo.blocks, i);
 
-            const char encoding = blte->data[data_pos];
-
-            switch(encoding)
-            {
-                case BLTE_ENCODING_PLAIN:
-                /* For now, only PLAIN is supported. So we dump raw data. */
-                case BLTE_ENCODING_ZLIB:
-                case BLTE_ENCODING_LZ4:
-                case BLTE_ENCODING_RECURSIVE:
-                case BLTE_ENCODING_CRYPT:
-                    memcpy(&out[out_pos],
-                           &blte->data[data_pos+1],
-                           cur_block->block_0f.raw_size-1);
-                    break;
-            }
+            memcpy(&out[out_pos], &blte->data[data_pos+1], cur_block->block_0f.raw_size-1);
 
             out_pos += cur_block->block_0f.raw_size-1;
             data_pos += cur_block->block_0f.raw_size;
@@ -150,41 +138,48 @@ uint8_t* blte_data_to_raw(const BLTE_FILE* const blte)
     return out;
 }
 
-uint8_t* blte_data_to_logical(const BLTE_FILE* const blte)
+uint8_t* blte_data_to_logical(const BLTE_FILE* const blte, uint64_t* out_size)
 {
-    const uint64_t logical_size = blte_get_logical_data_size(&blte->chunkinfo);
+    /* Im assuming all blocks use the same encoding as the first one */
+    const char encoding = blte->data[0];
     
-    uint8_t* out = (uint8_t*)calloc(1, logical_size);
+    char* out = NULL;
 
     uint64_t data_pos = 0;
     uint64_t out_pos = 0;
-
-    if(out)
+    
+    switch(encoding)
     {
-        for(uint32_t i = 0; i != blte->chunkinfo.num_blocks; ++i)
-        {
-            BLTE_BLOCK* cur_block = (BLTE_BLOCK*)cvec_at(blte->chunkinfo.blocks, i);
-
-            const char encoding = blte->data[data_pos];
-
-            switch(encoding)
+        case BLTE_ENCODING_PLAIN:
+            (*out_size) =  blte_get_logical_data_size(&blte->chunkinfo);
+            out = blte_data_to_raw(blte);
+            break;
+        
+        case BLTE_ENCODING_ZLIB:
+            (*out_size) =  blte_get_logical_data_size(&blte->chunkinfo);
+            out = (uint8_t*)calloc(1, (*out_size));
+            
+            for(uint32_t i = 0; i != blte->chunkinfo.num_blocks; ++i)
             {
-                case BLTE_ENCODING_PLAIN:
-                /* For now, only PLAIN is supported. So we dump raw data. */
-                case BLTE_ENCODING_ZLIB:
-                case BLTE_ENCODING_LZ4:
-                case BLTE_ENCODING_RECURSIVE:
-                case BLTE_ENCODING_CRYPT:
-                    memcpy(&out[out_pos],
-                           &blte->data[data_pos+1],
-                           cur_block->block_0f.raw_size-1);
-                    break;
+                BLTE_BLOCK* cur_block = (BLTE_BLOCK*)cvec_at(blte->chunkinfo.blocks, i);
+
+                //memcpy(&out[out_pos], &blte->data[data_pos+1], cur_block->block_0f.raw_size-1);
+                mz_ulong block_size_raw = cur_block->block_0f.raw_size-1;
+                mz_ulong block_size_logical = cur_block->block_0f.logical_size;
+                mz_uncompress2(&out[out_pos], &block_size_logical, &blte->data[data_pos+1], &block_size_raw);
+
+                out_pos += cur_block->block_0f.logical_size;
+                data_pos += cur_block->block_0f.raw_size;
             }
-
-            out_pos += cur_block->block_0f.raw_size-1;
-            data_pos += cur_block->block_0f.raw_size;
-        }
+            
+            break;
+        case BLTE_ENCODING_LZ4:
+        case BLTE_ENCODING_RECURSIVE:
+        case BLTE_ENCODING_CRYPT:
+            (*out_size) =  blte_get_raw_data_size(&blte->chunkinfo);
+            out = blte_data_to_raw(blte);
+            break;
     }
-
+    
     return out;
 }
