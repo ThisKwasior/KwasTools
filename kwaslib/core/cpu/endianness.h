@@ -8,7 +8,7 @@
 /*
     Check endianness
 */
-static inline const uint8_t ed_is_BE()
+static inline uint8_t ed_is_BE()
 {
 #if defined(KWASLIB_BIG_ENDIAN)
     return ED_ENDIAN_BIG;
@@ -26,12 +26,12 @@ static inline const uint8_t ed_is_BE()
 /*
     Changes endianness of the number
 */
-static inline const uint16_t ed_swap_endian_16(const uint16_t n)
+static inline uint16_t ed_swap_endian_16(const uint16_t n)
 {
 	return (n << 8) | (n >> 8);
 }
 
-static inline const uint32_t ed_swap_endian_32(const uint32_t n)
+static inline uint32_t ed_swap_endian_32(const uint32_t n)
 {
 	return (n >> 24) | 
 		   ((n & 0xFF0000) >> 8) |
@@ -39,7 +39,7 @@ static inline const uint32_t ed_swap_endian_32(const uint32_t n)
 		   (n << 24);
 }
 
-static inline const uint64_t ed_swap_endian_64(const uint64_t n)
+static inline uint64_t ed_swap_endian_64(const uint64_t n)
 {
 	return (n >> 56) | 
 		   ((n & 0xFF000000000000) >> 40) |
